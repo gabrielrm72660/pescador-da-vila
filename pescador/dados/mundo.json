@@ -1,0 +1,190 @@
+{
+ "_nota": "Coordenadas do mundo em px; y cresce para baixo. Valores (proposta); a fase 2 pinta o mapa a partir daqui.",
+ "cidades": [
+  {
+   "id": "porto_farol",
+   "nome": "Porto do Farol",
+   "pos": [
+    0,
+    0
+   ],
+   "raio_cais": 120
+  },
+  {
+   "id": "vila_arraias",
+   "nome": "Vila das Arraias",
+   "pos": [
+    4950,
+    -4950
+   ],
+   "raio_cais": 120
+  },
+  {
+   "id": "ponta_negra",
+   "nome": "Ponta Negra",
+   "pos": [
+    -9900,
+    9900
+   ],
+   "raio_cais": 120
+  }
+ ],
+ "farol": {
+  "pos": [
+   250,
+   -200
+  ],
+  "raio_seguro": 2500,
+  "alcance_luz": 8000
+ },
+ "rasas": [
+  {
+   "centro": [
+    0,
+    0
+   ],
+   "raio": 2500
+  },
+  {
+   "centro": [
+    4950,
+    -4950
+   ],
+   "raio": 3500
+  },
+  {
+   "centro": [
+    -9900,
+    9900
+   ],
+   "raio": 2500
+  }
+ ],
+ "ilhotas": [
+  {
+   "id": "ilhota_coral",
+   "nome": "Ilhota do Coral",
+   "centro": [
+    3000,
+    2500
+   ],
+   "raio": 900
+  },
+  {
+   "id": "ilhota_gaivotas",
+   "nome": "Ilhota das Gaivotas",
+   "centro": [
+    -3500,
+    -3000
+   ],
+   "raio": 700
+  },
+  {
+   "id": "ilhota_grande",
+   "nome": "Ilhota Grande",
+   "centro": [
+    7500,
+    1500
+   ],
+   "raio": 1200
+  },
+  {
+   "id": "ilhota_pedra",
+   "nome": "Ilhota de Pedra",
+   "centro": [
+    -6500,
+    4500
+   ],
+   "raio": 600
+  },
+  {
+   "id": "ilhota_norte",
+   "nome": "Ilhota do Norte",
+   "centro": [
+    2000,
+    -7500
+   ],
+   "raio": 1000
+  }
+ ],
+ "fossas": [
+  {
+   "id": "fossa_negra",
+   "nome": "Fossa Negra",
+   "centro": [
+    -12500,
+    7000
+   ],
+   "eixos": [
+    2500,
+    1400
+   ],
+   "rotacao": 20
+  },
+  {
+   "id": "fossa_funda",
+   "nome": "Fossa Funda",
+   "centro": [
+    -8000,
+    14500
+   ],
+   "eixos": [
+    2000,
+    1200
+   ],
+   "rotacao": -15
+  },
+  {
+   "id": "fossa_sul",
+   "nome": "Fossa do Sul",
+   "centro": [
+    6000,
+    9000
+   ],
+   "eixos": [
+    1800,
+    1300
+   ],
+   "rotacao": 40
+  },
+  {
+   "id": "fossa_norte",
+   "nome": "Fossa do Norte",
+   "centro": [
+    15000,
+    -12000
+   ],
+   "eixos": [
+    2400,
+    1500
+   ],
+   "rotacao": 0
+  }
+ ],
+ "naufragios": [
+  {
+   "id": "naufragio_leste",
+   "nome": "Naufrágio a leste da Vila das Arraias",
+   "pos": [
+    9000,
+    -5200
+   ]
+  },
+  {
+   "id": "naufragio_sul",
+   "nome": "Naufrágio do Sul",
+   "pos": [
+    -4000,
+    8000
+   ]
+  },
+  {
+   "id": "naufragio_distante",
+   "nome": "Naufrágio Distante",
+   "pos": [
+    11000,
+    6000
+   ]
+  }
+ ]
+}

@@ -1,0 +1,105 @@
+{
+ "_nota": "Preços em R$ (proposta).",
+ "balcao": {
+  "vara_profunda": 600,
+  "vara_abissal": 4000,
+  "rede": 800,
+  "combustivel": 2,
+  "agua": 5,
+  "tabua": 15,
+  "corda": 10,
+  "conserto_lanterna": 120,
+  "isca_abissal": 30
+ },
+ "itens_restritos": [
+  "vara_abissal",
+  "isca_abissal"
+ ],
+ "melhorias": {
+  "porao": {
+   "nome": "Porão",
+   "niveis": [
+    100,
+    200,
+    400,
+    800
+   ],
+   "precos": [
+    0,
+    400,
+    1500,
+    5000
+   ]
+  },
+  "motor": {
+   "nome": "Motor",
+   "niveis": [
+    1,
+    2,
+    3
+   ],
+   "precos": [
+    0,
+    1000,
+    3500
+   ]
+  },
+  "tanque": {
+   "nome": "Tanque",
+   "niveis": [
+    100,
+    160
+   ],
+   "precos": [
+    0,
+    600
+   ]
+  },
+  "vela": {
+   "nome": "Vela grande",
+   "niveis": [
+    0,
+    1
+   ],
+   "precos": [
+    0,
+    700
+   ]
+  },
+  "casco": {
+   "nome": "Casco reforçado",
+   "niveis": [
+    0,
+    1
+   ],
+   "precos": [
+    0,
+    900
+   ]
+  },
+  "leme": {
+   "nome": "Leme",
+   "niveis": [
+    0,
+    1
+   ],
+   "precos": [
+    0,
+    400
+   ]
+  },
+  "lente": {
+   "nome": "Lente da lanterna",
+   "niveis": [
+    0,
+    1
+   ],
+   "precos": [
+    0,
+    500
+   ]
+  }
+ },
+ "reparo_casco_por_ponto": 3,
+ "carteira_inicial": 50
+}
