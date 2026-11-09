@@ -1,0 +1,55 @@
+{
+ "_nota": "Economia de cada cidade (proposta).",
+ "cidades": [
+  {
+   "id": "porto_farol",
+   "tem_doca": true,
+   "mult_categoria": {},
+   "mult_zona": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "itens_extras": [],
+   "zonas_pedidos": [
+    0
+   ]
+  },
+  {
+   "id": "vila_arraias",
+   "tem_doca": false,
+   "mult_categoria": {
+    "arraia": 1.4,
+    "crustaceo": 1.4
+   },
+   "mult_zona": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "itens_extras": [],
+   "zonas_pedidos": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": "ponta_negra",
+   "tem_doca": false,
+   "mult_categoria": {},
+   "mult_zona": [
+    1.0,
+    1.5,
+    1.5
+   ],
+   "itens_extras": [
+    "vara_abissal",
+    "isca_abissal"
+   ],
+   "zonas_pedidos": [
+    1,
+    2
+   ]
+  }
+ ]
+}
