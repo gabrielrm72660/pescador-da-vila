@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="Pescador da Vila"
+run/main_scene="res://cenas/Principal.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://icon.svg"
 
