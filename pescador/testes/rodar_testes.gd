@@ -5,6 +5,23 @@ extends SceneTree
 
 const PASTA := "res://testes/"
 
+
+## Conta os erros que o motor registra (SCRIPT ERROR e push_error) para pegar testes interrompidos.
+class ContadorErros extends Logger:
+	var total := 0
+	var _trava := Mutex.new()
+
+	func _log_error(_funcao: String, _arquivo: String, _linha: int, _codigo: String, _motivo: String,
+			_editor: bool, _tipo: int, _pilha: Array[ScriptBacktrace]) -> void:
+		_trava.lock()
+		total += 1
+		_trava.unlock()
+
+	func _log_message(_msg: String, _erro: bool) -> void:
+		pass
+
+var _erros := ContadorErros.new()
+
 var _fila: Array = []        # passos: ["arquivo", nome, script] ou ["teste", nome, caso, metodo]
 var _em_andamento: Array = []
 var _total := 0
@@ -12,6 +29,7 @@ var _falhas := 0
 
 
 func _init() -> void:
+	OS.add_logger(_erros)
 	var arquivos: Array[String] = []
 	for nome in DirAccess.get_files_at(PASTA):
 		if nome.begins_with("test_") and nome.ends_with(".gd"):
@@ -55,7 +73,10 @@ func _abrir_arquivo(nome: String) -> void:
 func _rodar_teste(nome: String, caso, metodo: String) -> void:
 	_total += 1
 	caso.falhas = [] as Array[String]
+	var antes := _erros.total
 	caso.call(metodo)
+	if _erros.total > antes:
+		caso.falhas.append("erro de execução (veja o SCRIPT ERROR acima)")
 	if caso.falhas.is_empty():
 		print("OK %s::%s" % [nome, metodo])
 	else:
