@@ -1,0 +1,366 @@
+{
+ "_nota": "Valores (proposta) de balanceamento; ajuste à vontade. tam em cm, vol_medio em litros, preco_base em R$ de um exemplar médio comum.",
+ "especies": [
+  {
+   "id": "sardinha",
+   "nome": "Sardinha",
+   "zona": 0,
+   "categoria": "comum",
+   "raridade": "comum",
+   "tam_min": 12.0,
+   "tam_max": 25.0,
+   "k_peso": 13,
+   "vol_medio": 0.2,
+   "preco_base": 1,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "bola",
+   "qtd": [
+    20,
+    40
+   ],
+   "sprite": "res://arte/especies/sardinha.png"
+  },
+  {
+   "id": "tainha",
+   "nome": "Tainha",
+   "zona": 0,
+   "categoria": "comum",
+   "raridade": "comum",
+   "tam_min": 30.0,
+   "tam_max": 80.0,
+   "k_peso": 9,
+   "vol_medio": 1.5,
+   "preco_base": 5,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "grupo",
+   "qtd": [
+    6,
+    12
+   ],
+   "sprite": "res://arte/especies/tainha.png"
+  },
+  {
+   "id": "siri_azul",
+   "nome": "Siri-azul",
+   "zona": 0,
+   "categoria": "crustaceo",
+   "raridade": "incomum",
+   "tam_min": 8.0,
+   "tam_max": 20.0,
+   "k_peso": 55,
+   "vol_medio": 0.3,
+   "preco_base": 3,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "fundo",
+   "qtd": [
+    3,
+    6
+   ],
+   "sprite": "res://arte/especies/siri_azul.png"
+  },
+  {
+   "id": "arraia_pintada",
+   "nome": "Arraia-pintada",
+   "zona": 0,
+   "categoria": "arraia",
+   "raridade": "incomum",
+   "tam_min": 40.0,
+   "tam_max": 150.0,
+   "k_peso": 8,
+   "vol_medio": 6,
+   "preco_base": 18,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "planando",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/arraia_pintada.png"
+  },
+  {
+   "id": "robalo",
+   "nome": "Robalo",
+   "zona": 0,
+   "categoria": "rara",
+   "raridade": "rara",
+   "tam_min": 40.0,
+   "tam_max": 120.0,
+   "k_peso": 11,
+   "vol_medio": 4,
+   "preco_base": 12,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "grupo_pequeno",
+   "qtd": [
+    3,
+    5
+   ],
+   "sprite": "res://arte/especies/robalo.png"
+  },
+  {
+   "id": "mero",
+   "nome": "Mero",
+   "zona": 0,
+   "categoria": "lendaria",
+   "raridade": "lendaria",
+   "tam_min": 80.0,
+   "tam_max": 250.0,
+   "k_peso": 30,
+   "vol_medio": 60,
+   "preco_base": 180,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "gigante",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/mero.png"
+  },
+  {
+   "id": "atum",
+   "nome": "Atum",
+   "zona": 1,
+   "categoria": "comum",
+   "raridade": "comum",
+   "tam_min": 60.0,
+   "tam_max": 250.0,
+   "k_peso": 14,
+   "vol_medio": 25,
+   "preco_base": 150,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "rapido",
+   "qtd": [
+    5,
+    9
+   ],
+   "sprite": "res://arte/especies/atum.png"
+  },
+  {
+   "id": "dourado",
+   "nome": "Dourado",
+   "zona": 1,
+   "categoria": "comum",
+   "raridade": "comum",
+   "tam_min": 50.0,
+   "tam_max": 150.0,
+   "k_peso": 8,
+   "vol_medio": 8,
+   "preco_base": 48,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "rapido",
+   "qtd": [
+    4,
+    7
+   ],
+   "brilho": "verde",
+   "sprite": "res://arte/especies/dourado.png"
+  },
+  {
+   "id": "caranguejo_real",
+   "nome": "Caranguejo-real",
+   "zona": 1,
+   "categoria": "crustaceo",
+   "raridade": "incomum",
+   "tam_min": 15.0,
+   "tam_max": 40.0,
+   "k_peso": 120,
+   "vol_medio": 2,
+   "preco_base": 20,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "fundo",
+   "qtd": [
+    2,
+    4
+   ],
+   "sprite": "res://arte/especies/caranguejo_real.png"
+  },
+  {
+   "id": "jamanta",
+   "nome": "Jamanta",
+   "zona": 1,
+   "categoria": "arraia",
+   "raridade": "incomum",
+   "tam_min": 200.0,
+   "tam_max": 600.0,
+   "k_peso": 6,
+   "vol_medio": 120,
+   "preco_base": 720,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "planando",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/jamanta.png"
+  },
+  {
+   "id": "espadarte",
+   "nome": "Espadarte",
+   "zona": 1,
+   "categoria": "rara",
+   "raridade": "rara",
+   "tam_min": 120.0,
+   "tam_max": 400.0,
+   "k_peso": 6,
+   "vol_medio": 40,
+   "preco_base": 240,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "linha",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/espadarte.png"
+  },
+  {
+   "id": "marlim_azul",
+   "nome": "Marlim-azul",
+   "zona": 1,
+   "categoria": "lendaria",
+   "raridade": "lendaria",
+   "tam_min": 150.0,
+   "tam_max": 450.0,
+   "k_peso": 7,
+   "vol_medio": 70,
+   "preco_base": 420,
+   "horario": "qualquer",
+   "clima": "qualquer",
+   "estilo": "saltos",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/marlim_azul.png"
+  },
+  {
+   "id": "peixe_lanterna",
+   "nome": "Peixe-lanterna",
+   "zona": 2,
+   "categoria": "comum",
+   "raridade": "comum",
+   "tam_min": 3.0,
+   "tam_max": 15.0,
+   "k_peso": 10,
+   "vol_medio": 0.05,
+   "preco_base": 1,
+   "horario": "noite_mais",
+   "clima": "qualquer",
+   "estilo": "luzes_nuvem",
+   "qtd": [
+    25,
+    50
+   ],
+   "sprite": "res://arte/especies/peixe_lanterna.png"
+  },
+  {
+   "id": "tamboril",
+   "nome": "Tamboril",
+   "zona": 2,
+   "categoria": "comum",
+   "raridade": "comum",
+   "tam_min": 20.0,
+   "tam_max": 100.0,
+   "k_peso": 25,
+   "vol_medio": 3,
+   "preco_base": 45,
+   "horario": "noite_mais",
+   "clima": "qualquer",
+   "estilo": "isca_luz",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/tamboril.png"
+  },
+  {
+   "id": "caranguejo_aranha",
+   "nome": "Caranguejo-aranha-gigante",
+   "zona": 2,
+   "categoria": "crustaceo",
+   "raridade": "incomum",
+   "tam_min": 60.0,
+   "tam_max": 370.0,
+   "k_peso": 0.5,
+   "vol_medio": 10,
+   "preco_base": 150,
+   "horario": "noite_mais",
+   "clima": "qualquer",
+   "estilo": "fundo_lento",
+   "qtd": [
+    1,
+    2
+   ],
+   "sprite": "res://arte/especies/caranguejo_aranha.png"
+  },
+  {
+   "id": "peixe_vibora",
+   "nome": "Peixe-víbora",
+   "zona": 2,
+   "categoria": "especial",
+   "raridade": "incomum",
+   "tam_min": 20.0,
+   "tam_max": 35.0,
+   "k_peso": 5,
+   "vol_medio": 0.2,
+   "preco_base": 15,
+   "horario": "noite_mais",
+   "clima": "qualquer",
+   "estilo": "luzes_sozinho",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/peixe_vibora.png"
+  },
+  {
+   "id": "lula_gigante",
+   "nome": "Lula-gigante",
+   "zona": 2,
+   "categoria": "rara",
+   "raridade": "rara",
+   "tam_min": 300.0,
+   "tam_max": 1200.0,
+   "k_peso": 0.3,
+   "vol_medio": 150,
+   "preco_base": 2250,
+   "horario": "noite_mais",
+   "clima": "qualquer",
+   "estilo": "tentaculos_luz",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/lula_gigante.png"
+  },
+  {
+   "id": "devorador_palido",
+   "nome": "Devorador Pálido",
+   "zona": 2,
+   "categoria": "lendaria",
+   "raridade": "lendaria",
+   "tam_min": 400.0,
+   "tam_max": 1500.0,
+   "k_peso": 0.5,
+   "vol_medio": 300,
+   "preco_base": 4500,
+   "horario": "so_noite",
+   "clima": "tempestade",
+   "estilo": "silhueta_palida",
+   "qtd": [
+    1,
+    1
+   ],
+   "sprite": "res://arte/especies/devorador_palido.png"
+  }
+ ]
+}

@@ -25,9 +25,13 @@ def achar_godot():
 
 def main():
     godot = achar_godot()
-    subprocess.run([godot, "--headless", "--path", PASTA, "--import"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    r = subprocess.run([godot, "--headless", "--path", PASTA, "--script", "res://testes/rodar_testes.gd"])
+    subprocess.run([godot, "--headless", "--path", PASTA, "--import"], stdin=subprocess.DEVNULL,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
+    try:
+        r = subprocess.run([godot, "--headless", "--path", PASTA, "--script", "res://testes/rodar_testes.gd"],
+                           stdin=subprocess.DEVNULL, timeout=600)
+    except subprocess.TimeoutExpired:
+        sys.exit("Os testes passaram de 10 minutos e foram interrompidos.")
     sys.exit(r.returncode)
 
 
