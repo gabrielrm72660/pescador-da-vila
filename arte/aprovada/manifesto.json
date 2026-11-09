@@ -1,0 +1,198 @@
+{
+  "item_barril": [
+    168,
+    203
+  ],
+  "item_tabua": [
+    206,
+    160
+  ],
+  "ic_tabua": [
+    206,
+    160
+  ],
+  "item_corda": [
+    205,
+    201
+  ],
+  "ic_corda": [
+    205,
+    201
+  ],
+  "item_garrafa": [
+    109,
+    206
+  ],
+  "item_bau": [
+    203,
+    184
+  ],
+  "ic_lanterna_acesa": [
+    130,
+    220
+  ],
+  "tubarao": [
+    157,
+    261
+  ],
+  "golfinho": [
+    133,
+    246
+  ],
+  "baleia": [
+    221,
+    276
+  ],
+  "tentaculo_1": [
+    157,
+    257
+  ],
+  "tentaculo_2": [
+    157,
+    257
+  ],
+  "tentaculo_3": [
+    157,
+    257
+  ],
+  "tentaculo_4": [
+    157,
+    257
+  ],
+  "vulto_a": [
+    269,
+    265
+  ],
+  "vulto_b": [
+    269,
+    265
+  ],
+  "palmeira": [
+    229,
+    268
+  ],
+  "oceano_aprovado": [
+    316,
+    312
+  ],
+  "areia_aprovada": [
+    316,
+    312
+  ],
+  "mata_aprovada": [
+    315,
+    312
+  ],
+  "raso_aprovado": [
+    316,
+    312
+  ],
+  "pedra_1": [
+    315,
+    272
+  ],
+  "pedra_2": [
+    316,
+    231
+  ],
+  "pedra_3": [
+    315,
+    257
+  ],
+  "fogueira": [
+    315,
+    272
+  ],
+  "bussola": [
+    252,
+    261
+  ],
+  "moldura_quadro": [
+    286,
+    118
+  ],
+  "peixe_topo_1": [
+    113,
+    208
+  ],
+  "peixe_topo_3": [
+    113,
+    208
+  ],
+  "ic_peixe": [
+    113,
+    208
+  ],
+  "bs_peixe": [
+    113,
+    208
+  ],
+  "peixe_topo_2": [
+    116,
+    208
+  ],
+  "peixe_topo_4": [
+    116,
+    208
+  ],
+  "bs_vida": [
+    166,
+    154
+  ],
+  "bs_gota": [
+    132,
+    189
+  ],
+  "ic_agua": [
+    132,
+    189
+  ],
+  "bs_raio": [
+    125,
+    201
+  ],
+  "bs_olho": [
+    205,
+    141
+  ],
+  "barco_base": [
+    240,
+    372
+  ],
+  "barco_base_sr": [
+    240,
+    372
+  ],
+  "barco_lanterna": [
+    240,
+    372
+  ],
+  "barco_lanterna_sr": [
+    240,
+    372
+  ],
+  "barco_ferro": [
+    240,
+    372
+  ],
+  "barco_ferro_sr": [
+    240,
+    372
+  ],
+  "barco_danificado": [
+    240,
+    372
+  ],
+  "barco_danificado_sr": [
+    240,
+    372
+  ],
+  "remo_esq": [
+    40,
+    160
+  ],
+  "remo_dir": [
+    40,
+    160
+  ]
+}

@@ -1,0 +1,1 @@
+O oceano usa a nova textura de arte com 24 fases interpoladas, movimento subpixel e cores de dia/noite/tempestade. Meta: 100 FPS. Veja VISUAL_ATUALIZADO.txt.

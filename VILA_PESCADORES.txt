@@ -1,0 +1,5 @@
+ILHA PARADISÍACA
+
+Vila, casas, cais, pescadores e fogueira removidos.
+Praia clara, coqueiros animados, mata tropical e águas rasas turquesa.
+Sem lagoa. Execute VISITAR_ILHA.py para conhecer a ilha.

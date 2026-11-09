@@ -1,0 +1,28 @@
+NÁUFRAGO — VISUAL E ANIMAÇÕES INTEGRADOS
+
+Execute INICIAR.py. F11 ou Alt+Enter alternam tela cheia e janela.
+Meta de renderização: 100 FPS. A taxa efetiva depende do computador.
+
+Novos sprites: barcos básico, reforçado e danificado; remos articulados;
+barril, tábuas, corda, garrafa, baú e lanterna; peixes, tubarão,
+golfinho, baleia, monstro e tentáculo; palmeira, pedras e fogueira;
+bússola, molduras e ícones de sobrevivência.
+
+Animações: remadas com respingos, balanço do casco, vela ao vento,
+flutuação dos itens, natação e mergulho da fauna, ondulação dos braços
+do monstro, tentáculos emergindo e atacando, palmeiras e fogo.
+As pedras, molduras e texturas de terra permanecem estáticas.
+Os tentáculos usam sprite em repouso e curva articulada durante o ataque.
+
+A nova água usa a textura produzida para o jogo, com fases interpoladas,
+movimento subpixel e transições de dia/noite. A ilha tem areia e mata
+texturizadas. As regras de sobrevivência e os controles foram preservados.
+
+PREVIA_ANIMADA.gif é uma gravação real reduzida para 640x360 e cerca de
+17 quadros por segundo, apenas para demonstração; não mede o FPS do jogo.
+As folhas de arte estão em arte/aprovada/.
+
+Validação: menus, renderização em quatro resoluções, F11/Alt+Enter,
+coleta, combate, pausa dos efeitos, remada a 30/60/120 passos por segundo,
+cena da ilha com fauna e ciclo de tentáculos. Testes em SDL de software;
+não equivalem a teste de desempenho no Windows do jogador.

@@ -1,0 +1,12 @@
+NÁUFRAGO — TELA GRANDE
+
+Execute INICIAR.py ou: python jogo/main.py
+No computador, o jogo agora inicia em tela cheia na resolução do monitor.
+F11 ou Alt+Enter alternam entre tela cheia e janela sem reiniciar a partida.
+Para iniciar em janela: python jogo/main.py --janela
+A janela pode ser redimensionada. A proporção é preservada com faixas pretas quando necessário.
+Interface e cliques são escalados juntos. A simulação usa 1280x720 para evitar o custo de desenhar todos os efeitos em 4K.
+A opção --toque continua disponível. O fluxo Android/web original foi mantido.
+Dependência: python -m pip install pygame-ce
+
+Análise: o projeto já possui progressão, receitas, clima, fauna, sanidade e áudio dinâmico. Melhorias prioritárias futuras: salvar a partida/configurações; dividir main.py em módulos; corrigir o toque no painel de reparo da lanterna (o ícone L funciona, mas o painel só está ligado ao mouse de PC); separar tempo real do limite de dt para evitar câmera lenta abaixo de 20 FPS.

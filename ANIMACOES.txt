@@ -1,0 +1,18 @@
+ANIMAÇÕES ATUALIZADAS
+
+- Balanço do barco com ondas combinadas e inclinação nas curvas.
+- Vela tremulando, com movimento mais forte na tempestade.
+- Remadas com ritmo independente da taxa de quadros.
+- Respingos sincronizados com a entrada das pás na água.
+- Espuma que se abre e se dissipa atrás do barco.
+- Partículas douradas ao recolher itens.
+- Respingos nos impactos e partículas violetas ao atingir tentáculos.
+- Novos efeitos congelam na pausa e têm limite de partículas.
+- Modo leve reduz a emissão contínua.
+
+Execute INICIAR.py. F11 alterna tela cheia/janela.
+As regras, inventário e controles permanecem iguais.
+
+Testado em ambiente automatizado com Pygame: 30, 60 e 120 FPS,
+coleta, combate, pausa, renderização e alternância de tela cheia.
+O desempenho final deve ser conferido no computador do jogador.
