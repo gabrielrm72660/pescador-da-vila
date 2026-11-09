@@ -15,11 +15,38 @@ static func _ler(caminho: String) -> Dictionary:
 
 
 static func carregar_dados() -> Dictionary:
-	return {
+	var d := {
 		"mundo": _ler("res://dados/mundo.json"),
 		"cidades": _ler("res://dados/cidades.json"),
 		"loja": _ler("res://dados/loja.json"),
 	}
+	for erro in validar_dados(d):
+		push_error("dados do mercado: " + erro)
+	return d
+
+
+## Confere a economia das cidades contra o mundo; devolve a lista de problemas.
+static func validar_dados(d: Dictionary) -> Array:
+	var erros: Array = []
+	var economia := {}
+	for c in d.get("cidades", {}).get("cidades", []):
+		var id := str(c.get("id", "?"))
+		economia[id] = true
+		var mz = c.get("mult_zona", [])
+		if typeof(mz) != TYPE_ARRAY or mz.size() != 3:
+			erros.append("%s: mult_zona precisa de 3 valores" % id)
+		var zp = c.get("zonas_pedidos", [])
+		if typeof(zp) != TYPE_ARRAY or zp.is_empty() or zp.any(func(z): return int(z) < 0 or int(z) > 2):
+			erros.append("%s: zonas_pedidos deve listar zonas entre 0 e 2" % id)
+	var mundo: Array = d.get("mundo", {}).get("cidades", [])
+	if mundo.is_empty():
+		erros.append("mundo.json sem cidades")
+	for m in mundo:
+		if not economia.has(str(m.get("id", "?"))):
+			erros.append("%s: cidade sem dados em cidades.json" % m.get("id", "?"))
+	if not mundo.any(func(m): return cidade(d, str(m.id)).get("tem_doca", false)):
+		erros.append("nenhuma cidade tem doca seca")
+	return erros
 
 
 static func cidade(dados: Dictionary, id: String) -> Dictionary:

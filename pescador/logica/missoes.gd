@@ -12,6 +12,24 @@ static func config() -> Dictionary:
 	return d if typeof(d) == TYPE_DICTIONARY else {}
 
 
+## Confere dados/missoes.json; devolve a lista de problemas.
+static func validar_config(cfg: Dictionary) -> Array:
+	var erros: Array = []
+	var faixas := {"encomenda": ["qtd", "prazo_dias"], "trofeu": ["prazo_dias"], "entrega": ["volume", "prazo_dias"]}
+	for tipo in TIPOS:
+		if typeof(cfg.get(tipo)) != TYPE_DICTIONARY:
+			erros.append("falta a seção '%s'" % tipo)
+			continue
+		for chave in faixas.get(tipo, []):
+			var f = cfg[tipo].get(chave)
+			if typeof(f) != TYPE_ARRAY or f.size() != 2 or float(f[0]) > float(f[1]) or float(f[0]) < 0:
+				erros.append("%s.%s deve ser [mín, máx] com 0 ≤ mín ≤ máx" % [tipo, chave])
+	for chave in ["ofertas_por_cidade", "max_ativas"]:
+		if int(cfg.get(chave, 0)) < 1:
+			erros.append("%s deve ser pelo menos 1" % chave)
+	return erros
+
+
 static func _faixa_i(r: RandomNumberGenerator, f: Array) -> int:
 	return r.randi_range(int(f[0]), int(f[1]))
 
@@ -93,8 +111,10 @@ static func gerar(dados: Dictionary, especies: Array, cidade_id: String, dia: in
 	return ofertas
 
 
-static func aceitar(dados: Dictionary, ativas: Array, oferta: Dictionary, porao) -> bool:
+static func aceitar(dados: Dictionary, ativas: Array, oferta: Dictionary, porao, dia: int) -> bool:
 	if ativas.size() >= int(config().get("max_ativas", 3)):
+		return false
+	if _vencida(oferta, dia) or ativas.any(func(m): return m.id == oferta.id):
 		return false
 	if oferta.get("tipo", "") == "entrega":
 		if not porao.adicionar({"carga": true, "missao": oferta.id, "volume": float(oferta.volume)}):
@@ -140,7 +160,7 @@ static func progresso(m: Dictionary, porao, pos: Vector2, dia: int) -> Dictionar
 	return {"feito": feito, "total": total, "pronta": feito >= total and not vencida, "vencida": vencida}
 
 
-static func entregar(m: Dictionary, porao, especies: Array, cidade_id: String, dia: int, catalogo) -> Dictionary:
+static func entregar(dados: Dictionary, m: Dictionary, porao, especies: Array, cidade_id: String, dia: int, catalogo) -> Dictionary:
 	var falha := func(motivo): return {"ok": false, "motivo": motivo, "reais": 0, "xp": 0}
 	if _vencida(m, dia):
 		return falha.call("vencida")
@@ -156,8 +176,10 @@ static func entregar(m: Dictionary, porao, especies: Array, cidade_id: String, d
 			var soma := 0
 			usar.sort()
 			usar.reverse()
+			var cid := Mercado.cidade(dados, m.cidade)
 			for i in usar:
-				soma += int(porao.soltar(i).valor)
+				var ex: Dictionary = porao.soltar(i)
+				soma += Mercado.preco_venda(ex, Especies.por_id(especies, ex.especie), cid)
 			reais = roundi(float(cfg[m.tipo].mult_recompensa) * soma)
 			if m.tipo == "trofeu" and Especies.por_id(especies, m.especie).get("raridade", "") == "lendaria":
 				catalogo.dar_titulo(m.especie)
@@ -171,3 +193,13 @@ static func entregar(m: Dictionary, porao, especies: Array, cidade_id: String, d
 
 static func vencidas(ativas: Array, dia: int) -> Array:
 	return ativas.filter(func(m): return _vencida(m, dia))
+
+
+## Tira das ativas as missões vencidas e a carga de entrega delas; devolve as removidas.
+static func expirar(ativas: Array, porao, dia: int) -> Array:
+	var removidas := vencidas(ativas, dia)
+	for m in removidas:
+		ativas.erase(m)
+		if m.get("tipo", "") == "entrega":
+			porao.remover_carga(m.id)
+	return removidas

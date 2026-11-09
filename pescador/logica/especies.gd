@@ -17,7 +17,13 @@ static func carregar(caminho := "res://dados/especies.json") -> Array[Dictionary
 	if typeof(dados) != TYPE_DICTIONARY or not dados.has("especies"):
 		push_error("especies.json inválido: %s" % caminho)
 		return lista
+	var ruins := {}
+	for erro in validar(dados.especies):
+		push_error("especies.json: " + erro)
+		ruins[erro.get_slice(":", 0)] = true
 	for e in dados.especies:
+		if typeof(e) != TYPE_DICTIONARY or ruins.has(str(e.get("id", "?"))):
+			continue
 		var esp: Dictionary = e.duplicate()
 		esp.zona = int(esp.zona)
 		esp.tam_min = float(esp.tam_min)
@@ -26,6 +32,39 @@ static func carregar(caminho := "res://dados/especies.json") -> Array[Dictionary
 		esp.qtd = [int(esp.qtd[0]), int(esp.qtd[1])]
 		lista.append(esp)
 	return lista
+
+
+const CAMPOS := ["id", "nome", "zona", "categoria", "raridade", "tam_min", "tam_max", "k_peso",
+		"vol_medio", "preco_base", "horario", "clima", "qtd"]
+const HORARIOS := ["qualquer", "noite_mais", "so_noite"]
+const CLIMAS := ["qualquer", "tempestade"]
+
+
+## Confere cada espécie; cada erro começa com "<id>:" para o jogo saber qual pular.
+static func validar(lista: Array) -> Array:
+	var erros: Array = []
+	for e in lista:
+		if typeof(e) != TYPE_DICTIONARY:
+			erros.append("?: entrada não é objeto")
+			continue
+		var id := str(e.get("id", "?"))
+		var faltam := CAMPOS.filter(func(c): return not e.has(c))
+		if not faltam.is_empty():
+			erros.append("%s: faltam campos %s" % [id, ", ".join(faltam)])
+			continue
+		if float(e.tam_min) >= float(e.tam_max):
+			erros.append("%s: tam_min deve ser menor que tam_max" % id)
+		elif int(e.zona) < 0 or int(e.zona) > 2:
+			erros.append("%s: zona deve ser 0, 1 ou 2" % id)
+		elif not MULT_RARIDADE.has(e.raridade):
+			erros.append("%s: raridade desconhecida '%s'" % [id, e.raridade])
+		elif not e.horario in HORARIOS:
+			erros.append("%s: horario desconhecido '%s'" % [id, e.horario])
+		elif not e.clima in CLIMAS:
+			erros.append("%s: clima desconhecido '%s'" % [id, e.clima])
+		elif typeof(e.qtd) != TYPE_ARRAY or e.qtd.size() != 2 or int(e.qtd[0]) > int(e.qtd[1]) or int(e.qtd[0]) < 1:
+			erros.append("%s: qtd deve ser [mín, máx] com 1 ≤ mín ≤ máx" % id)
+	return erros
 
 
 static func por_id(lista: Array, id: String) -> Dictionary:
@@ -60,7 +99,7 @@ static func exemplar_com_f(esp: Dictionary, f: float) -> Dictionary:
 		"classe": classe,
 		"peso": esp.k_peso * pow(tam / 100.0, 3),
 		"volume": esp.vol_medio * razao * razao,
-		"valor": roundi(valor),
+		"valor": maxi(1, roundi(valor)),
 	}
 
 

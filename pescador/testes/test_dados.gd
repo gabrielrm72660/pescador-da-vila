@@ -1,9 +1,15 @@
 extends "res://testes/caso_teste.gd"
 const E = preload("res://logica/especies.gd")
 const MK = preload("res://logica/mercado.gd")
+const MI = preload("res://logica/missoes.gd")
 
 const CAMPOS = ["id", "nome", "zona", "categoria", "raridade", "tam_min", "tam_max", "k_peso", "vol_medio",
 		"preco_base", "horario", "clima", "estilo", "qtd", "sprite"]
+
+func test_validadores_aceitam_os_dados_reais():
+	var bruto = JSON.parse_string(FileAccess.get_file_as_string("res://dados/especies.json"))
+	igual(E.validar(bruto.especies), [], "espécies"); igual(E.carregar().size(), 18, "18 carregadas")
+	igual(MK.validar_dados(MK.carregar_dados()), [], "cidades"); igual(MI.validar_config(MI.config()), [], "missões")
 
 func test_especies_validas():
 	var ids := {}
