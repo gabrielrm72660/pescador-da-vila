@@ -2,6 +2,7 @@ extends RefCounted
 ## Mercado de peixe, balcão e doca seca (spec 7). Só funções estáticas sobre dados e dicionários de estado.
 
 const Especies = preload("res://logica/especies.gd")
+const Mapa = preload("res://logica/mapa.gd")
 const VARAS_A_VENDA := ["vara_profunda", "vara_abissal"]
 const SUPRIMENTOS := ["agua", "tabua", "corda", "isca_abissal"]
 
@@ -44,6 +45,16 @@ static func validar_dados(d: Dictionary) -> Array:
 	for m in mundo:
 		if not economia.has(str(m.get("id", "?"))):
 			erros.append("%s: cidade sem dados em cidades.json" % m.get("id", "?"))
+		if float(m.get("raio_ilha", 0)) <= 0:
+			erros.append("%s: falta raio_ilha" % m.get("id", "?"))
+		var cais = m.get("cais")
+		if typeof(cais) != TYPE_ARRAY or cais.size() != 2:
+			erros.append("%s: falta o cais [x, y]" % m.get("id", "?"))
+		elif Mapa.zona_em(d.mundo, Vector2(float(cais[0]), float(cais[1]))) == Mapa.TERRA:
+			erros.append("%s: o cais está em terra" % m.get("id", "?"))
+	var mp: Dictionary = d.get("mundo", {}).get("mapa", {})
+	if int(mp.get("celula", 0)) < 16 or int(mp.get("limite", 0)) < 1000 or not (float(mp.get("fracao_terra_ilhota", -1)) > 0 and float(mp.get("fracao_terra_ilhota", 2)) < 1):
+		erros.append("mundo.json: bloco 'mapa' ausente ou inválido (celula, limite, fracao_terra_ilhota)")
 	if not mundo.any(func(m): return cidade(d, str(m.id)).get("tem_doca", false)):
 		erros.append("nenhuma cidade tem doca seca")
 	return erros

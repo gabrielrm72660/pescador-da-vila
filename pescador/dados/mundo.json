@@ -8,7 +8,12 @@
     0,
     0
    ],
-   "raio_cais": 120
+   "raio_cais": 120,
+   "raio_ilha": 600,
+   "cais": [
+    0,
+    680
+   ]
   },
   {
    "id": "vila_arraias",
@@ -17,7 +22,12 @@
     4950,
     -4950
    ],
-   "raio_cais": 120
+   "raio_cais": 120,
+   "raio_ilha": 600,
+   "cais": [
+    4950,
+    -4270
+   ]
   },
   {
    "id": "ponta_negra",
@@ -26,7 +36,12 @@
     -9900,
     9900
    ],
-   "raio_cais": 120
+   "raio_cais": 120,
+   "raio_ilha": 600,
+   "cais": [
+    -9900,
+    9220
+   ]
   }
  ],
  "farol": {
@@ -186,5 +201,10 @@
     6000
    ]
   }
- ]
+ ],
+ "mapa": {
+  "celula": 128,
+  "limite": 20480,
+  "fracao_terra_ilhota": 0.35
+ }
 }
