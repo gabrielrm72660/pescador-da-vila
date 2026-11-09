@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://cenas/barco.gd" id="1"]
 
 [sub_resource type="Gradient" id="Gradient_luz"]
-colors = PackedColorArray(1, 0.92, 0.7, 1, 1, 0.92, 0.7, 0)
+colors = PackedColorArray(1, 0.85, 0.55, 1, 1, 0.85, 0.55, 0)
 
 [sub_resource type="GradientTexture2D" id="Tex_luz"]
 gradient = SubResource("Gradient_luz")

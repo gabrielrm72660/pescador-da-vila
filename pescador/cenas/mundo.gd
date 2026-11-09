@@ -124,6 +124,9 @@ func _process(dt: float) -> void:
 
 func avancar_tempo(dt: float) -> void:
 	t += dt
+	var hud := get_node_or_null("HUD")
+	if hud and _iniciado and dt > 0.0:
+		hud.atualizar(dados_hud())
 	vento.atualizar(dt, _rng)
 	barco.vento_ang = vento.ang
 	barco.forca_vento = forca_vento
@@ -138,7 +141,7 @@ func avancar_tempo(dt: float) -> void:
 	$Farol.aceso = noite
 	var lanterna := barco.get_node_or_null("Lanterna") as PointLight2D
 	if lanterna:
-		lanterna.energy = 1.1 * Tempo.noite(t)
+		lanterna.energy = 0.9 * clampf((Tempo.noite(t) - 0.3) / 0.4, 0.0, 1.0)
 
 
 func _avisar(texto: String) -> void:

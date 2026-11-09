@@ -44,8 +44,6 @@ static func criar_tileset() -> TileSet:
 	var img := Image.create(TAM * 4, TAM, false, Image.FORMAT_RGBA8)
 	for i in 4:
 		img.fill_rect(Rect2i(i * TAM, 0, TAM, TAM), CORES[i])
-		# bordinha mais escura para ver a grade de perto
-		img.fill_rect(Rect2i(i * TAM, TAM - 2, TAM, 2), CORES[i].darkened(0.08))
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(TAM, TAM)
 	ts.add_custom_data_layer()

@@ -30,7 +30,7 @@ polygon = PackedVector2Array(-10, -10, 10, -10, 10, 10, -10, 10)
 
 [node name="Facho" type="PointLight2D" parent="."]
 enabled = false
-energy = 1.4
+energy = 0.55
 
 [node name="Brilho" type="PointLight2D" parent="."]
 enabled = false
