@@ -79,7 +79,7 @@ func _refazer() -> void:
 	_botoes.clear()
 	_textos.clear()
 	var cid := _cidade()
-	_titulo = "Mercado de %s — R$ %d" % [cid.get("nome", estado.cidade), estado.dinheiro]
+	_titulo = "Mercado — %s — R$ %d" % [cid.get("nome", estado.cidade), estado.dinheiro]
 	custom_minimum_size = Vector2(1300, 820)
 	var fundo := StyleBoxFlat.new()
 	fundo.bg_color = Color(0.07, 0.11, 0.17, 0.97)

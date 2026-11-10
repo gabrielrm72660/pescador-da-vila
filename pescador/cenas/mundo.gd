@@ -10,6 +10,8 @@ const Pesca = preload("res://logica/pesca.gd")
 const Especies = preload("res://logica/especies.gd")
 const Porao = preload("res://logica/porao.gd")
 const Catalogo = preload("res://logica/catalogo.gd")
+const EstadoPartida = preload("res://autoload/Estado.gd")
+const Missoes = preload("res://logica/missoes.gd")
 const CenaCardume = preload("res://cenas/Cardume.tscn")
 const VEL_MAX_ATRACAR := 40.0
 const MAX_CARDUMES := 5
@@ -24,6 +26,8 @@ signal porao_mudou
 const NOITE := Color(0.22, 0.27, 0.45)
 
 var mundo: Dictionary
+var dados: Dictionary             ## mundo, cidades e loja (Mercado.carregar_dados)
+var est                           ## a partida: o autoload Estado, ou um próprio quando ele não existe (testes)
 var barco
 var t := 0.0
 var dia := 1
@@ -63,7 +67,14 @@ func iniciar() -> void:
 	if _iniciado:
 		return
 	_iniciado = true
-	mundo = Mercado.carregar_dados().mundo
+	dados = Mercado.carregar_dados()
+	mundo = dados.mundo
+	est = _estado()
+	if est == null:
+		est = EstadoPartida.new()
+		est.name = "EstadoLocal"
+		est.novo_jogo()
+		add_child(est)
 	especies = Especies.carregar()
 	barco = $Barco
 	_rng.randomize()
@@ -75,6 +86,8 @@ func iniciar() -> void:
 	_ler_estado()
 	var hud := get_node_or_null("HUD")
 	if hud and hud.has_signal("soltar_do_porao"):
+		hud.mercado_mudou.connect(_aplicar_estado)
+		hud.painel_fechado.connect(func(nome): if nome == "mercado": _aplicar_estado(); est.salvar())
 		hud.soltar_do_porao.connect(func(i): soltar_do_porao(i); _mostrar_porao())
 		hud.painel_fechado.connect(func(nome): if nome == "porao": desistir_pendente())
 		porao_cheio.connect(_mostrar_porao)
@@ -95,17 +108,20 @@ func _estado() -> Node:
 
 
 func _ler_estado() -> void:
-	var e := _estado()
-	if e == null:
-		return
+	cidade_atual = est.cidade
+	destino_id = est.destino
+	dia_base = est.dia
+	_aplicar_estado()
+
+
+## Passa para o barco e para a pesca o que a partida tem (melhorias, combustível, varas, rede).
+func _aplicar_estado() -> void:
+	var e = est
 	barco.nivel_motor = int(e.melhorias.get("motor", 0)) + 1
 	barco.vela_grande = int(e.melhorias.get("vela", 0)) > 0
 	barco.leme_melhorado = int(e.melhorias.get("leme", 0)) > 0
 	barco.tanque = e.tanque()
 	barco.combustivel = minf(e.combustivel, barco.tanque)
-	cidade_atual = e.cidade
-	destino_id = e.destino
-	dia_base = e.dia
 	porao = e.porao
 	catalogo = e.catalogo
 	varas = e.varas
@@ -115,9 +131,7 @@ func _ler_estado() -> void:
 
 
 func _gravar_estado() -> void:
-	var e := _estado()
-	if e == null:
-		return
+	var e = est
 	e.combustivel = barco.combustivel
 	e.dia = dia
 	e.destino = destino_id
@@ -162,9 +176,20 @@ func _montar_cidades() -> void:
 
 
 func _process(dt: float) -> void:
+	if Input.is_action_just_pressed("mercado"):
+		alternar_mercado()
+	quadro(dt)
+
+
+## Um quadro do jogo. Com o mercado aberto o mundo fica parado (spec 7.2).
+func quadro(dt: float) -> void:
+	if mercado_aberto():
+		return
 	avancar_tempo(dt)
 	if Input.is_action_just_pressed("atracar"):
 		alternar_atracar()
+	if Input.is_action_just_pressed("missoes"):
+		alternar_missoes()
 	if Input.is_action_just_pressed("destino"):
 		trocar_destino()
 	if Input.is_action_just_pressed("pescar") and not _painel_aberto():
@@ -196,6 +221,13 @@ func avancar_tempo(dt: float) -> void:
 	if novo_dia != dia:
 		dia = novo_dia
 		_gravar_estado()
+		for m in est.expirar_missoes():
+			_avisar("O prazo venceu: %s" % Missoes.descricao(m, especies, dados).get_slice(" —", 0))
+	if not barco.atracado:
+		for m in est.marcar_exploracao(barco.position):
+			_avisar("Achou %s! Volte a %s para receber" % [m.get("nome_alvo", "o ponto"), _cidade(m.cidade).nome])
+			if destino_id == "missao:" + str(m.id):
+				destino_id = m.cidade
 	var borda: bool = not barco.atracado and Mapa.perto_da_borda(mundo, barco.position)
 	if borda and not _na_borda:
 		_avisar("Fim das águas conhecidas — dê meia-volta")
@@ -214,7 +246,53 @@ func _avisar(texto: String) -> void:
 	aviso_id += 1
 
 
+func mercado_aberto() -> bool:
+	var hud := get_node_or_null("HUD")
+	return hud != null and hud.has_method("mercado_aberto") and hud.mercado_aberto()
+
+
+func abrir_mercado() -> void:
+	var hud := get_node_or_null("HUD")
+	if hud == null or not barco.atracado:
+		return
+	_gravar_estado()
+	hud.abrir_mercado(est, dados, especies, _rng)
+
+
+func alternar_mercado() -> void:
+	var hud := get_node_or_null("HUD")
+	if hud == null:
+		return
+	if hud.mercado_aberto():
+		hud.fechar_paineis()
+	elif barco.atracado:
+		abrir_mercado()
+	else:
+		_avisar("Atraque num cais para ir ao mercado")
+
+
+func alternar_missoes() -> void:
+	var hud := get_node_or_null("HUD")
+	if hud == null:
+		return
+	if hud.missoes_abertas():
+		hud.fechar_paineis()
+	else:
+		hud.abrir_missoes(est, dados, especies, barco.position)
+
+
+## Cidades e, depois, os pontos das explorações ainda não achadas.
+func _destinos() -> Array:
+	var extras: Array = []
+	for m in est.missoes.ativas:
+		if m.get("tipo", "") == "exploracao" and not m.get("achado", false):
+			extras.append({"id": "missao:" + str(m.id), "nome": m.get("nome_alvo", "Missão"), "pos": m.pos})
+	return Mapa.destinos(mundo, extras)
+
+
 func alternar_atracar() -> bool:
+	if mercado_aberto():
+		return false
 	if barco.atracado:
 		barco.atracado = false
 		_avisar("Desatracou de %s" % _cidade(cidade_atual).nome)
@@ -233,6 +311,8 @@ func tentar_atracar() -> bool:
 		return false
 	_atracar_em(c)
 	_avisar("Atracado em %s" % c.nome)
+	est.salvar()
+	abrir_mercado()
 	return true
 
 
@@ -249,15 +329,16 @@ func _atracar_em(c: Dictionary) -> void:
 
 
 func trocar_destino() -> void:
-	destino_id = Mapa.proximo_destino(Mapa.destinos(mundo), destino_id)
+	destino_id = Mapa.proximo_destino(_destinos(), destino_id)
 	_avisar("Bússola: %s" % _destino().nome)
 
 
 func _destino() -> Dictionary:
-	for d in Mapa.destinos(mundo):
+	var lista := _destinos()
+	for d in lista:
 		if d.id == destino_id:
 			return d
-	return Mapa.destinos(mundo)[0]
+	return lista[0]
 
 
 func dados_hud() -> Dictionary:
@@ -283,6 +364,8 @@ func dados_hud() -> Dictionary:
 		"atracado": barco.atracado,
 		"aviso": aviso,
 		"aviso_id": aviso_id,
+		"dinheiro": est.dinheiro,
+		"missoes": est.missoes.ativas.size(),
 		"vara": vara,
 		"porao_usado": porao.usado(),
 		"porao_cap": porao.capacidade,
@@ -473,9 +556,7 @@ func _guardar(ex: Dictionary, _esp: Dictionary) -> bool:
 
 func _porao_mudou() -> void:
 	porao_mudou.emit()
-	var e := _estado()
-	if e != null and e.has_signal("porao_mudou"):
-		e.porao_mudou.emit()
+	est.porao_mudou.emit()
 
 
 func soltar_do_porao(indice: int) -> void:

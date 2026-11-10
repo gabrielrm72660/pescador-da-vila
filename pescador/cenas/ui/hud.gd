@@ -12,6 +12,7 @@ const CARENCIA_CLIQUE := 200      ## ms: o clique que fecha um painel não vale 
 
 signal soltar_do_porao(indice: int)
 signal painel_fechado(nome: String)
+signal mercado_mudou
 
 var _aviso_id := 0
 var _fechou_em := -100000
@@ -44,10 +45,16 @@ func atualizar(d: Dictionary) -> void:
 		$Painel/Porao.max_value = float(d.porao_cap)
 		$Painel/Porao.value = float(d.porao_usado)
 		$Painel/Porao/Texto.text = "Porão %d/%d L" % [roundi(d.porao_usado), roundi(d.porao_cap)]
+	$Painel/Dinheiro.visible = d.has("dinheiro")
+	if d.has("dinheiro"):
+		var n := int(d.get("missoes", 0))
+		$Painel/Dinheiro.text = "R$ %d" % int(d.dinheiro) + ("" if n == 0 else "  ·  %d %s" % [n, "missão" if n == 1 else "missões"])
 	var med: Dictionary = d.get("medidor", {})
 	$Medidor.definir(med)
-	$Dica.visible = not med.is_empty() or bool(d.get("pode_pescar", false))
-	$Dica.text = "F: parar o ponteiro na faixa verde" if not med.is_empty() else "F: pescar"
+	var no_cais: bool = bool(d.get("atracado", false)) and d.has("dinheiro") and not $TelaMercado.visible
+	$Dica.visible = not med.is_empty() or bool(d.get("pode_pescar", false)) or no_cais
+	$Dica.text = "F: parar o ponteiro na faixa verde" if not med.is_empty() else (
+			"M: mercado   ·   E: zarpar" if no_cais else "F: pescar")
 	if int(d.get("aviso_id", 0)) != _aviso_id:
 		_aviso_id = int(d.aviso_id)
 		$Aviso.text = String(d.aviso)
@@ -75,10 +82,13 @@ func _ligar() -> void:
 	$PainelPorao.soltar.connect(func(i): soltar_do_porao.emit(i))
 	$PainelPorao.fechar.connect(fechar_paineis)
 	$PainelCatalogo.fechar.connect(fechar_paineis)
+	$PainelMissoes.fechar.connect(fechar_paineis)
+	$TelaMercado.fechar.connect(fechar_paineis)
+	$TelaMercado.mudou.connect(func(): mercado_mudou.emit())
 
 
 func painel_aberto() -> bool:
-	return $PainelPorao.visible or $PainelCatalogo.visible or Time.get_ticks_msec() - _fechou_em < CARENCIA_CLIQUE
+	return $PainelPorao.visible or $PainelCatalogo.visible or $PainelMissoes.visible or $TelaMercado.visible or Time.get_ticks_msec() - _fechou_em < CARENCIA_CLIQUE
 
 
 func porao_aberto() -> bool:
@@ -89,24 +99,50 @@ func catalogo_aberto() -> bool:
 	return $PainelCatalogo.visible
 
 
-func abrir_porao(itens: Array, especies: Array, usado: float, capacidade: float, pendente: Dictionary) -> void:
+func mercado_aberto() -> bool:
+	return $TelaMercado.visible
+
+
+func missoes_abertas() -> bool:
+	return $PainelMissoes.visible
+
+
+func _so(painel: Control) -> void:
 	_ligar()
-	$PainelCatalogo.visible = false
+	for p in [$PainelPorao, $PainelCatalogo, $PainelMissoes, $TelaMercado]:
+		if p != painel:
+			p.visible = false
+
+
+func abrir_mercado(estado, dados: Dictionary, especies: Array, rng: RandomNumberGenerator) -> void:
+	_so($TelaMercado)
+	$TelaMercado.abrir(estado, dados, especies, rng)
+
+
+func abrir_missoes(estado, dados: Dictionary, especies: Array, pos: Vector2) -> void:
+	_so($PainelMissoes)
+	$PainelMissoes.mostrar(estado, dados, especies, pos)
+	$PainelMissoes.visible = true
+
+
+func abrir_porao(itens: Array, especies: Array, usado: float, capacidade: float, pendente: Dictionary) -> void:
+	_so($PainelPorao)
 	$PainelPorao.mostrar(itens, especies, usado, capacidade, pendente)
 	$PainelPorao.visible = true
 
 
 func abrir_catalogo(especies: Array, entradas: Dictionary) -> void:
-	_ligar()
-	$PainelPorao.visible = false
+	_so($PainelCatalogo)
 	$PainelCatalogo.mostrar(especies, entradas)
 	$PainelCatalogo.visible = true
 
 
 func fechar_paineis() -> void:
-	var qual := "porao" if $PainelPorao.visible else ("catalogo" if $PainelCatalogo.visible else "")
-	$PainelPorao.visible = false
-	$PainelCatalogo.visible = false
+	var qual := ""
+	for par in [["porao", $PainelPorao], ["catalogo", $PainelCatalogo], ["missoes", $PainelMissoes], ["mercado", $TelaMercado]]:
+		if par[1].visible:
+			qual = par[0]
+		par[1].visible = false
 	if qual != "":
 		_fechou_em = Time.get_ticks_msec()
 		painel_fechado.emit(qual)
