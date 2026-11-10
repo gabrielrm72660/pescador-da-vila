@@ -84,5 +84,28 @@ cardume e pede 2 s de espera. Depois de uma fisgada o cardume se dispersa e outr
 peixe no porão (I) e no catálogo (C). Erre de propósito três vezes e veja o cardume sumir. Vá às águas profundas (azul
 escuro) e tente pescar: a vara rasa não alcança.
 
+## Fase 4 — cidades
+
+| Ação | Tecla |
+|---|---|
+| Mercado (quando atracado) | M |
+| Missões ativas | J |
+| Bússola: próximo destino (cidades e alvos de missão) | B |
+
+**Atracar** num cais (E, devagar) salva o jogo e abre o **mercado** da cidade; com ele aberto o tempo para. Fechou,
+você continua atracado: M reabre e E zarpa. O jogo também é salvo ao fechar o mercado, em `user://save.json`, e ao
+abrir de novo você volta atracado na última cidade.
+
+- **Vender:** cada peixe com o preço desta cidade, venda unitária e "Vender tudo". A Vila das Arraias paga +40% por
+  arraias e crustáceos; Ponta Negra paga +50% por peixes de águas profundas e abissais.
+- **Missões:** 3 ofertas por cidade, trocadas a cada dia; até 3 ativas. Encomenda e troféu se entregam com o peixe no
+  porão; a entrega põe uma carga no porão e tem prazo; a exploração é achada no mar (aviso na tela) e paga na volta.
+- **Balcão:** combustível (encher o tanque), água, tábua, corda, vara profunda, rede; a vara abissal só em Ponta Negra.
+- **Doca seca** (só no Porto do Farol): porão, motor, tanque, vela grande, casco, leme e lente, e o reparo do casco.
+
+**Roteiro de conferência:** pesque algumas tainhas, atraque no Porto do Farol e venda. Aceite uma entrega, veja a carga
+no porão (I) e a missão em J, leve à cidade indicada (B aponta o caminho) e entregue. Junte R$ 400 e melhore o porão
+na doca seca: a barra do painel passa a 200 L. Feche o jogo e abra de novo: dinheiro e melhorias continuam lá.
+
 **Refazer o mapa** depois de mudar `dados/mundo.json`: `python gerar_mapa.py [caminho_do_godot]` (recria
 `cenas/Mapa.tscn`; retoques feitos à mão no editor se perdem).

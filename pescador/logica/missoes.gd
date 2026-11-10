@@ -203,3 +203,50 @@ static func expirar(ativas: Array, porao, dia: int) -> Array:
 		if m.get("tipo", "") == "entrega":
 			porao.remover_carga(m.id)
 	return removidas
+
+
+# ------------------------------------------------------------------ textos para a interface
+
+static func _nome_cidade(dados: Dictionary, id: String) -> String:
+	return str(Mercado.cidade(dados, id).get("nome", id))
+
+
+static func descricao(m: Dictionary, especies: Array, dados: Dictionary) -> String:
+	var esp := Especies.por_id(especies, str(m.get("especie", "")))
+	match m.get("tipo", ""):
+		"encomenda":
+			return "Encomenda: %d × %s, classe %s ou maior — entregar em %s" % [int(m.qtd), esp.get("nome", m.especie),
+					m.classe_min, _nome_cidade(dados, m.cidade)]
+		"trofeu":
+			return "Troféu: %s acima de %d cm — entregar em %s" % [esp.get("nome", m.especie), roundi(float(m.tam_min)),
+					_nome_cidade(dados, m.cidade)]
+		"entrega":
+			return "Entrega: carga de %d L para %s — R$ %d" % [roundi(float(m.volume)), _nome_cidade(dados, m.destino),
+					int(m.recompensa)]
+		"exploracao":
+			return "Exploração: achar %s e voltar a %s — R$ %d" % [m.get("nome_alvo", "o ponto"),
+					_nome_cidade(dados, m.cidade), int(m.recompensa)]
+	return "Missão"
+
+
+static func texto_prazo(m: Dictionary, dia: int) -> String:
+	var prazo := int(m.get("prazo_dia", -1))
+	if prazo < 0:
+		return "sem prazo"
+	if dia > prazo:
+		return "vencida"
+	var faltam := prazo - dia
+	return "último dia" if faltam == 0 else ("prazo: 1 dia" if faltam == 1 else "prazo: %d dias" % faltam)
+
+
+static func texto_progresso(m: Dictionary, porao, pos: Vector2, dia: int) -> String:
+	var p := progresso(m, porao, pos, dia)
+	var feito := "%d/%d" % [p.feito, p.total]
+	match m.get("tipo", ""):
+		"entrega":
+			feito = "carga a bordo" if p.feito > 0 else "sem a carga"
+		"exploracao":
+			feito = "achado — volte para receber" if p.feito > 0 else "ainda não achado"
+		"trofeu":
+			feito = "exemplar no porão" if p.feito > 0 else "falta o exemplar"
+	return "%s · %s" % [feito, texto_prazo(m, dia)]
