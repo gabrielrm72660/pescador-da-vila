@@ -13,6 +13,8 @@ script = ExtResource("1")
 
 [node name="Cidades" type="Node2D" parent="."]
 
+[node name="Cardumes" type="Node2D" parent="."]
+
 [node name="Farol" parent="." instance=ExtResource("3")]
 
 [node name="Barco" parent="." instance=ExtResource("4")]
