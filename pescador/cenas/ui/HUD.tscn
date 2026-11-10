@@ -1,6 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://cenas/ui/hud.gd" id="1"]
+[ext_resource type="Script" path="res://cenas/ui/medidor_ui.gd" id="2"]
+[ext_resource type="Script" path="res://cenas/ui/painel_porao.gd" id="3"]
+[ext_resource type="Script" path="res://cenas/ui/painel_catalogo.gd" id="4"]
 
 [sub_resource type="LabelSettings" id="Texto"]
 font_size = 30
@@ -20,7 +23,7 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 30.0
-offset_top = -330.0
+offset_top = -430.0
 offset_right = 430.0
 offset_bottom = -30.0
 grow_vertical = 0
@@ -56,6 +59,27 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 text = "100 / 100"
+horizontal_alignment = 1
+vertical_alignment = 1
+label_settings = SubResource("Texto")
+
+[node name="Vara" type="Label" parent="Painel"]
+layout_mode = 2
+text = "Vara: Rasa"
+label_settings = SubResource("Texto")
+
+[node name="Porao" type="ProgressBar" parent="Painel"]
+custom_minimum_size = Vector2(380, 34)
+layout_mode = 2
+show_percentage = false
+modulate = Color(0.55, 0.8, 1, 1)
+
+[node name="Texto" type="Label" parent="Painel/Porao"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+text = "Porão 0/100 L"
 horizontal_alignment = 1
 vertical_alignment = 1
 label_settings = SubResource("Texto")
@@ -117,3 +141,58 @@ offset_right = 700.0
 offset_bottom = 200.0
 horizontal_alignment = 1
 label_settings = SubResource("Grande")
+
+[node name="Dica" type="Label" parent="."]
+visible = false
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -500.0
+offset_top = -150.0
+offset_right = 500.0
+offset_bottom = -100.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "F: pescar"
+horizontal_alignment = 1
+label_settings = SubResource("Texto")
+
+[node name="Medidor" type="Control" parent="."]
+visible = false
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -230.0
+offset_right = 300.0
+offset_bottom = -190.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("2")
+
+[node name="PainelPorao" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3")
+
+[node name="PainelCatalogo" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4")

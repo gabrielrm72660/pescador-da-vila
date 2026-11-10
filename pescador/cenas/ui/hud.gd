@@ -7,7 +7,15 @@ const DURACAO_AVISO := 2.5
 const MARGEM := 60.0
 const RAIO_TELA := 900.0     ## px do mundo: além disso o farol está fora da tela (zoom 0,75 em 1920×1080)
 
+const NOME_VARA := {"rasa": "Rasa", "profunda": "Profunda", "abissal": "Abissal"}
+const CARENCIA_CLIQUE := 200      ## ms: o clique que fecha um painel não vale como "pescar"
+
+signal soltar_do_porao(indice: int)
+signal painel_fechado(nome: String)
+
 var _aviso_id := 0
+var _fechou_em := -100000
+var _ligado := false
 var _aviso_tempo := 0.0
 
 
@@ -31,6 +39,15 @@ func atualizar(d: Dictionary) -> void:
 		var esc := minf(meio.x / maxf(absf(dir.x), 1e-6), meio.y / maxf(absf(dir.y), 1e-6))
 		$IndicadorFarol.position = tela / 2.0 + dir * esc
 		$IndicadorFarol.rotation = dir.angle()
+	if d.has("vara"):
+		$Painel/Vara.text = "Vara: %s" % NOME_VARA.get(d.vara, d.vara)
+		$Painel/Porao.max_value = float(d.porao_cap)
+		$Painel/Porao.value = float(d.porao_usado)
+		$Painel/Porao/Texto.text = "Porão %d/%d L" % [roundi(d.porao_usado), roundi(d.porao_cap)]
+	var med: Dictionary = d.get("medidor", {})
+	$Medidor.definir(med)
+	$Dica.visible = not med.is_empty() or bool(d.get("pode_pescar", false))
+	$Dica.text = "F: parar o ponteiro na faixa verde" if not med.is_empty() else "F: pescar"
 	if int(d.get("aviso_id", 0)) != _aviso_id:
 		_aviso_id = int(d.aviso_id)
 		$Aviso.text = String(d.aviso)
@@ -47,3 +64,49 @@ func _process(dt: float) -> void:
 
 func _tamanho_tela() -> Vector2:
 	return get_viewport().get_visible_rect().size if is_inside_tree() else Vector2(1920, 1080)
+
+
+# ------------------------------------------------------------------ painéis (porão e catálogo)
+
+func _ligar() -> void:
+	if _ligado:
+		return
+	_ligado = true
+	$PainelPorao.soltar.connect(func(i): soltar_do_porao.emit(i))
+	$PainelPorao.fechar.connect(fechar_paineis)
+	$PainelCatalogo.fechar.connect(fechar_paineis)
+
+
+func painel_aberto() -> bool:
+	return $PainelPorao.visible or $PainelCatalogo.visible or Time.get_ticks_msec() - _fechou_em < CARENCIA_CLIQUE
+
+
+func porao_aberto() -> bool:
+	return $PainelPorao.visible
+
+
+func catalogo_aberto() -> bool:
+	return $PainelCatalogo.visible
+
+
+func abrir_porao(itens: Array, especies: Array, usado: float, capacidade: float, pendente: Dictionary) -> void:
+	_ligar()
+	$PainelCatalogo.visible = false
+	$PainelPorao.mostrar(itens, especies, usado, capacidade, pendente)
+	$PainelPorao.visible = true
+
+
+func abrir_catalogo(especies: Array, entradas: Dictionary) -> void:
+	_ligar()
+	$PainelPorao.visible = false
+	$PainelCatalogo.mostrar(especies, entradas)
+	$PainelCatalogo.visible = true
+
+
+func fechar_paineis() -> void:
+	var qual := "porao" if $PainelPorao.visible else ("catalogo" if $PainelCatalogo.visible else "")
+	$PainelPorao.visible = false
+	$PainelCatalogo.visible = false
+	if qual != "":
+		_fechou_em = Time.get_ticks_msec()
+		painel_fechado.emit(qual)

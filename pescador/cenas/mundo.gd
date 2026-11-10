@@ -73,6 +73,11 @@ func iniciar() -> void:
 	$Farol.position = Mapa._v(mundo.farol.pos)
 	_montar_cidades()
 	_ler_estado()
+	var hud := get_node_or_null("HUD")
+	if hud and hud.has_signal("soltar_do_porao"):
+		hud.soltar_do_porao.connect(func(i): soltar_do_porao(i); _mostrar_porao())
+		hud.painel_fechado.connect(func(nome): if nome == "porao": desistir_pendente())
+		porao_cheio.connect(_mostrar_porao)
 	barco.combustivel_acabou.connect(func(): _avisar("Sem combustível! Abra a vela (V) e use o vento"))
 	var cam := barco.get_node_or_null("Camera2D") as Camera2D
 	if cam:                                  # a câmera para na borda: não mostra o vazio além do mapa
@@ -166,6 +171,10 @@ func _process(dt: float) -> void:
 		acao_pescar()
 	if Input.is_action_just_pressed("trocar_vara"):
 		trocar_vara()
+	if Input.is_action_just_pressed("porao"):
+		alternar_porao()
+	if Input.is_action_just_pressed("catalogo"):
+		alternar_catalogo()
 	atualizar_cardumes(dt)
 	if Input.is_action_just_pressed("tela_cheia"):
 		var tela := DisplayServer.window_get_mode()
@@ -288,6 +297,32 @@ func dados_hud() -> Dictionary:
 func _painel_aberto() -> bool:
 	var hud := get_node_or_null("HUD")
 	return hud != null and hud.has_method("painel_aberto") and hud.painel_aberto()
+
+
+func _mostrar_porao() -> void:
+	var hud := get_node_or_null("HUD")
+	if hud:
+		hud.abrir_porao(porao.itens, especies, porao.usado(), porao.capacidade, pendente)
+
+
+func alternar_porao() -> void:
+	var hud := get_node_or_null("HUD")
+	if hud == null:
+		return
+	if hud.porao_aberto():
+		hud.fechar_paineis()
+	else:
+		_mostrar_porao()
+
+
+func alternar_catalogo() -> void:
+	var hud := get_node_or_null("HUD")
+	if hud == null:
+		return
+	if hud.catalogo_aberto():
+		hud.fechar_paineis()
+	else:
+		hud.abrir_catalogo(especies, catalogo.entradas)
 
 
 func adicionar_cardume(dados: Dictionary) -> Node2D:

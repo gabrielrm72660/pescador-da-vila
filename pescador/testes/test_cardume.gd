@@ -51,3 +51,10 @@ func test_luzes_brilham_no_escuro():
 	afirmar(luz.material != null, "bioluminescente ignora a escuridão da noite")
 	afirmar(comum.material == null, "os outros escurecem com a noite")
 	luz.free(); comum.free()
+
+func test_silhueta_do_peixe_e_desenhavel():
+	for tam in [3.0, 9.0, 24.0]:
+		var formas: Array = C.forma_peixe(tam)
+		afirmar(formas.size() >= 2, "corpo e cauda")
+		for f in formas:
+			afirmar(not Geometry2D.triangulate_polygon(f).is_empty(), "polígono triangulável (tam %s)" % tam)

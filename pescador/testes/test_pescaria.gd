@@ -168,3 +168,31 @@ func test_de_noite_nas_abissais_so_nasce_quem_pode():
 		igual(int(esp.zona), M.zona_da_celula(m.mundo, c.dados.pos), "espécie da zona onde nasceu: %s" % esp.id)
 		afirmar(esp.clima != "tempestade", "sem tempestade não nasce %s" % esp.id)
 	m.free()
+
+func test_teclas_abrem_porao_e_catalogo():
+	var m = _mundo(); var h = m.get_node("HUD")
+	m.alternar_porao(); afirmar(h.porao_aberto(), "I abre o porão")
+	m.alternar_porao(); afirmar(not h.porao_aberto(), "I de novo fecha")
+	m.alternar_catalogo(); afirmar(h.catalogo_aberto(), "C abre o catálogo")
+	igual(h.get_node("PainelCatalogo").celulas().size(), 18, "18 espécies")
+	m.alternar_porao(); afirmar(h.porao_aberto() and not h.catalogo_aberto(), "troca de painel")
+	m.free()
+
+func test_porao_cheio_abre_o_painel_e_soltar_guarda():
+	var m = _mundo(); var h = m.get_node("HUD")
+	m.porao.adicionar({"especie": "sardinha", "tam": 15.0, "classe": "P", "volume": m.porao.capacidade, "valor": 1})
+	_por(m, "tainha"); m.acao_pescar(); _parar_em(m, "verde")
+	afirmar(h.porao_aberto(), "abriu sozinho"); afirmar(h.get_node("PainelPorao").texto_pendente().contains("Tainha"), "mostra o peixe na mão")
+	h.get_node("PainelPorao").apertar_soltar(0)
+	afirmar(m.pendente.is_empty(), "guardou"); igual(m.porao.itens[0].especie, "tainha", "tainha no porão")
+	igual(h.get_node("PainelPorao").texto_pendente(), "", "painel atualizado")
+	afirmar(h.get_node("PainelPorao").linhas()[0].contains("Tainha"), "lista atualizada")
+	m.free()
+
+func test_fechar_o_porao_com_peixe_na_mao_devolve_ao_mar():
+	var m = _mundo(); var h = m.get_node("HUD")
+	m.porao.adicionar({"especie": "sardinha", "tam": 15.0, "classe": "P", "volume": m.porao.capacidade, "valor": 1})
+	_por(m, "tainha"); m.acao_pescar(); _parar_em(m, "verde")
+	h.fechar_paineis()
+	afirmar(m.pendente.is_empty(), "devolveu"); igual(m.porao.itens.size(), 1, "porão igual")
+	m.free()

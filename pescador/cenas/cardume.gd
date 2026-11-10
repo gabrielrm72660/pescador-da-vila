@@ -52,7 +52,6 @@ func configurar(p_dados: Dictionary) -> void:
 	else:
 		material = null
 		modulate = TOM_ZONA[clampi(zona(), 0, 2)]
-	z_index = -1
 
 
 func especie() -> String:
@@ -141,9 +140,16 @@ func _draw() -> void:
 				draw_circle(base, tam, Color(cor, brilho))
 
 
+## Os polígonos (corpo e cauda) de um peixe de comprimento 2×tam, com a cabeça em +x.
+static func forma_peixe(tam: float) -> Array:
+	return [
+		PackedVector2Array([Vector2(tam, 0), Vector2(0, -tam * 0.38), Vector2(-tam * 0.6, 0), Vector2(0, tam * 0.38)]),
+		PackedVector2Array([Vector2(-tam * 0.5, 0), Vector2(-tam, -tam * 0.35), Vector2(-tam, tam * 0.35)]),
+	]
+
+
 func _peixe(p: Vector2, ang: float, tam: float, cor: Color) -> void:
 	draw_set_transform(p, ang)
-	draw_colored_polygon(PackedVector2Array([Vector2(tam, 0), Vector2(0, -tam * 0.38), Vector2(-tam * 0.6, 0),
-			Vector2(-tam, -tam * 0.35), Vector2(-tam, tam * 0.35), Vector2(-tam * 0.6, 0), Vector2(0, tam * 0.38)]),
-			Color(cor, 0.85))
+	for forma in forma_peixe(tam):
+		draw_colored_polygon(forma, Color(cor, 0.85))
 	draw_set_transform(Vector2.ZERO)
