@@ -34,3 +34,42 @@ func test_aviso_aparece_e_some():
 	h._process(3.0); afirmar(not h.get_node("Aviso").visible, "some depois de 2,5 s")
 	h.atualizar(d); afirmar(not h.get_node("Aviso").visible, "mesmo aviso não volta")
 	h.free()
+
+
+# ---- fase 3: pesca ----
+func _dados_pesca() -> Dictionary:
+	var d := _dados()
+	d.merge({"vara": "profunda", "porao_usado": 63.2, "porao_cap": 100.0, "pode_pescar": true, "medidor": {}, "pendente": {}})
+	return d
+
+func test_hud_mostra_vara_e_porao():
+	var h = _hud(); h.atualizar(_dados_pesca())
+	igual(h.get_node("Painel/Vara").text, "Vara: Profunda", "vara")
+	igual(h.get_node("Painel/Porao/Texto").text, "Porão 63/100 L", "porão")
+	perto(h.get_node("Painel/Porao").value, 63.2, 1e-6, "barra"); perto(h.get_node("Painel/Porao").max_value, 100.0, 1e-6, "máximo")
+	afirmar(h.get_node("Dica").visible and h.get_node("Dica").text.contains("F"), "dica de pescar")
+	var d := _dados_pesca(); d.pode_pescar = false
+	h.atualizar(d); afirmar(not h.get_node("Dica").visible, "longe do cardume some")
+	h.free()
+
+func test_hud_sem_dados_de_pesca_nao_quebra():
+	var h = _hud(); h.atualizar(_dados())
+	afirmar(not h.get_node("Medidor").visible and not h.get_node("Dica").visible, "fase 2 continua valendo")
+	h.free()
+
+func test_hud_mostra_o_medidor_na_fisgada():
+	var h = _hud(); var d := _dados_pesca()
+	d.medidor = {"pos": 0.4, "verde": 0.3, "dourada": 0.075, "centro": 0.5}; d.pode_pescar = false
+	h.atualizar(d)
+	afirmar(h.get_node("Medidor").visible, "medidor aberto")
+	afirmar(h.get_node("Dica").visible and h.get_node("Dica").text.contains("parar"), "dica muda: %s" % h.get_node("Dica").text)
+	d.medidor = {}; h.atualizar(d); afirmar(not h.get_node("Medidor").visible, "fechou")
+	h.free()
+
+func test_hud_abre_e_fecha_paineis():
+	var h = _hud()
+	afirmar(not h.painel_aberto(), "começa fechado")
+	h.abrir_porao([], [], 0.0, 100.0, {}); afirmar(h.painel_aberto() and h.get_node("PainelPorao").visible, "porão aberto")
+	h.abrir_catalogo([], {}); afirmar(h.get_node("PainelCatalogo").visible and not h.get_node("PainelPorao").visible, "um de cada vez")
+	h.fechar_paineis(); afirmar(not h.get_node("PainelCatalogo").visible, "fechou")
+	h.free()

@@ -60,5 +60,29 @@ meia-volta e a câmera para ali. Espere a noite (cerca
 de 1 minuto): a lanterna acende, o farol gira e, longe dele, uma seta amarela na borda da tela aponta o caminho de
 volta. Aperte B, siga a bússola até a Vila das Arraias e atraque com E.
 
+## Fase 3 — pesca
+
+| Ação | Tecla |
+|---|---|
+| Pescar / parar o ponteiro do medidor | F ou clique esquerdo |
+| Trocar de vara | T |
+| Porão (lista, soltar peixe) | I |
+| Catálogo de espécies | C |
+
+**Como pescar:** os cardumes aparecem em volta do barco (silhuetas provisórias, uma para cada estilo). Chegue a menos
+de 90 px de um, quase parado (abaixo de 30% da velocidade máxima), e aperte F: abre o medidor. Aperte F de novo com o
+ponteiro na faixa **verde** para fisgar; na **dourada** o peixe tende a ser maior. Errar gasta uma das 3 tentativas do
+cardume e pede 2 s de espera. Depois de uma fisgada o cardume se dispersa e outro nasce adiante.
+
+- Cardume mais fundo que a vara: "Vara fraca para esta profundidade". No começo só há a vara rasa.
+- Com a rede (comprada no mercado, fase 4), em cardume de sardinha ou peixe-lanterna o F pega de 3 a 6 pequenos de uma
+  vez, com 6 s de recarga.
+- Porão cheio: o peixe fica "na mão" e o porão abre; solte um peixe para guardar o novo, ou feche para devolvê-lo.
+- O painel mostra a vara equipada e "Porão 63/100 L".
+
+**Roteiro de conferência:** desatraque, vá até um cardume nas águas rasas (verde-água), pare e pesque com F. Veja o
+peixe no porão (I) e no catálogo (C). Erre de propósito três vezes e veja o cardume sumir. Vá às águas profundas (azul
+escuro) e tente pescar: a vara rasa não alcança.
+
 **Refazer o mapa** depois de mudar `dados/mundo.json`: `python gerar_mapa.py [caminho_do_godot]` (recria
 `cenas/Mapa.tscn`; retoques feitos à mão no editor se perdem).
