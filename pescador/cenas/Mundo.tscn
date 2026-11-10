@@ -1,0 +1,27 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://cenas/mundo.gd" id="1"]
+[ext_resource type="PackedScene" path="res://cenas/Mapa.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://cenas/Farol.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://cenas/Barco.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://cenas/ui/HUD.tscn" id="5"]
+
+[node name="Mundo" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Mapa" parent="." instance=ExtResource("2")]
+
+[node name="Cidades" type="Node2D" parent="."]
+
+[node name="Farol" parent="." instance=ExtResource("3")]
+
+[node name="Barco" parent="." instance=ExtResource("4")]
+
+[node name="Camera2D" type="Camera2D" parent="Barco"]
+zoom = Vector2(0.75, 0.75)
+position_smoothing_enabled = true
+position_smoothing_speed = 4.0
+
+[node name="Luz" type="CanvasModulate" parent="."]
+
+[node name="HUD" parent="." instance=ExtResource("5")]

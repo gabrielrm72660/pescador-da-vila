@@ -39,3 +39,26 @@ Depois de mudar um JSON, rode os testes: `test_dados.gd` avisa se algum valor fi
 - `logica/` — regras puras (espécies, medidor, varas, porão, mercado, catálogo, missões)
 - `autoload/` — `Estado` (a partida) e `Salvamento` (grava em `user://save.json`)
 - `testes/` — um arquivo `test_*.gd` por parte, e o executor `rodar_testes.gd`
+
+## Fase 2 — mundo e barco
+
+Abra a pasta `pescador/` no Godot 4.7 e aperte **F5**. O jogo começa atracado no Porto do Farol.
+
+| Ação | Tecla |
+|---|---|
+| Atracar / desatracar (perto de um cais e devagar) | E |
+| Motor: subir / descer marcha (R, 0, ¼, ½, MÁX) | W ↑ / S ↓ |
+| Virar | A D ← → |
+| Abrir / fechar a vela | V |
+| Trocar o destino da bússola | B |
+| Tela cheia | F11 |
+
+**Roteiro de conferência:** desatraque com E, suba as marchas com W, abra a vela com V e vire com A/D; veja o
+combustível cair (a vela sozinha não gasta nada). Bata numa ilhota: o barco desliza pela costa. Se bater de frente, a ré
+(S) sempre tira o barco. Se o combustível acabar, um aviso manda abrir a vela; na borda do mapa outro aviso manda dar
+meia-volta e a câmera para ali. Espere a noite (cerca
+de 1 minuto): a lanterna acende, o farol gira e, longe dele, uma seta amarela na borda da tela aponta o caminho de
+volta. Aperte B, siga a bússola até a Vila das Arraias e atraque com E.
+
+**Refazer o mapa** depois de mudar `dados/mundo.json`: `python gerar_mapa.py [caminho_do_godot]` (recria
+`cenas/Mapa.tscn`; retoques feitos à mão no editor se perdem).
