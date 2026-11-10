@@ -131,6 +131,8 @@ static func comprar(dados: Dictionary, item: String, qtd: int, cidade_id: String
 		if not estado.get("lanterna_quebrada", false):
 			return "ja_tem"
 		n = 1
+	elif not item in SUPRIMENTOS:
+		return "indisponivel"          # item do JSON que o jogo não sabe entregar: recusa antes de cobrar
 	var custo := preco_un * n
 	if int(estado.dinheiro) < custo:
 		return "sem_dinheiro"
