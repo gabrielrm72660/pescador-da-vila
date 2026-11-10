@@ -44,6 +44,13 @@ static func consumo(marcha: int, dt: float, nivel_motorista := 0) -> float:
 	return CONSUMO_MAX * frac * dt * maxf(0.0, 1.0 - DESCONTO_MOTORISTA * nivel_motorista)
 
 
+## Bateu na costa: só perde embalo a parte da velocidade que vai CONTRA a parede (até 40% de frente).
+## Raspando de lado ou saindo de ré nada se perde, para o barco nunca ficar preso.
+static func freio_colisao(vel: float, frente: Vector2, normal: Vector2) -> float:
+	var contra := (frente * signf(vel)).dot(-normal)
+	return vel * (1.0 - 0.4 * clampf(contra, 0.0, 1.0))
+
+
 static func taxa_giro(leme_melhorado: bool) -> float:
 	return 2.0 if leme_melhorado else 1.6
 

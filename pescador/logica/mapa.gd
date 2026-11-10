@@ -42,6 +42,18 @@ static func zona_em(mundo: Dictionary, pos: Vector2) -> int:
 	return PROFUNDA
 
 
+## Zona do tile onde o ponto está (o centro da célula): é o que o mapa pinta e o que o jogador vê.
+static func zona_da_celula(mundo: Dictionary, pos: Vector2) -> int:
+	var cel := float(mundo.get("mapa", {}).get("celula", 128))
+	return zona_em(mundo, Vector2(floorf(pos.x / cel) * cel + cel / 2.0, floorf(pos.y / cel) * cel + cel / 2.0))
+
+
+## Perto da parede que fecha o mundo (a até `margem` px do limite)?
+static func perto_da_borda(mundo: Dictionary, pos: Vector2, margem := 600.0) -> bool:
+	var lim := float(mundo.get("mapa", {}).get("limite", 0.0))
+	return lim > 0.0 and maxf(absf(pos.x), absf(pos.y)) >= lim - margem
+
+
 ## A cidade cujo cais está a até raio_cais do ponto, ou {}.
 static func cais_proximo(mundo: Dictionary, pos: Vector2) -> Dictionary:
 	for c in mundo.get("cidades", []):

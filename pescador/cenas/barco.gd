@@ -5,6 +5,7 @@ extends CharacterBody2D
 const Navegacao = preload("res://logica/navegacao.gd")
 
 signal combustivel_mudou(valor: float)
+signal combustivel_acabou
 
 @export var nivel_motor := 1
 @export var vela_grande := false
@@ -45,6 +46,8 @@ func passo(dt: float, entrada: Dictionary, p_vento_ang: float, p_forca_vento: fl
 		if gasto > 0.0:
 			combustivel = maxf(0.0, combustivel - gasto)
 			combustivel_mudou.emit(combustivel)
+			if combustivel <= 0.0:
+				combustivel_acabou.emit()
 	velocity = Vector2.from_angle(rotation) * vel + Navegacao.deriva(p_corrente_ang, p_vento_ang, p_forca_vento)
 	_visual()
 
@@ -58,9 +61,10 @@ func _physics_process(dt: float) -> void:
 	}
 	passo(dt, entrada, vento_ang, forca_vento, corrente_ang)
 	move_and_slide()
-	# bateu de frente na costa: perde o embalo em vez de empurrar a ilha para sempre
-	if get_slide_collision_count() > 0:
-		vel *= 0.6
+	# bateu na costa: perde só o embalo que vai contra ela; de lado desliza e de ré sai livre
+	var frente := Vector2.from_angle(rotation)
+	for i in get_slide_collision_count():
+		vel = Navegacao.freio_colisao(vel, frente, get_slide_collision(i).get_normal())
 
 
 func _visual() -> void:

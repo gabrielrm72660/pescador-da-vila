@@ -23,6 +23,7 @@ var aviso := ""
 var aviso_id := 0
 var _rng := RandomNumberGenerator.new()
 var _iniciado := false
+var _na_borda := false
 
 
 func _ready() -> void:
@@ -42,6 +43,14 @@ func iniciar() -> void:
 	$Farol.position = Mapa._v(mundo.farol.pos)
 	_montar_cidades()
 	_ler_estado()
+	barco.combustivel_acabou.connect(func(): _avisar("Sem combustível! Abra a vela (V) e use o vento"))
+	var cam := barco.get_node_or_null("Camera2D") as Camera2D
+	if cam:                                  # a câmera para na borda: não mostra o vazio além do mapa
+		var lim := int(mundo.mapa.limite)
+		cam.limit_left = -lim
+		cam.limit_top = -lim
+		cam.limit_right = lim
+		cam.limit_bottom = lim
 	_atracar_em(_cidade(cidade_atual if cidade_atual != "" else "porto_farol"))
 	avancar_tempo(0.0)
 
@@ -135,6 +144,10 @@ func avancar_tempo(dt: float) -> void:
 	if novo_dia != dia:
 		dia = novo_dia
 		_gravar_estado()
+	var borda: bool = not barco.atracado and Mapa.perto_da_borda(mundo, barco.position)
+	if borda and not _na_borda:
+		_avisar("Fim das águas conhecidas — dê meia-volta")
+	_na_borda = borda
 	var b := Tempo.brilho(t)
 	$Luz.color = NOITE.lerp(Color.WHITE, (b - 0.12) / 0.88)
 	var noite := Tempo.eh_noite(t)
@@ -197,7 +210,7 @@ func _destino() -> Dictionary:
 
 func dados_hud() -> Dictionary:
 	var pos: Vector2 = barco.position
-	var z := Mapa.zona_em(mundo, pos)
+	var z := Mapa.zona_da_celula(mundo, pos)
 	var dst := _destino()
 	var farol := Mapa._v(mundo.farol.pos)
 	return {

@@ -54,7 +54,9 @@ Abra a pasta `pescador/` no Godot 4.7 e aperte **F5**. O jogo começa atracado n
 | Tela cheia | F11 |
 
 **Roteiro de conferência:** desatraque com E, suba as marchas com W, abra a vela com V e vire com A/D; veja o
-combustível cair (a vela sozinha não gasta nada). Bata numa ilhota: o barco desliza pela costa. Espere a noite (cerca
+combustível cair (a vela sozinha não gasta nada). Bata numa ilhota: o barco desliza pela costa. Se bater de frente, a ré
+(S) sempre tira o barco. Se o combustível acabar, um aviso manda abrir a vela; na borda do mapa outro aviso manda dar
+meia-volta e a câmera para ali. Espere a noite (cerca
 de 1 minuto): a lanterna acende, o farol gira e, longe dele, uma seta amarela na borda da tela aponta o caminho de
 volta. Aperte B, siga a bússola até a Vila das Arraias e atraque com E.
 
