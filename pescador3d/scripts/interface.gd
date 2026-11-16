@@ -9,6 +9,7 @@ signal pausa_pressed
 signal vender_pressed
 signal abastecer_pressed
 signal zarpar_pressed
+signal melhoria_pressed(id: String)
 signal volume_mudou(grupo: String, valor: float)
 signal mudo_pressed
 
@@ -27,6 +28,7 @@ var porto_titulo: Label
 var porto_texto: Label
 var porto_vender: Button
 var porto_abastecer: Button
+var porto_loja: Dictionary = {}           # id da melhoria -> botão
 var diario: Array = []          # histórico das mensagens (botão do livro)
 var porao: Node = null          # scripts/porao.gd
 var capturas: Array:            # os peixes a bordo: {especie, peso, x, y, rot}
@@ -214,10 +216,10 @@ func _construir_porto() -> void:
     central.add_child(cartao)
     var margem := MarginContainer.new()
     for lado in ["left", "right", "top", "bottom"]:
-        margem.add_theme_constant_override("margin_" + lado, 28)
+        margem.add_theme_constant_override("margin_" + lado, 22)
     cartao.add_child(margem)
     var col := VBoxContainer.new()
-    col.add_theme_constant_override("separation", 14)
+    col.add_theme_constant_override("separation", 9)
     margem.add_child(col)
     porto_titulo = _nova_label("Cais", 30, COR_CREME)
     col.add_child(porto_titulo)
@@ -229,6 +231,14 @@ func _construir_porto() -> void:
     porto_abastecer = _botao_porto("Abastecer", Color(0.96, 0.62, 0.24, 1.0), Color(0.15, 0.07, 0.02, 1.0))
     porto_abastecer.pressed.connect(func(): abastecer_pressed.emit())
     col.add_child(porto_abastecer)
+    col.add_child(_nova_label("MELHORIAS DO BARCO", 14, COR_TURQUESA))
+    for id in ["motor", "tanque", "porao", "vara"]:
+        var b := _botao_porto(id, Color(0.16, 0.30, 0.42, 1.0), COR_TEXTO)
+        b.custom_minimum_size = Vector2(470, 36)
+        b.add_theme_font_size_override("font_size", 15)
+        b.pressed.connect(func(): melhoria_pressed.emit(id))
+        col.add_child(b)
+        porto_loja[id] = b
     var sair := _botao_porto("Zarpar   [E]", Color(0.14, 0.34, 0.39, 1.0), COR_TEXTO)
     sair.pressed.connect(func(): zarpar_pressed.emit())
     col.add_child(sair)
@@ -264,6 +274,11 @@ func mostrar_porto(d: Dictionary) -> void:
     else:
         porto_abastecer.text = "Abastecer %d L por R$ %d   [2]" % [roundi(d.litros_possiveis), roundi(d.litros_possiveis * d.preco_litro)]
         porto_abastecer.disabled = false
+    for linha in d.get("loja", []):
+        var b: Button = porto_loja.get(linha.id)
+        if b != null:
+            b.text = linha.texto
+            b.disabled = not linha.pode
 
 func esconder_porto() -> void:
     porto.visible = false

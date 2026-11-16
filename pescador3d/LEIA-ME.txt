@@ -272,3 +272,13 @@ PORÃO EM GRADE (botão da caixa)
 - "Arrumar o porão" reorganiza tudo sozinho (os maiores primeiro).
 - Passe o mouse num peixe para ver peso e valor. Vender no cais esvazia a grade.
 - Regras em scripts/porao.gd (formatos na tabela FORMAS, tamanho em "colunas" e "linhas").
+
+
+VERSÃO 0.3.1 - 16/11/2026 — LOJA DE MELHORIAS NO CAIS
+- Atracado no cais (E), além de vender [1] e abastecer [2], agora dá para melhorar o barco:
+  [3] Motor: 11 → 13 → 14,5 nós (R$ 120 e R$ 260)
+  [4] Tanque: 60 → 90 → 120 L (R$ 90 e R$ 200)
+  [5] Porão: 20 → 24 → 30 casas (R$ 150 e R$ 320)
+  [6] Vara: faixas verdes do anel 22% e depois 45% maiores (R$ 100 e R$ 240)
+- Reiniciar a viagem (R duas vezes) volta tudo ao nível de fábrica.
+- Preços e efeitos na tabela TABELA de scripts/melhorias.gd.

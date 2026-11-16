@@ -14,6 +14,8 @@ const Clima = preload("res://scripts/clima.gd")
 var clima: Node
 const Ilha = preload("res://scripts/ilha.gd")
 var ilha: Node3D
+const Melhorias = preload("res://scripts/melhorias.gd")
+var melhorias: Node
 const Porao = preload("res://scripts/porao.gd")
 var porao: Node
 
@@ -34,6 +36,9 @@ func _enter_tree() -> void:
     cardumes = Cardumes.new()                      # antes dos outros nós procurarem por "../Cardumes"
     cardumes.name = "Cardumes"
     add_child(cardumes)
+    melhorias = Melhorias.new()
+    melhorias.name = "Melhorias"
+    add_child(melhorias)
     porao = Porao.new()
     porao.name = "Porao"
     add_child(porao)
@@ -57,6 +62,8 @@ func _ready() -> void:
     interface.mostrar_volumes(som.volumes, som.mudo())
     interface.abastecer_pressed.connect(abastecer)
     interface.zarpar_pressed.connect(zarpar)
+    interface.melhoria_pressed.connect(comprar)
+    melhorias.aplicar(barco, porao, pesca)
     barco.ativo = false
     pesca.ativo = false
     interface.iniciar_pressed.connect(iniciar_ou_retomar)
@@ -92,6 +99,10 @@ func _unhandled_input(event: InputEvent) -> void:
             match event.physical_keycode:
                 KEY_1: vender()
                 KEY_2: abastecer()
+                KEY_3: comprar("motor")
+                KEY_4: comprar("tanque")
+                KEY_5: comprar("porao")
+                KEY_6: comprar("vara")
                 KEY_E, KEY_ESCAPE: zarpar()
             return
         match event.physical_keycode:
@@ -141,6 +152,8 @@ func alternar_pausa() -> void:
         interface.esconder_menu()
 
 func reiniciar() -> void:
+    melhorias.zerar()
+    melhorias.aplicar(barco, porao, pesca)
     barco.zerar()
     interface.limpar_partida()
     porao.esvaziar()
@@ -203,7 +216,7 @@ func _atualizar_porto() -> void:
     interface.mostrar_porto({"nome": ilha.nome, "dinheiro": dinheiro, "peixes": interface.capturas.size(),
             "peso": porao.peso_total(), "valor": _valor_do_porao(), "litros": barco.combustivel, "tanque": barco.tanque,
             "falta_litros": falta, "preco_litro": PRECO_DIESEL,
-            "litros_possiveis": minf(falta, floorf(float(dinheiro) / PRECO_DIESEL))})
+            "litros_possiveis": minf(falta, floorf(float(dinheiro) / PRECO_DIESEL)), "loja": melhorias.vitrine(dinheiro)})
 
 func vender() -> void:
     if not atracado or interface.capturas.is_empty():
@@ -226,6 +239,23 @@ func abastecer() -> void:
     dinheiro -= roundi(entrou * PRECO_DIESEL)
     som.tocar("onda", -10.0, 1.4)
     interface.aviso("Abasteceu %d L." % roundi(entrou))
+    _atualizar_porto()
+
+## Compra o próximo nível de uma melhoria (motor, tanque, porao, vara).
+func comprar(id: String) -> void:
+    if not atracado:
+        return
+    var custo: int = melhorias.preco(id)
+    if custo < 0:
+        return
+    if dinheiro < custo:
+        interface.aviso("Faltam R$ %d para essa melhoria." % (custo - dinheiro))
+        return
+    dinheiro -= custo
+    melhorias.subir(id)
+    melhorias.aplicar(barco, porao, pesca)
+    som.tocar("peixe", -6.0, 0.8)
+    interface.aviso("%s melhorado: %s." % [melhorias.TABELA[id].nome, melhorias.TABELA[id].descricao[melhorias.nivel[id]]])
     _atualizar_porto()
 
 func _ao_pescar(especie: String, peso: float) -> void:

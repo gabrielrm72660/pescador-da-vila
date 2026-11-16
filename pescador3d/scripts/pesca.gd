@@ -32,6 +32,7 @@ var progresso: float = 0.0      # 0..1: em 1 o peixe sobe a bordo
 var trava: float = 0.0          # > 0: acabou de errar
 var brilho: float = 0.0         # > 0: acabou de acertar (pisca)
 var ultimo_perfeito: bool = false
+var fator_vara: float = 1.0      # vara melhor (loja do cais) alarga as faixas verdes
 var _ganho: float = 0.34        # quanto cada acerto enche
 var _sozinho: float = 0.05      # quanto enche por segundo sem fazer nada
 
@@ -75,7 +76,7 @@ func _lancar() -> void:
     var dados: Dictionary = cardumes.ESPECIES[alvo.especie]
     voltas_por_s = float(dados.get("ponteiro", 0.5))
     var n: int = int(dados.get("faixas", 3))
-    var largura: float = deg_to_rad(float(dados.get("largura", 38)))
+    var largura: float = deg_to_rad(float(dados.get("largura", 38))) * fator_vara
     _ganho = 1.0 / float(dados.get("acertos", 3)) + 0.01
     var espera: Array = dados.get("espera", [3.0, 6.0])
     _sozinho = 1.0 / (randf_range(espera[0], espera[1]) * 3.0)      # sem acertar nada: de 8 a 24 s
