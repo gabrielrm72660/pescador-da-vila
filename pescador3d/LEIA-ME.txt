@@ -282,3 +282,16 @@ VERSÃO 0.3.1 - 16/11/2026 — LOJA DE MELHORIAS NO CAIS
   [6] Vara: faixas verdes do anel 22% e depois 45% maiores (R$ 100 e R$ 240)
 - Reiniciar a viagem (R duas vezes) volta tudo ao nível de fábrica.
 - Preços e efeitos na tabela TABELA de scripts/melhorias.gd.
+
+
+VERSÃO 0.3.2 - 16/11/2026 — DIA E NOITE, COM NEBLINA À NOITE
+- O tempo agora passa sozinho: um dia inteiro dura 16 minutos (40 s por hora de jogo). A viagem começa
+  às 8h. O relógio fica abaixo do dinheiro (sol de dia, lua à noite). O tempo para no menu, na pausa e no cais.
+- Amanhecer, dia, fim de tarde e noite se misturam aos poucos: céu, sol, cores do mar e névoa.
+- À NOITE sobe uma neblina sobre o mar: só se enxerga perto do barco. A lanterna do barco, as janelas
+  da vila, o farol e a lanterna do cais acendem. A âncora do radar continua mostrando o caminho.
+- Peixes: a sardinha só aparece de dia; o olho-de-cão (novo, R$ 22 o quilo, 3 casas em "L") só à noite;
+  a garoupa aparece o dobro à noite.
+- A tecla T agora avança 3 horas (para testar).
+- Tudo em scripts/clima.gd: DURACAO_DIA, HORA_INICIAL e as tabelas DIA, TARDE e NOITE (a neblina é
+  "nevoa_densidade" e "nevoa_cor" da NOITE).

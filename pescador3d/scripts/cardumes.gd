@@ -10,11 +10,12 @@ signal cardume_dispersou(especie: String)
 ## e a dificuldade do anel de pesca: velocidade do ponteiro (voltas/s), nº de faixas verdes, largura delas
 ## (graus) e quantos acertos trazem o peixe
 const ESPECIES := {
-    "Sardinha": {"preco": 6, "peso": [0.1, 0.4], "peixes": 18, "tam": 0.34, "chance": 30, "capturas": [4, 6], "espera": [2.5, 4.5], "ponteiro": 0.42, "faixas": 3, "largura": 46, "acertos": 2},
+    "Sardinha": {"preco": 6, "peso": [0.1, 0.4], "peixes": 18, "tam": 0.34, "chance": 30, "capturas": [4, 6], "espera": [2.5, 4.5], "ponteiro": 0.42, "faixas": 3, "largura": 46, "acertos": 2, "so_dia": true},
     "Tainha": {"preco": 9, "peso": [0.6, 2.6], "peixes": 11, "tam": 0.55, "chance": 26, "capturas": [3, 5], "espera": [3.0, 6.0], "ponteiro": 0.50, "faixas": 3, "largura": 40, "acertos": 3},
     "Xaréu": {"preco": 12, "peso": [1.5, 6.0], "peixes": 8, "tam": 0.75, "chance": 20, "capturas": [3, 4], "espera": [3.5, 6.5], "ponteiro": 0.58, "faixas": 3, "largura": 34, "acertos": 3},
     "Cavala": {"preco": 15, "peso": [2.0, 9.0], "peixes": 6, "tam": 0.95, "chance": 15, "capturas": [2, 4], "espera": [4.0, 7.0], "ponteiro": 0.68, "faixas": 2, "largura": 32, "acertos": 4},
-    "Garoupa": {"preco": 24, "peso": [3.0, 14.0], "peixes": 3, "tam": 1.25, "chance": 9, "capturas": [2, 3], "espera": [5.0, 8.0], "ponteiro": 0.78, "faixas": 2, "largura": 27, "acertos": 5},
+    "Olho-de-cão": {"preco": 22, "peso": [0.4, 1.6], "peixes": 9, "tam": 0.5, "chance": 34, "capturas": [3, 5], "espera": [3.0, 6.0], "ponteiro": 0.62, "faixas": 3, "largura": 32, "acertos": 3, "so_noite": true},
+    "Garoupa": {"preco": 24, "peso": [3.0, 14.0], "peixes": 3, "tam": 1.25, "chance": 9, "capturas": [2, 3], "espera": [5.0, 8.0], "ponteiro": 0.78, "faixas": 2, "largura": 27, "acertos": 5, "vezes_noite": 2},
 }
 const MAXIMO := 5
 const NASCE_MIN := 70.0        # m do barco
@@ -25,6 +26,7 @@ const VISUAL := 2.2            # as sombras são desenhadas maiores que o peixe,
 const INTERVALO := 2.0         # s entre nascimentos
 
 var lista: Array = []
+var noite: bool = false        # quem avisa é scripts/jogo.gd; algumas espécies só aparecem no escuro
 var _barco: Node3D
 var _oceano: Node
 var _malha: ArrayMesh
@@ -58,13 +60,20 @@ func _criar_malha_peixe() -> ArrayMesh:
 func _sortear_especie() -> String:
     var total := 0
     for nome in ESPECIES:
-        total += int(ESPECIES[nome].chance)
+        total += _chance(nome)
     var r := randi_range(1, total)
     for nome in ESPECIES:
-        r -= int(ESPECIES[nome].chance)
+        r -= _chance(nome)
         if r <= 0:
             return nome
     return "Sardinha"
+
+## Chance de a espécie nascer agora: "so_noite" só no escuro; "so_dia" só no claro.
+func _chance(nome: String) -> int:
+    var d: Dictionary = ESPECIES[nome]
+    if (d.get("so_noite", false) and not noite) or (d.get("so_dia", false) and noite):
+        return 0
+    return int(d.chance) * (int(d.get("vezes_noite", 1)) if noite else 1)
 
 func criar(centro: Vector3, especie: String = "") -> Dictionary:
     if especie == "":

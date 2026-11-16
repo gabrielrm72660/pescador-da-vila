@@ -12,6 +12,7 @@ const Cardumes = preload("res://scripts/cardumes.gd")
 var cardumes: Node3D
 const Clima = preload("res://scripts/clima.gd")
 var clima: Node
+var luz_barco: OmniLight3D
 const Ilha = preload("res://scripts/ilha.gd")
 var ilha: Node3D
 const Melhorias = preload("res://scripts/melhorias.gd")
@@ -53,7 +54,15 @@ func _ready() -> void:
     clima.name = "Clima"
     add_child(clima)
     clima.configurar($Ceu, $Sol, $Oceano)
-    clima.aplicar("por_do_sol")
+    clima.anoiteceu.connect(func(): interface.aviso("Anoitece, e uma neblina sobe do mar. A âncora do radar leva de volta ao cais."))
+    clima.amanheceu.connect(func(): interface.aviso("Amanhece. A neblina se desfaz."))
+    luz_barco = OmniLight3D.new()                     # lanterna do barco: só acende à noite
+    luz_barco.light_color = Color(1.0, 0.78, 0.48)
+    luz_barco.omni_range = 16.0
+    luz_barco.omni_attenuation = 1.3
+    luz_barco.light_energy = 0.0
+    luz_barco.position = Vector3(0.0, 3.4, -0.6)
+    barco.add_child(luz_barco)
     barco.encalhou.connect(func(): interface.aviso("Cuidado com a costa! Dê ré (S) para sair."))
     interface.vender_pressed.connect(vender)
     interface.volume_mudou.connect(func(grupo, valor): som.definir_volume(grupo, valor))
@@ -119,7 +128,8 @@ func _unhandled_input(event: InputEvent) -> void:
                 if not interface.fechar_painel():      # ESC fecha primeiro o painel aberto
                     alternar_pausa()
             KEY_T:
-                interface.aviso("Hora do dia: %s." % clima.alternar())
+                clima.avancar(3.0)
+                interface.aviso("O tempo avança: %s (%s)." % [clima.texto_hora(), clima.nome_do_momento()])
             KEY_M:
                 interface.aviso("Som desligado." if som.alternar_mudo() else "Som ligado.")
             KEY_R:
@@ -162,6 +172,8 @@ func reiniciar() -> void:
     som.navegando = true
     pesca.resetar()
     camera_barco.resetar()
+    clima.hora = clima.HORA_INICIAL
+    clima.atualizar()
     objetivo_cumprido = false
     dinheiro = DINHEIRO_INICIAL
     atracado = false
@@ -271,6 +283,13 @@ func _ao_pescar(especie: String, peso: float) -> void:
 func atualizar_interface() -> void:
     if interface == null:
         return
+    clima.correndo = iniciado and not em_pausa and not atracado
+    var escuro: float = clima.noite()
+    luz_barco.light_energy = 2.2 * escuro
+    ilha.acender(escuro)
+    cardumes.noite = escuro > 0.5
+    interface.hud.hora = clima.texto_hora()
+    interface.hud.noite = escuro
     interface.hud.radar_alvos = cardumes.relativos(barco)
     var ate_cais: Vector3 = ilha.cais_ponta - barco.global_position
     interface.hud.cais_rel = Vector2(ate_cais.dot(barco.global_transform.basis.x), ate_cais.dot(-barco.global_transform.basis.z))

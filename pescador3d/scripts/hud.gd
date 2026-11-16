@@ -34,6 +34,8 @@ var pesca_ativa := false        # linha na água ou peixe fisgado: o anzol acend
 var aviso_texto := ""
 var aviso_tempo := 0.0          # segundos que o aviso ainda fica na tela
 var dinheiro := 0
+var hora := ""                   # "14:30", ao lado do dinheiro
+var noite := 0.0                # 0 dia ... 1 noite: troca o sol pela lua no relógio
 var cais_rel := Vector2.INF     # posição do cais em relação ao barco (m a boreste, m à frente); INF = sem cais
 var cais_dist := 0.0
 var dica := ""                  # texto fixo acima dos botões (ex.: "E: atracar no cais")
@@ -168,6 +170,18 @@ func _placa_barco() -> void:
     _barra(Rect2(116, 108, 218, 20), fracao_motor, VERDE)
     _pincelada(Rect2(46, 148, 190, 40), 13)
     _texto(Vector2(64, 176), "R$ %d" % dinheiro, 24, DOURADO)
+    if hora != "":                                             # relógio: sol de dia, lua à noite
+        _pincelada(Rect2(46, 196, 150, 38), 14)
+        var c := Vector2(72, 215)
+        if noite > 0.5:
+            draw_circle(c, 9.0, CREME)
+            draw_circle(c + Vector2(5, -3), 8.0, TINTA.lightened(0.05))
+        else:
+            draw_circle(c, 6.5, DOURADO)
+            for i in 8:
+                var d := Vector2.from_angle(TAU * i / 8.0)
+                draw_line(c + d * 9.0, c + d * 12.5, DOURADO, 2.0)
+        _texto(Vector2(94, 223), hora, 22, CREME)
 
 func _bussola() -> void:
     var cx := size.x / 2.0

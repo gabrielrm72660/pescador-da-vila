@@ -196,7 +196,7 @@ func _construir_menu() -> void:
 
     _construir_volume(col)
 
-    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nBotão direito do mouse gira a câmera  •  roda aproxima  •  V recentra\nC câmera  •  T hora do dia  •  M som  •  R reiniciar  •  ESC pausa", 14, Color(0.77, 0.87, 0.84, 1.0))
+    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nBotão direito do mouse gira a câmera  •  roda aproxima  •  V recentra\nC câmera  •  T avança o tempo  •  M som  •  R reiniciar  •  ESC pausa", 14, Color(0.77, 0.87, 0.84, 1.0))
     dica.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(dica)
 

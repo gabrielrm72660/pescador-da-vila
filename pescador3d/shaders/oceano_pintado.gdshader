@@ -31,6 +31,7 @@ uniform vec2 costa_centro = vec2(0.0);
 uniform float costa_lado = 0.0;                      // lado (m) do quadrado que o mapa cobre
 uniform vec2 costa_faixa = vec2(-12.0, 4.0);         // altura (m) que vale 0 e 1 no mapa
 uniform vec4 cor_raso : source_color = vec4(0.20, 0.78, 0.72, 1.0);
+uniform float luz_propria = 1.0;                     // a agua se acende um pouco sozinha de dia; a noite, nao
 
 // Enviados por scripts/oceano.gd. O tempo vem do script (e nao de TIME) para o barco
 // calcular a mesma onda e subir e descer junto com a agua.
@@ -185,5 +186,5 @@ void fragment() {
     ROUGHNESS = mix(0.44 - brilho * 0.20, 0.85, max(espuma, longe));
     SPECULAR = mix(0.28 + brilho * 0.22, 0.10, espuma);
     METALLIC = 0.0;
-    EMISSION = base * (0.04 + 0.10 * espuma);
+    EMISSION = base * (0.04 + 0.10 * espuma) * luz_propria;
 }

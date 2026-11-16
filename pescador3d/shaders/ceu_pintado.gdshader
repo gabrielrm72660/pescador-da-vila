@@ -1,6 +1,6 @@
 shader_type sky;
 
-// Ceu de fim de tarde pintado: degrade em tres faixas, sol baixo com halo e nuvens de aquarela
+// Ceu pintado para qualquer hora (as cores vem de scripts/clima.gd): degrade em tres faixas, sol baixo com halo e nuvens de aquarela
 // iluminadas por baixo. As nuvens usam a textura de manchas (assets/texturas/mar/pigmento.png).
 uniform sampler2D tex_nuvens : hint_default_black, repeat_enable, filter_linear_mipmap;
 uniform vec3 cor_topo : source_color = vec3(0.17, 0.27, 0.52);
@@ -11,6 +11,11 @@ uniform vec3 cor_nuvem_luz : source_color = vec3(1.0, 0.60, 0.38);
 uniform vec3 cor_nuvem_sombra : source_color = vec3(0.44, 0.31, 0.50);
 uniform float quantidade_nuvens : hint_range(0.0, 1.0, 0.01) = 0.55;
 uniform float tamanho_sol : hint_range(0.5, 4.0, 0.1) = 1.0;
+uniform float estrelas : hint_range(0.0, 1.0, 0.01) = 0.0;      // 1 = noite fechada (e o sol vira lua)
+
+float sorte(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
 
 void sky() {
     vec3 d = normalize(EYEDIR);
@@ -18,9 +23,19 @@ void sky() {
     vec3 cor = mix(cor_horizonte, cor_meio, smoothstep(0.0, 0.20, alto));
     cor = mix(cor, cor_topo, smoothstep(0.12, 0.70, alto));
 
+    if (estrelas > 0.01 && d.y > 0.02) {                              // estrelas: pontinhos numa grade torta
+        vec2 g = d.xz / (d.y + 0.35) * 46.0;
+        vec2 casa = floor(g);
+        float s = sorte(casa);
+        vec2 centro = casa + 0.5 + (vec2(sorte(casa + 3.1), sorte(casa + 7.7)) - 0.5) * 0.7;
+        float ponto = smoothstep(0.09, 0.0, length(g - centro)) * step(0.82, s);
+        cor += vec3(0.85, 0.90, 1.0) * ponto * estrelas * (0.5 + 0.5 * sin(TIME * (1.0 + s * 2.0) + s * 40.0)) * smoothstep(0.02, 0.25, d.y);
+    }
+
+    float claridade = mix(1.0, 0.35, estrelas);                       // a lua clareia bem menos o ceu
     float para_o_sol = max(dot(d, LIGHT0_DIRECTION), 0.0);
-    cor += cor_sol * pow(para_o_sol, 6.0) * 0.30;                     // claridade larga em volta do sol
-    cor += cor_sol * pow(para_o_sol, 60.0) * 0.55;                    // halo
+    cor += cor_sol * pow(para_o_sol, 6.0) * 0.30 * claridade;         // claridade larga em volta do sol
+    cor += cor_sol * pow(para_o_sol, 60.0) * 0.55 * claridade;        // halo
 
     if (d.y > 0.005) {                                                // nuvens: um teto plano visto em perspectiva
         vec2 uv = d.xz / (d.y + 0.10);
@@ -46,7 +61,7 @@ void sky() {
     }
 
     float raio = 0.99985 - 0.0003 * tamanho_sol;                      // o disco do sol
-    cor = mix(cor, vec3(1.0, 0.95, 0.74) * 1.7, smoothstep(raio, raio + 0.0002, para_o_sol));
+    cor = mix(cor, mix(vec3(1.0, 0.95, 0.74) * 1.7, vec3(0.86, 0.90, 0.98), estrelas), smoothstep(raio, raio + 0.0002, para_o_sol));
 
     if (d.y < 0.0) {                                                  // abaixo do horizonte (so aparece em reflexos)
         cor = mix(cor_horizonte, cor_horizonte * 0.55, smoothstep(0.0, -0.3, d.y));

@@ -12,11 +12,12 @@ const FORMAS := {
     "Tainha": [Vector2i(0, 0), Vector2i(1, 0)],
     "Xaréu": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)],
     "Cavala": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1)],
+    "Olho-de-cão": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)],
     "Garoupa": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)],
 }
 const CORES := {
     "Sardinha": Color(0.62, 0.76, 0.84), "Tainha": Color(0.74, 0.78, 0.66), "Xaréu": Color(0.90, 0.78, 0.40),
-    "Cavala": Color(0.40, 0.66, 0.78), "Garoupa": Color(0.82, 0.52, 0.38),
+    "Cavala": Color(0.40, 0.66, 0.78), "Garoupa": Color(0.82, 0.52, 0.38), "Olho-de-cão": Color(0.90, 0.30, 0.28),
 }
 
 var colunas: int = 5

@@ -172,6 +172,7 @@ func _criar_cais() -> void:
     luz.emission = Color(1.0, 0.75, 0.35)
     luz.emission_energy_multiplier = 2.0
     _caixa(cais, Vector3(0.3, 0.36, 0.3), Vector3(ponta.x - dir.x * 0.4, 4.5, ponta.y - dir.y * 0.4), luz)
+    _luz(cais, Vector3(ponta.x - dir.x * 0.4, 4.6, ponta.y - dir.y * 0.4), 3.0, 22.0)
 
 ## Uma casa: paredes caiadas (tingidas), rodapé, porta e janelas de madeira pintada e telhado de barro de
 ## duas águas. A frente (porta) fica em +X local; "giro" vira a casa para o mar.
@@ -184,8 +185,13 @@ func _casa(pai: Node3D, pos: Vector3, giro: float, tam: Vector3, cor: Color, cor
     _caixa(casa, tam, Vector3(0, tam.y / 2.0, 0), parede)
     _caixa(casa, Vector3(tam.x + 0.10, 0.75, tam.z + 0.10), Vector3(0, 0.375, 0), _material(cor.darkened(0.42)))
     var madeira := _material(cor_madeira)
-    var vidro := _material(Color(0.10, 0.14, 0.18))
-    vidro.roughness = 0.25
+    if _vidro == null:
+        _vidro = _material(Color(0.10, 0.14, 0.18))
+        _vidro.roughness = 0.25
+        _vidro.emission_enabled = true
+        _vidro.emission = Color(1.0, 0.72, 0.36)
+        _vidro.emission_energy_multiplier = 0.0
+    var vidro := _vidro
     var fx := tam.x / 2.0
     _caixa(casa, Vector3(0.10, 2.0, 1.0), Vector3(fx, 1.4, -tam.z * 0.18), madeira)                 # porta
     _caixa(casa, Vector3(0.16, 0.12, 1.3), Vector3(fx, 2.46, -tam.z * 0.18), madeira.duplicate())
@@ -241,6 +247,8 @@ func _telhado(casa: Node3D, tam: Vector3, subida: float, parede: Material) -> vo
     mo.material_override = mat_oitao
     casa.add_child(mo)
 
+var _vidro: StandardMaterial3D        # um só para todas as janelas: acendem juntas à noite
+var _luzes: Array = []                # luzes do farol e do cais
 var _ocupado: Array = []          # (x, z, raio) do que já foi construído: árvores e pedras ficam fora
 
 func _criar_vila() -> void:
@@ -318,6 +326,7 @@ func _criar_vila() -> void:
     lanterna.emission_energy_multiplier = 2.5
     _cilindro(vila, 1.0, 1.0, 1.5, Vector3(melhor.x, hf + 11.0, melhor.y), lanterna)
     _cilindro(vila, 1.4, 0.1, 1.2, Vector3(melhor.x, hf + 12.5, melhor.y), vermelho)
+    _luz(vila, Vector3(melhor.x, hf + 11.8, melhor.y), 6.0, 60.0)
 
 func _livre(p: Vector2, folga: float = 0.0) -> bool:
     for o in _ocupado:
@@ -472,6 +481,23 @@ func _criar_pedras_e_moitas() -> void:
     moitas.multimesh = mb
     moitas.material_override = verde
     add_child(moitas)
+
+## À noite (0 a 1) as janelas, o farol e a lanterna do cais acendem.
+func acender(noite: float) -> void:
+    if _vidro != null:
+        _vidro.emission_energy_multiplier = 2.2 * noite
+    for luz in _luzes:
+        luz.light_energy = float(luz.get_meta("forca")) * noite
+
+func _luz(pai: Node3D, pos: Vector3, forca: float, alcance: float) -> void:
+    var luz := OmniLight3D.new()
+    luz.light_color = Color(1.0, 0.80, 0.50)
+    luz.omni_range = alcance
+    luz.light_energy = 0.0
+    luz.position = pos
+    luz.set_meta("forca", forca)
+    pai.add_child(luz)
+    _luzes.append(luz)
 
 ## Entrega ao mar o desenho do fundo em volta da ilha: é com ele que a água fica rasa e clara perto da
 ## praia e a espuma quebra na areia (shaders/oceano_pintado.gdshader).
