@@ -17,6 +17,9 @@ const Ilha = preload("res://scripts/ilha.gd")
 var ilha: Node3D
 const Melhorias = preload("res://scripts/melhorias.gd")
 var melhorias: Node
+const Salvamento = preload("res://scripts/salvamento.gd")
+const INTERVALO_SALVAR := 45.0   # s entre salvamentos automáticos navegando
+var relogio_salvar: float = 0.0
 const Porao = preload("res://scripts/porao.gd")
 var porao: Node
 
@@ -90,11 +93,24 @@ func _ready() -> void:
     interface.porao = porao
     interface.hud.porao = porao
     interface.hud.devolveu.connect(func(item): interface.aviso("%s devolvido ao mar." % item.especie))
-    interface.mostrar_inicio()
+    interface.mostrar_inicio(Salvamento.existe())
     atualizar_interface()
+
+func salvar() -> void:
+    if iniciado and pesca.estado == pesca.Estado.PRONTO:
+        Salvamento.salvar(self)
+    relogio_salvar = 0.0
+
+func _notification(o_que: int) -> void:
+    if o_que == NOTIFICATION_WM_CLOSE_REQUEST:              # fechou a janela: guarda a viagem antes de sair
+        salvar()
 
 func _process(delta: float) -> void:
     relogio += delta
+    if iniciado and not em_pausa and not atracado:
+        relogio_salvar += delta
+        if relogio_salvar >= INTERVALO_SALVAR:
+            salvar()
     tempo_interface += delta
     if tempo_interface >= 0.12:
         tempo_interface = 0.0
@@ -141,15 +157,21 @@ func _unhandled_input(event: InputEvent) -> void:
                     interface.aviso("Reiniciar a viagem? Pressione R de novo para confirmar.")
 
 func iniciar_ou_retomar() -> void:
+    var continuou := false
     if not iniciado:
+        continuou = Salvamento.carregar(self)
         cardumes.semear()
+        oceano.limpar_rastro()
     iniciado = true
     em_pausa = false
     barco.ativo = true
     pesca.ativo = true
     som.navegando = true
     interface.esconder_menu()
-    interface.aviso("Procure um cardume (sombras na água, peixes no radar), pare perto dele e aperte F.")
+    if continuou:
+        interface.aviso("Viagem retomada: %s, R$ %d na carteira." % [clima.texto_hora(), dinheiro])
+    else:
+        interface.aviso("Procure um cardume (sombras na água, peixes no radar), pare perto dele e aperte F.")
 
 func alternar_pausa() -> void:
     em_pausa = not em_pausa
@@ -157,11 +179,13 @@ func alternar_pausa() -> void:
     pesca.ativo = not em_pausa
     som.navegando = not em_pausa
     if em_pausa:
+        salvar()
         interface.mostrar_pausa()
     else:
         interface.esconder_menu()
 
 func reiniciar() -> void:
+    Salvamento.apagar()
     melhorias.zerar()
     melhorias.aplicar(barco, porao, pesca)
     barco.zerar()
@@ -209,6 +233,7 @@ func atracar() -> void:
     som.navegando = false
     interface.fechar_painel()
     _atualizar_porto()
+    salvar()
 
 func zarpar() -> void:
     if not atracado:
@@ -240,6 +265,7 @@ func vender() -> void:
     som.tocar("peixe", -6.0, 1.3)
     interface.aviso("Vendeu a pescaria por R$ %d." % ganho)
     _atualizar_porto()
+    salvar()
 
 func abastecer() -> void:
     if not atracado:
@@ -252,6 +278,7 @@ func abastecer() -> void:
     som.tocar("onda", -10.0, 1.4)
     interface.aviso("Abasteceu %d L." % roundi(entrou))
     _atualizar_porto()
+    salvar()
 
 ## Compra o próximo nível de uma melhoria (motor, tanque, porao, vara).
 func comprar(id: String) -> void:
@@ -266,6 +293,7 @@ func comprar(id: String) -> void:
     dinheiro -= custo
     melhorias.subir(id)
     melhorias.aplicar(barco, porao, pesca)
+    salvar()
     som.tocar("peixe", -6.0, 0.8)
     interface.aviso("%s melhorado: %s." % [melhorias.TABELA[id].nome, melhorias.TABELA[id].descricao[melhorias.nivel[id]]])
     _atualizar_porto()

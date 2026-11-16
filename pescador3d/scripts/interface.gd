@@ -20,6 +20,7 @@ var menu: ColorRect
 var titulo_menu: Label
 var subtitulo_menu: Label
 var botao_principal: Button
+var botao_reiniciar: Button
 var hud: Control
 var controles_volume: Dictionary = {}     # grupo -> {barra: HSlider, valor: Label}
 var botao_mudo: Button
@@ -185,7 +186,7 @@ func _construir_menu() -> void:
     botao_principal.pressed.connect(_clicar_iniciar)
     col.add_child(botao_principal)
 
-    var botao_reiniciar := Button.new()
+    botao_reiniciar = Button.new()
     botao_reiniciar.text = "REINICIAR PARTIDA"
     botao_reiniciar.custom_minimum_size = Vector2(395, 43)
     botao_reiniciar.add_theme_font_size_override("font_size", 16)
@@ -338,16 +339,18 @@ func _clicar_iniciar() -> void:
 func _clicar_reiniciar() -> void:
     reiniciar_pressed.emit()
 
-func mostrar_inicio() -> void:
+func mostrar_inicio(tem_viagem_salva: bool = false) -> void:
     titulo_menu.text = "PESCADOR"
     subtitulo_menu.text = "Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do PE-3476."
-    botao_principal.text = "COMEÇAR A VIAGEM"
+    botao_principal.text = "CONTINUAR A VIAGEM" if tem_viagem_salva else "COMEÇAR A VIAGEM"
+    botao_reiniciar.text = "NOVA VIAGEM (apaga a salva)" if tem_viagem_salva else "REINICIAR PARTIDA"
     menu.visible = true
 
 func mostrar_pausa() -> void:
     titulo_menu.text = "PAUSA"
     subtitulo_menu.text = "O oceano continua esperando por você."
     botao_principal.text = "RETOMAR VIAGEM"
+    botao_reiniciar.text = "REINICIAR PARTIDA (apaga a salva)"
     menu.visible = true
 
 func esconder_menu() -> void:

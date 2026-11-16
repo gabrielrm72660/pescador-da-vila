@@ -295,3 +295,14 @@ VERSÃO 0.3.2 - 16/11/2026 — DIA E NOITE, COM NEBLINA À NOITE
 - A tecla T agora avança 3 horas (para testar).
 - Tudo em scripts/clima.gd: DURACAO_DIA, HORA_INICIAL e as tabelas DIA, TARDE e NOITE (a neblina é
   "nevoa_densidade" e "nevoa_cor" da NOITE).
+
+
+VERSÃO 0.3.3 - 16/11/2026 — A VIAGEM FICA SALVA
+- O jogo salva sozinho: ao pausar (ESC), ao atracar, vender, abastecer ou comprar melhoria, a cada 45 s
+  navegando e ao fechar a janela. Não salva no meio de uma pescaria (com a linha na água).
+- Fica guardado: dinheiro, hora do dia, missões, melhorias, posição e rumo do barco, diesel e os peixes
+  do porão, cada um na sua casa.
+- Ao abrir o jogo com uma viagem salva, o botão principal vira "CONTINUAR A VIAGEM". "NOVA VIAGEM"
+  (ou R duas vezes no jogo) apaga a salva e começa do zero.
+- O arquivo é user://pescador_viagem.json (no Windows: %APPDATA%\Godot\app_userdata\<nome do projeto>).
+  Código em scripts/salvamento.gd.
