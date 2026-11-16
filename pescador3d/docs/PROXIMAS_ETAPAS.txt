@@ -1,0 +1,21 @@
+MAR ABERTO — DIREÇÃO DO PROJETO
+
+VERSÃO 0.1 — ENTREGUE
+Barco PE-3476; mar procedural pintado; navegação; câmera em terceira pessoa;
+HUD; menu; missão simples de pesca de 3 capturas.
+
+VERSÃO 0.2 — PROPOSTA
+1. Espuma dinâmica na esteira do barco e balanço mais fiel à superfície.
+2. Sons de motor, vento e mar; alavanca de aceleração.
+3. Peixes 3D nadando por cardumes; diferentes profundidades.
+4. Minigame de pesca com linha e indicador de tensão.
+
+VERSÃO 0.3 — PROPOSTA
+1. Sistema de inventário, mercado de pesca e dinheiro.
+2. Bússola, mapa marítimo e pontos de interesse.
+3. Tempo do dia, mudanças de clima e mar agitado.
+4. Porto inicial inspirado no litoral de Pernambuco (sem recriar
+   locais reais antes de decidir escala e nível de fidelidade).
+
+VERSÕES FUTURAS
+História, personagens, conservação marinha, criaturas e exploração.

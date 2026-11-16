@@ -1,0 +1,274 @@
+MAR ABERTO — Versão 0.1 (protótipo Godot 4)
+================================================
+
+Este ZIP é um projeto Godot COMPLETO, não apenas um cenário.
+Inclui o barco pesqueiro PE-3476 v3 com motor visível e a
+água pintada/animada que construímos anteriormente.
+
+ABRIR
+1. Extraia o ZIP em uma pasta (ex.: Documentos/MarAberto).
+2. Abra o Godot 4.3 ou superior (preferencialmente versão 4.x estável).
+3. Clique em IMPORTAR e selecione project.godot na pasta extraída.
+4. Aguarde o arquivo .glb importar (na primeira vez pode demorar).
+5. Pressione F5 e clique em COMEÇAR A VIAGEM.
+
+CONTROLES
+W / seta cima   = acelerar
+S / seta baixo  = ré / desacelerar
+A e D           = virar leme
+ESPAÇO          = frear o barco
+F               = lançar linha / capturar após fisgada
+C               = trocar a distância da câmera
+R               = reiniciar viagem (pressione duas vezes para confirmar)
+ESC             = pausar e retomar pelo menu
+M               = ligar e desligar o som
+E               = atracar no cais / zarpar
+T               = alternar entre pôr do sol e dia claro
+Botão direito   = segurar e arrastar o mouse gira a câmera em volta do barco (e sobe/desce)
+Z / X           = girar a câmera pelo teclado
+V               = câmera de volta para trás da popa (ou clique com a roda do mouse)
+RODA DO MOUSE   = zoom na câmera
+
+PRIMEIRA MISSÃO
+1. Navegue pelo oceano.
+2. Pare ou diminua o barco para menos de 2 nós.
+3. Pressione F para lançar a linha.
+4. Quando aparecer FISGADA!, pressione F em até 3,8 segundos.
+5. Capture 3 peixes para concluir a missão.
+
+ESTRUTURA
+cenas/Jogo.tscn                cena principal
+assets/barco/PE3476_v4.glb  barco com material incorporado
+shaders/oceano_pintado.gdshader shader procedural de águas
+scripts/barco.gd               navegação e balanço
+scripts/camera_barco.gd        câmera em terceira pessoa
+scripts/pesca.gd               minigame de pesca
+scripts/interface.gd           menu, avisos, porão e diário
+scripts/hud.gd                 HUD pintado (desenhado por código)
+scripts/jogo.gd                fluxo da missão
+scripts/oceano.gd              mar: ondas, esteira e altura da água
+scripts/som.gd                 som ambiente, motor e efeitos
+assets/sons/                   arquivos de som (.ogg)
+
+LIMITAÇÕES HONESTAS DA V0.1
+- Balanço do barco é uma animação, não uma simulação naval real.
+- Peixes são resultados do minigame; ainda não há peixes 3D na água.
+- Não existem ilhas, portos, inventário persistente, clima ou salvamento.
+- Projeto projetado para Godot 4, mas não executado localmente nesta
+  sessão porque o binário Godot não está disponível neste ambiente.
+
+DICA: Não abra o GLB como um projeto; importe o project.godot.
+Desenvolvimento inicial: protótipo exclusivo para o jogo MAR ABERTO.
+
+
+CORREÇÃO 0.1.1 - 16/11/2026
+- Corrigido erro no barco.gd linha 47: clamp() -> clampf() com float explícito.
+- Tipos explícitos para velocidade, entrada e movimento; nenhuma alteração na jogabilidade.
+- Para atualizar seu projeto existente, copie scripts/barco.gd da nova versão para a mesma pasta do projeto aberto no Godot.
+- Não foi possível executar o Godot neste ambiente; teste no editor local.
+
+
+CORREÇÃO 0.1.2 - 16/11/2026
+- Barco: o modelo .glb não trazia as normais (para onde cada face está virada); foram calculadas e gravadas
+  no arquivo, para a luz bater certo no casco.
+- Mar: a luz das ondas passou a ser calculada por pixel e a malha anda em passos de 10 m, para a água não
+  tremer ao navegar. O mar cresceu de 1.500 m para 4.000 m.
+- Horizonte: névoa leve esconde a borda do mar.
+- Renderizador trocado de Compatibilidade para Forward+ (luz mais suave, névoa melhor).
+- Pesca: acelerar acima de 2 nós com a linha na água arrebenta a linha.
+- Tecla R pede confirmação (apertar duas vezes em até 2,5 s).
+- Testado no Godot 4.7 no modo Compatibilidade, sem placa de vídeo. O Forward+ NÃO pôde ser testado nesse
+  ambiente: confira no seu computador. Se algo sair errado, volte em Projeto > Configurações do Projeto >
+  Rendering > Renderer > Rendering Method = gl_compatibility.
+
+
+VERSÃO 0.1.3 - 16/11/2026
+SOM AMBIENTE (scripts/som.gd, assets/sons/)
+- Mar e vento tocam sempre. O motor diesel fica em marcha lenta e sobe de volume e de tom com a
+  velocidade; a água correndo pelo casco aparece ao navegar. Gaivotas e ondas tocam de vez em quando.
+- Efeitos: lançar a linha, fisgada e peixe capturado. Tecla M liga e desliga o som.
+- Os sons vêm do nosso jogo original (Náufrago); o do motor foi sintetizado.
+ESPUMA
+- Esteira atrás do barco: acompanha a curva, alarga e some em 14 segundos.
+- Espuma em volta do casco e onda de proa, mais fortes quanto maior a velocidade.
+- Mais espuma nas cristas, em pinceladas quebradas. Respingos na proa acima de ~5 nós.
+VISUAL
+- Mar: reflexo do céu em ângulo rasante, marolas finas perto da câmera, cristas mais claras, sombra do
+  casco na água e, ao longe, a água se desmancha na cor do horizonte.
+- Barco: sobe, desce e inclina com a onda que passa por baixo (a mesma onda do shader), levanta a proa
+  ao acelerar e inclina nas curvas. Pintura com textura mais nítida e leve contorno de luz.
+- Luz: sol mais baixo e quente, sombras mais suaves. No Forward+ entram também brilho suave (glow) e
+  sombreamento de contato (SSAO).
+ONDE AJUSTAR
+- Cores, quantidade de espuma, altura e velocidade das ondas: selecione o nó Oceano, abra o material
+  da malha e mude os parâmetros do shader.
+- Volumes: os números em dB no começo de scripts/som.gd.
+NÃO TESTADO
+- Forward+ continua sem teste (ambiente sem placa de vídeo): glow, SSAO e névoa só foram conferidos no
+  modo Compatibilidade, onde parte deles não existe.
+- O som foi conferido só por código (arquivos carregam, tocam em laço, volumes mudam com a velocidade);
+  ninguém ouviu a mistura. Ajuste os volumes a gosto.
+
+
+VERSÃO 0.1.4 - 16/11/2026
+INTERFACE NOVA (scripts/hud.gd), no layout da arte de interface do jogo
+- Painéis em pincelada azul-marinho, desenhados por código (sem imagens).
+- Em cima, à esquerda: placa do barco PE-3476 e barra do motor (quanto do motor está em uso).
+- Em cima, no centro: bússola em fita com o rumo em graus (N, NE, L, SE, S, SO, O, NO).
+- Em cima, à direita: missão com caixa de marcar e, embaixo, o estado da pesca.
+- Embaixo, à esquerda: radar que gira com o barco (a proa aponta para cima, o N dá a volta) e a
+  distância percorrida.
+- Embaixo, à direita: velocímetro em nós.
+- Embaixo, no centro: quatro botões clicáveis: pescar (F), porão, diário de bordo e pausa (ESC).
+  O porão lista os peixes pescados; o diário guarda as últimas mensagens. ESC fecha o painel aberto.
+- As mensagens aparecem como um aviso acima dos botões e somem em 6 segundos.
+O QUE A ARTE TEM E O JOGO AINDA NÃO
+- Peixes no radar: o jogo ainda não tem cardumes no mar (a pesca é sorteada), então o radar só mostra o norte.
+- Barra de combustível: não existe combustível no protótipo, então a barra não foi desenhada.
+- O pôr do sol e o barco azul da arte são de cenário e modelo, não de interface; não foram mexidos.
+
+
+VERSÃO 0.1.5 - 16/11/2026
+TEXTURAS NOVAS (ferramentas/gerar_texturas.py -> assets/texturas/)
+- Barco: tábuas pintadas e gastas (branco, vermelho do fundo, azul, laranja, creme, amarelo), convés,
+  madeira escura, metal com ferrugem, corda, rede, bandeira e matrícula. Cada uma tem cor e relevo.
+- Mar: dois mapas de relevo de ondas (largas e marolas), renda de espuma e manchas de aquarela.
+- Todas se repetem sem emenda. Para mudar cor, desgaste ou ferrugem, edite a lista "receitas" no fim
+  de gerar_texturas.py e rode: python ferramentas/gerar_texturas.py
+MODELO NOVO DO BARCO (ferramentas/gerar_barco.py -> assets/barco/PE3476_v4.glb)
+- Refeito do zero: casco arredondado com tosamento (a borda sobe para a proa), roda de proa lançada,
+  espelho de popa, borda falsa, convés abaulado, cabine com paredes inclinadas e teto curvo com beiral,
+  janelas com moldura e vidro, porta, mastro com vela enrolada e estais, guincho, escotilha, caixas,
+  tambor, caixa térmica, cabo, rede com boias, defensas, boia salva-vidas, luzes e bandeira.
+- 11 mil triângulos, 9 m de comprimento. A hélice e o leme são peças soltas: a hélice gira com o motor
+  e o leme vira com A/D.
+- Depois de mudar as texturas do barco, rode: python ferramentas/gerar_barco.py (ele embute as
+  texturas no .glb). As ferramentas precisam de numpy, scipy, opencv-python e Pillow.
+MAR
+- O relevo, a espuma e as manchas de cor agora vêm das texturas; as ondas grandes continuam calculadas.
+CORREÇÃO DE LUZ
+- A luz ambiente da cena estava preta (por isso os lados na sombra saíam pretos). Agora é um azul de céu.
+NÃO TESTADO
+- Continua sem teste no Forward+ e sem ninguém ter ouvido o som.
+
+
+VERSÃO 0.1.6 - 16/11/2026
+- Interface menor: ocupa cerca de 62% do tamanho anterior, e cada bloco encolhe para o seu canto.
+  Para mudar, altere "escala" no começo de scripts/hud.gd (1.0 = tamanho antigo; 0.5 = metade).
+
+
+VERSÃO 0.1.7 - 16/11/2026 — CARDUMES
+- O mar agora tem cardumes: sombras de peixes nadando em roda. Até 5 ficam em volta do barco; nascem
+  a 70-170 m e somem quando ficam a mais de 290 m.
+- Só dá para pescar perto de um cardume (a uns 17 m da borda dele) e abaixo de 2 nós. A espécie e o
+  peso do peixe vêm do cardume: Sardinha (0,1-0,4 kg), Tainha (0,6-2,6), Xaréu (1,5-6), Cavala (2-9)
+  e Garoupa (3-14, rara). Peixe maior demora mais para fisgar.
+- Cada cardume aguenta de 2 a 6 capturas e depois se dispersa.
+- O radar mostra os cardumes até 150 m (peixinho; os de peixe grande aparecem maiores). Fora desse
+  alcance aparece um traço na borda, na direção deles.
+- O painel da missão diz "PROCURE UM CARDUME", "CARDUME PERTO — reduza para pescar" ou "CARDUME AO
+  ALCANCE — aperte F".
+- Para mudar espécies, pesos e quantidades: a tabela ESPECIES no começo de scripts/cardumes.gd.
+
+
+VERSÃO 0.1.8 - 16/11/2026 — COMBUSTÍVEL
+- O barco tem um tanque de 60 litros. O motor gasta conforme trabalha: a toda força são uns 12 minutos;
+  devagar ou parado gasta bem menos.
+- Abaixo de 20% a barra fica vermelha, pisca e aparece um aviso. Vazio, o motor cala e o barco só se
+  arrasta a 2 nós.
+- A barra laranja com a bomba fica embaixo do velocímetro, como na arte da interface.
+- NESTA VERSÃO NÃO HÁ ONDE ABASTECER: isso chega com a ilha e o cais (0.1.9). Por enquanto a tecla R
+  reinicia a viagem com o tanque cheio.
+- Números no começo de scripts/barco.gd: tanque, consumo_maximo, consumo_parado, velocidade_reserva.
+
+
+VERSÃO 0.1.9 - 16/11/2026 — ILHA COM CAIS
+- Há uma ilha a nordeste da partida (uns 190 m até o cais): praia, mato, um pico de pedra, coqueiros,
+  casas, farol e um cais de madeira com bomba de diesel. É toda gerada por código (scripts/ilha.gd).
+- O barco não atravessa a terra nem o cais: bate, para e avisa. A ré (S) sempre tira o barco.
+- O radar mostra o cais com uma âncora dourada; longe, uma seta na borda aponta para ele, e embaixo
+  aparece "Cais a N m".
+- ATRACAR: chegue à ponta do cais, a menos de 2 nós, e aperte E (aparece "E: atracar no cais").
+- No cais: 1 vende todos os peixes do porão, 2 abastece o que o dinheiro der, E ou ESC zarpa.
+  Preços por quilo: Sardinha R$ 6, Tainha R$ 9, Xaréu R$ 12, Cavala R$ 15, Garoupa R$ 24. Diesel: R$ 4
+  o litro. Você começa com R$ 30, que aparecem embaixo da placa do barco.
+- Missões em sequência: pescar 3 peixes -> vender no cais -> viagem livre.
+- Os cardumes não nascem em terra nem colados na praia.
+- Onde ajustar: posição e tamanho da ilha no começo de scripts/ilha.gd; preços na tabela ESPECIES de
+  scripts/cardumes.gd; PRECO_DIESEL e DINHEIRO_INICIAL em scripts/jogo.gd.
+O QUE AINDA NÃO TEM
+- Espuma na praia, pessoas na vila e limite de carga no porão.
+- A ilha é uma só e não reproduz a geografia de Fernando de Noronha.
+
+
+VERSÃO 0.2.0 - 16/11/2026 — PÔR DO SOL
+- O jogo agora abre no fim de tarde: céu pintado em degradê (laranja no horizonte, rosa e azul em
+  cima), sol baixo com halo, faixas de nuvens, luz quente, névoa alaranjada e o caminho de luz do sol
+  na água.
+- A tecla T alterna entre "Pôr do sol" e "Dia claro", para comparar.
+- Tudo fica em scripts/clima.gd, na tabela AMBIENTES: posição, cor e força do sol, cor da luz
+  ambiente, névoa e as cores do mar de cada hora. O céu é shaders/ceu_pintado.gdshader (cores,
+  quantidade de nuvens, tamanho do sol).
+- Nos meus testes (sem placa de vídeo) a água do fim de tarde tende ao roxo. Se no seu PC também
+  ficar, clareie "cor_media" e "cor_turquesa" do "por_do_sol" em scripts/clima.gd.
+- Ainda não há ciclo de dia e noite: a hora só muda com a tecla T.
+
+
+VERSÃO 0.2.1 - 16/11/2026 — ÁGUA DO PÔR DO SOL
+- A água do fim de tarde saía roxa. Agora ela continua azul e só fica dourada na direção do sol (o
+  caminho de luz). O clarão branco do sol na água também foi reduzido.
+- Ajustes em scripts/clima.gd, no ambiente "por_do_sol": "reflexo_geral" (quanto de céu a água reflete
+  em toda parte), "reflexo_no_sol" (quanto reflete na direção do sol) e "brilho".
+
+
+VERSÃO 0.2.2 - 16/11/2026 — SONS NOVOS, MENU DE VOLUME E CÂMERA GIRATÓRIA
+SONS
+- O motor e a água no casco agora usam os seus arquivos: assets/sons/motor_diesel.ogg e
+  assets/sons/agua_casco.ogg (os antigos foram retirados). O motor fica em marcha lenta e sobe de volume
+  e de tom com a velocidade; a água no casco aparece ao navegar.
+MENU DE VOLUME (na tela inicial e na pausa: ESC ou o botão da engrenagem)
+- Quatro controles: Geral, Mar e vento, Motor e casco, Efeitos. Mudam na hora, enquanto você arrasta.
+- "Silenciar tudo" faz o mesmo que a tecla M.
+- As escolhas ficam guardadas (user://mar_aberto.cfg) e voltam na próxima vez que abrir o jogo.
+CÂMERA
+- Segure o botão direito do mouse e arraste: a câmera gira em volta do barco; para cima e para baixo
+  ela sobe ou desce. Z e X giram pelo teclado. V (ou clique com a roda) volta para trás da popa.
+- A roda do mouse continua aproximando e afastando, e C alterna os dois enquadramentos.
+- Sensibilidade e limites no começo de scripts/camera_barco.gd.
+
+
+VERSÃO 0.2.3 - 16/11/2026 — ILHA NOVA, PESCA COM ANEL E SOM RETIRADO
+ILHA
+- Texturas pintadas novas (assets/texturas/ilha): areia, mato, rocha, telhas, reboco e madeira. O chão
+  mistura areia, mato e rocha pela altura e pela inclinação (shaders/terreno_pintado.gdshader).
+- Coqueiros de verdade (tronco curvo e folhas), moitas e pedras na beira da água e nas encostas.
+- Vila refeita: casas caiadas coloridas com porta, janelas e telhado de barro, e uma capela com torre.
+  O farol ganhou faixas vermelhas. O pico ficou mais irregular e há dois rochedos altos no mar ao lado
+  da ilha (o barco bate neles como na costa).
+- Água rasa clara em volta da ilha e espuma quebrando na praia.
+- Para regerar as texturas: python ferramentas/gerar_texturas.py
+PESCA (minijogo do anel)
+- Pare perto de um cardume (menos de 2 nós) e aperte F: abre o anel à esquerda da tela.
+- Um ponteiro gira no anel. Aperte F quando ele passar numa faixa verde: a barra do peixe enche.
+  O miolo dourado da faixa vale o dobro. A cada acerto a faixa muda de lugar e o ponteiro inverte.
+- Apertar fora do verde faz a barra voltar um pouco e trava o F por meio segundo.
+- A barra também enche sozinha, devagar: sem acertar nada o peixe demora de 8 a 24 s.
+- Só se perde o peixe acelerando acima de 2 nós ou se o cardume for embora.
+- Cada espécie tem sua dificuldade (ponteiro mais rápido, menos faixas, mais acertos): tabela ESPECIES em
+  scripts/cardumes.gd. As regras estão em scripts/pesca.gd e o desenho em scripts/hud.gd (_anel_de_pesca).
+SOM
+- Retirado o som agudo que tocava de tempos em tempos (era o da gaivota, sintetizado). Ficam mar,
+  vento, onda, motor, água no casco e os efeitos.
+
+
+VERSÃO 0.3.0 - 16/11/2026 — O JOGO AGORA SE CHAMA "PESCADOR" E O PORÃO É UMA GRADE
+NOME
+- O jogo passou de "Mar Aberto" para "Pescador" (por enquanto). Os volumes guardados continuam valendo.
+PORÃO EM GRADE (botão da caixa)
+- O porão tem 5 x 4 casas. Cada peixe ocupa um formato: sardinha 1 casa, tainha 2, xaréu 3 em linha,
+  cavala 4 em "T", garoupa 6 (3 x 2). O que não cabe não vem a bordo: o jogo avisa antes de lançar a linha.
+- Para arrumar: clique num peixe para pegar, clique numa casa para soltar; R ou o botão direito gira.
+  Verde = cabe, vermelho = não cabe. Com um peixe na mão, o botão vira "Devolver ao mar".
+- "Arrumar o porão" reorganiza tudo sozinho (os maiores primeiro).
+- Passe o mouse num peixe para ver peso e valor. Vender no cais esvazia a grade.
+- Regras em scripts/porao.gd (formatos na tabela FORMAS, tamanho em "colunas" e "linhas").
