@@ -432,6 +432,10 @@ func _criar_cais() -> void:
             mt.vertex_color_use_as_albedo = true
             _mats_arq["tabua"] = mt
         _instancia(deck, pecas_cais["tabuas"], _mats_arq["tabua"], "Tabuas")
+        if not _mats_arq.has("acab_cais"):
+            var ma: StandardMaterial3D = _material(Color.WHITE)
+            ma.vertex_color_use_as_albedo = true
+            _mats_arq["acab_cais"] = ma
     else:
         var p1: Vector2 = inicio + dir_cais * (corpo * 0.5)
         _caixa(cais, Vector3(corpo, 0.22, LARGURA_CAIS), Vector3(p1.x, 1.15, p1.y), madeira, giro)
@@ -460,13 +464,19 @@ func _criar_cais() -> void:
     for a in [COMPRIMENTO_CAIS - 0.5, COMPRIMENTO_CAIS - cabeca_c + 0.5]:
         for s in [-1.0, 1.0]:
             var q: Vector2 = inicio + dir_cais * float(a) + lateral * float(s) * (cabeca_l * 0.5 - 0.3)
-            _cilindro(cais, 0.15, 0.17, 0.55, Vector3(q.x, 1.26, q.y), estaca)
-            _cilindro(cais, 0.18, 0.18, 0.08, Vector3(q.x, 1.38, q.y), corda)
+            if cais_novo:
+                _instancia(cais, _malha_arq("cabeco"), _mats_arq["acab_cais"], "Cabeco").position = Vector3(q.x, 1.26, q.y)
+            else:
+                _cilindro(cais, 0.15, 0.17, 0.55, Vector3(q.x, 1.26, q.y), estaca)
+                _cilindro(cais, 0.18, 0.18, 0.08, Vector3(q.x, 1.38, q.y), corda)
     # Defensas (pneus) nos dois lados da plataforma.
     for a in [COMPRIMENTO_CAIS - 0.9, COMPRIMENTO_CAIS - 2.2, COMPRIMENTO_CAIS - 3.5]:
         for s in [-1.0, 1.0]:
             var q: Vector2 = inicio + dir_cais * float(a) + lateral * float(s) * (cabeca_l * 0.5 + 0.12)
-            _cilindro(cais, 0.2, 0.2, 0.5, Vector3(q.x, 0.55, q.y), borracha)
+            if cais_novo:
+                _instancia(cais, _malha_arq("pneus"), _mats_arq["acab_cais"], "Defensa").position = Vector3(q.x, 0.55, q.y)
+            else:
+                _cilindro(cais, 0.2, 0.2, 0.5, Vector3(q.x, 0.55, q.y), borracha)
     # Guarda-corpo no passadiço e escada na ponta.
     if not cais_novo:              # no cais novo o guarda-corpo já faz parte da malha do piso
         var a_corrimao: float = 2.0
@@ -484,24 +494,56 @@ func _criar_cais() -> void:
         _caixa(cais, Vector3(0.07, 2.6, 0.07), Vector3(r.x, 0.2, r.y), escura, giro)
     for k in 5:
         _caixa(cais, Vector3(0.08, 0.06, 0.62), Vector3(esc.x, 1.0 - 0.42 * float(k), esc.y), escura, giro)
-    # Barris e caixotes no fundo da plataforma.
-    var barril: Vector2 = inicio + dir_cais * (COMPRIMENTO_CAIS - 3.4) - lateral * 2.9
-    _cilindro(cais, 0.32, 0.30, 0.9, Vector3(barril.x, 1.26, barril.y), _material(Color(0.22, 0.42, 0.58)))
-    _cilindro(cais, 0.32, 0.30, 0.9, Vector3(barril.x + dir_cais.x * 0.8, 1.26, barril.y + dir_cais.y * 0.8), _material(Color(0.52, 0.30, 0.16)))
-    var caixote: Vector2 = inicio + dir_cais * (COMPRIMENTO_CAIS - 1.4) - lateral * 2.8
-    _caixa(cais, Vector3(0.8, 0.55, 0.8), Vector3(caixote.x, 1.6, caixote.y), _material(Color(0.62, 0.45, 0.26), "res://assets/texturas/ilha/madeira.png", 0.5), giro + 0.2)
-
-    # Diesel e luz no cais funcionam em ambas as ilhas, como antes.
-    var cabeca: Vector2 = ponta - dir_cais * 2.0
-    _caixa(cais, Vector3(0.7, 1.3, 0.5), Vector3(cabeca.x + lateral.x, 1.9, cabeca.y + lateral.y), _material(Color(0.80, 0.22, 0.16)), giro)
-    _caixa(cais, Vector3(0.9, 0.7, 0.9), Vector3(cabeca.x - lateral.x - dir_cais.x * 2.0, 1.6, cabeca.y - lateral.y - dir_cais.y * 2.0), _material(Color(0.86, 0.66, 0.2)), giro + 0.3)
-    _cilindro(cais, 0.07, 0.06, 3.2, Vector3(ponta.x - dir_cais.x * 0.4, 1.2, ponta.y - dir_cais.y * 0.4), escura)
     var lanterna: StandardMaterial3D = _material(Color(1.0, 0.85, 0.5))
     lanterna.emission_enabled = true
     lanterna.emission = Color(1.0, 0.75, 0.35)
     lanterna.emission_energy_multiplier = 2.0
-    _caixa(cais, Vector3(0.3, 0.36, 0.3), Vector3(ponta.x - dir_cais.x * 0.4, 4.5, ponta.y - dir_cais.y * 0.4), lanterna)
-    _luz(cais, Vector3(ponta.x - dir_cais.x * 0.4, 4.6, ponta.y - dir_cais.y * 0.4), 3.0, 22.0)
+    var luz_pos: Vector2 = ponta - dir_cais * 0.4
+    if cais_novo:
+        # cargas, bomba de diesel e lampião do cais (scripts/arquitetura_malhas.gd)
+        var pe := func(chave: String, mat: Material, a: float, sl: float, y: float, extra: float) -> MeshInstance3D:
+            var qq: Vector2 = inicio + dir_cais * a + lateral * sl
+            var mi: MeshInstance3D = _instancia(cais, _malha_arq(chave), mat, chave)
+            mi.position = Vector3(qq.x, y, qq.y)
+            mi.rotation.y = giro + extra
+            return mi
+        var acab_c: Material = _mats_arq["acab_cais"]
+        var tab_c: Material = _mats_arq["tabua"]
+        var fim: float = COMPRIMENTO_CAIS
+        pe.call("barril_azul", acab_c, fim - 3.4, -2.9, 1.26, 0.0)
+        pe.call("barril", acab_c, fim - 2.6, -2.9, 1.26, 1.0)
+        pe.call("caixote", tab_c, fim - 1.4, -2.8, 1.26, 0.2)
+        pe.call("caixote", tab_c, fim - 1.4, -2.8, 1.81, 0.62)
+        pe.call("caixote", tab_c, fim - 0.7, -3.3, 1.26, -0.15)
+        pe.call("pilha_caixas", acab_c, fim - 4.0, -1.0, 1.26, 0.3)
+        pe.call("rede", acab_c, fim - 3.6, 2.6, 1.26, 0.8)
+        pe.call("bobina", acab_c, fim - 1.1, 2.9, 1.26, 0.4)
+        pe.call("bomba", acab_c, fim - 2.0, 1.0, 1.26, 0.0)
+        if not _mats_arq.has("m_lampiao"):
+            _mats_arq["m_lampiao"] = Arq.lampiao_cais()
+        var lamp: Dictionary = _mats_arq["m_lampiao"]
+        var lp: Node3D = Node3D.new()
+        lp.name = "Lampiao"
+        lp.position = Vector3(luz_pos.x, 1.26, luz_pos.y)
+        lp.rotation.y = giro
+        cais.add_child(lp)
+        _instancia(lp, lamp["acab"], acab_c, "Mastro")
+        _instancia(lp, lamp["vidro"], lanterna, "Vidro")
+    else:
+        # Barris e caixotes no fundo da plataforma.
+        var barril: Vector2 = inicio + dir_cais * (COMPRIMENTO_CAIS - 3.4) - lateral * 2.9
+        _cilindro(cais, 0.32, 0.30, 0.9, Vector3(barril.x, 1.26, barril.y), _material(Color(0.22, 0.42, 0.58)))
+        _cilindro(cais, 0.32, 0.30, 0.9, Vector3(barril.x + dir_cais.x * 0.8, 1.26, barril.y + dir_cais.y * 0.8), _material(Color(0.52, 0.30, 0.16)))
+        var caixote: Vector2 = inicio + dir_cais * (COMPRIMENTO_CAIS - 1.4) - lateral * 2.8
+        _caixa(cais, Vector3(0.8, 0.55, 0.8), Vector3(caixote.x, 1.6, caixote.y), _material(Color(0.62, 0.45, 0.26), "res://assets/texturas/ilha/madeira.png", 0.5), giro + 0.2)
+
+        # Diesel e luz no cais funcionam em ambas as ilhas, como antes.
+        var cabeca: Vector2 = ponta - dir_cais * 2.0
+        _caixa(cais, Vector3(0.7, 1.3, 0.5), Vector3(cabeca.x + lateral.x, 1.9, cabeca.y + lateral.y), _material(Color(0.80, 0.22, 0.16)), giro)
+        _caixa(cais, Vector3(0.9, 0.7, 0.9), Vector3(cabeca.x - lateral.x - dir_cais.x * 2.0, 1.6, cabeca.y - lateral.y - dir_cais.y * 2.0), _material(Color(0.86, 0.66, 0.2)), giro + 0.3)
+        _cilindro(cais, 0.07, 0.06, 3.2, Vector3(ponta.x - dir_cais.x * 0.4, 1.2, ponta.y - dir_cais.y * 0.4), escura)
+        _caixa(cais, Vector3(0.3, 0.36, 0.3), Vector3(ponta.x - dir_cais.x * 0.4, 4.5, ponta.y - dir_cais.y * 0.4), lanterna)
+    _luz(cais, Vector3(luz_pos.x, 4.6, luz_pos.y), 3.0, 22.0)
 
     if com_vila:
         _criar_dique_portuario(cais, frente, lado)
@@ -1584,6 +1626,22 @@ func _malha_arq(chave: String) -> Mesh:
                 _mats_arq[k] = Arq.canoa(Color(0.70, 0.21, 0.16))
             "canoa1":
                 _mats_arq[k] = Arq.canoa(Color(0.23, 0.45, 0.55))
+            "barril_azul":
+                _mats_arq[k] = Arq.barril(Color(0.22, 0.42, 0.58))
+            "caixote":
+                _mats_arq[k] = Arq.caixote(Color(0.66, 0.48, 0.28))
+            "pilha_caixas":
+                _mats_arq[k] = Arq.pilha_caixas()
+            "bobina":
+                _mats_arq[k] = Arq.bobina_corda()
+            "rede":
+                _mats_arq[k] = Arq.rede_pilha()
+            "bomba":
+                _mats_arq[k] = Arq.bomba_diesel()
+            "pneus":
+                _mats_arq[k] = Arq.defensa_pneus()
+            "cabeco":
+                _mats_arq[k] = Arq.cabeco()
             _:
                 _mats_arq[k] = Arq.barril(Color(0.50, 0.36, 0.22))
     return _mats_arq[k]

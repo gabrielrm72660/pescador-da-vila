@@ -1,3 +1,14 @@
+PESCADOR — Versão 0.5.2 (Godot 4.7)
+================================================
+NOVO NA 0.5.2 — CAIS VIVO E MEDIDOR DE DESEMPENHO (detalhes em docs/PESCADOR_v0.5.2_NOVIDADES.txt):
+- CAIS: bomba de diesel de verdade (visor, faixa amarela, mangueira e bico), caixotes de ripa empilhados, pilha de caixas de peixe coloridas, barris com aros,
+  rolo de corda, monte de rede com boias, pneus de defensa, cabeços de amarração com volta de corda e LAMPIÃO de ferro com vidro e boia salva-vidas.
+- PESCADORES do cais agora têm corpo inteiro: chapéu de palha com fita, rosto com bigode, braços segurando a vara, carretel, linha com boia e balde.
+- F3 agora mostra: FPS | tempo do quadro | GPU | CPU | qualidade | V-Sync. O "ms" antigo era só tempo de CPU do jogo.
+- F10 ganhou a opção V-Sync. O FPS parado em 100 no seu vídeo parece ser o V-Sync do monitor. Para medir a folga real da placa:
+  F10 -> Limite de quadros "Sem limite" e V-Sync desligado, depois F3 e olhe FPS e GPU (em ms).
+- Para comparar com o visual antigo: PESCADOR_CASA_SIMPLES=1.
+
 PESCADOR — Versão 0.5.1 (Godot 4.7)
 ================================================
 NOVO NA 0.5.1 — ARQUITETURA DA VILA (detalhes em docs/PESCADOR_v0.5.1_NOVIDADES.txt):

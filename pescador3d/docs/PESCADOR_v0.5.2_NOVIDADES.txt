@@ -1,0 +1,43 @@
+PESCADOR 0.5.2 — CAIS VIVO E MEDIDOR DE DESEMPENHO
+==================================================
+
+ORIGEM (17/11/2026, 20:17): vídeo e print do Gabriel rodando a 0.5.1 em Ultra na RX 6600 (FPS 100 em dia, noite, chuva e temporal; "ms" 10,5 a 18,0).
+Pontos fracos que o vídeo mostrou no cais: caixotes e bomba eram cubos lisos, lampião era uma caixa amarela, pescadores eram blocos.
+
+1) CAIS (scripts/arquitetura_malhas.gd, a partir da linha ~720; ligado em ilha.gd _criar_cais)
+   Cada peça é um ArrayMesh de uma superfície com a cor nos vértices (convés = y 0). Triângulos:
+   - bomba_diesel 264: base de concreto, corpo vermelho, topo escuro, visor verde em dois lados, faixa amarela, suporte do bico, mangueira (tubo em curva).
+   - caixote 276 (x3, madeira com textura): miolo escuro, três ripas por face, quinas, tampa, travessa em X.
+   - pilha_caixas 534: três caixas de peixe (amarela, azul, laranja) em tronco de pirâmide com aro, nervuras e pegadas.
+   - bobina_corda 936; rede_pilha 848 (monte irregular com padrão de malha + 5 boias); barril (já existia) em azul e marrom.
+   - defensa_pneus 504 (x6): três pneus empilhados; cabeco 388 (x4): base, pescoço, cabeça alargada, duas voltas de corda.
+   - lampiao_cais 488 + vidro 12: mastro afunilado de ferro, colar, mãos-francesas, boia salva-vidas vermelha e branca, lampião de vidro com chapéu piramidal.
+     O vidro continua em 4,5 m (y 3,24 acima do convés) e a luz do jogo ficou onde estava (4,6 m).
+   Material compartilhado "acab_cais" (cor de vértice) e o "tabua" do piso (madeira) — o Mesclador junta as peças iguais.
+
+2) PESCADORES (vida_portuaria.gd -> Arq.pescador)
+   Corpo com elipsoides e membros cônicos: botas, calça, quadril, jaqueta com ombros, gola, cabeça com nariz, orelhas, olhos e bigode, chapéu de palha com aba caída e fita,
+   braços com cotovelo e punho, mãos na vara, vara com cabo de cortiça e carretel, linha até a água com boia, balde (nos pescadores 0 e 2).
+   2.816 triângulos sem balde, 3.080 com balde (antes: ~200). Frente continua em -Z; a oscilação de giro não mudou.
+
+3) MEDIDOR (scripts/opcoes_graficas.gd)
+   - F3: "FPS | quadro (ms médio) | GPU (ms) | CPU (ms) | qualidade | V-Sync". GPU e CPU vêm de RenderingServer.viewport_get_measured_render_time_gpu/cpu (a medição só liga com o F3 aberto, porque custa um pouco).
+     O "ms" antigo era Performance.TIME_PROCESS, tempo de CPU do jogo, e não dizia nada sobre a placa.
+   - F10: opção V-Sync (salva em pescador_graficos.json, padrão ligado). Desligada junto com "Sem limite", mostra a capacidade real.
+
+4) NÚMEROS (software)
+   Draw calls 674 -> 643 (início da bateria) e 313 -> 315 (com cardumes); triângulos totais das ilhas ~815 mil -> ~838 mil; nós da ilha 162 -> 142 (Mesclador).
+
+5) VALIDAÇÃO (honesta)
+   Fotos antes e depois: plataforma, cargas, bomba, caixotes, rede e corda, lampião (dia e noite), pescadores (3 e rosto), cais à noite.
+   Um defeito achado e corrigido nas fotos: o cinto dos pescadores era um toro circular e aparecia como argola solta; virou faixa elíptica.
+   Bateria de regressão (cais, farol, sonda2, save2, construtor, vila, tris): zero erros de script; teste do F3 e do V-Sync sem erro.
+   NÃO testado: o tempo de GPU em Forward+ de verdade (no sandbox o renderizador é de software e o número não vale); o efeito do V-Sync desligado no seu monitor;
+   FPS real na RX 6600. O "FPS 100" do vídeo é uma hipótese (V-Sync a 100 Hz) até alguém desligar o V-Sync.
+
+ARQUIVOS: scripts/arquitetura_malhas.gd (novos construtores), scripts/ilha.gd, scripts/vida_portuaria.gd, scripts/opcoes_graficas.gd, scripts/jogo.gd (versão), project.godot (nome), LEIA-ME.txt
+
+PRÓXIMOS PASSOS
+   - Rodar F10 sem limite + V-Sync desligado e mandar print do F3 (FPS e GPU ms) no mar e na vila, em Ultra.
+   - Texturas novas do ChatGPT (ZIP em partes menores) e depois o pacote de estilo Life is Strange.
+   - Mais malhas: bancos e redes da vila, mirante, barcos NPC.

@@ -12,6 +12,10 @@ var qualidade: int = 1
 var automatica: bool = true      # abaixa a qualidade sozinha se o jogo ficar lento (nunca sobe sozinha)
 var fps_indice: int = 1
 var mostrar_fps: bool = false
+var vsync: bool = true           # trava o FPS na taxa do monitor; desligue (com "Sem limite") para medir a capacidade real
+var _vsync_opcao: CheckButton
+var _soma_quadro: float = 0.0
+var _n_quadros: int = 0
 var _painel: Control
 var _fps_label: Label
 var _qualidade_opcao: OptionButton
@@ -46,6 +50,7 @@ func _ready() -> void:
     if OS.get_environment("PESCADOR_QUALIDADE") != "":
         qualidade = clampi(int(OS.get_environment("PESCADOR_QUALIDADE")), 0, QUALIDADE_MAX)
     _construir()
+    _medir(mostrar_fps)
 
 func configurar(ilhas: Array, sol: DirectionalLight3D, oceano: MeshInstance3D, ambiente: WorldEnvironment) -> void:
     _ilhas = ilhas.duplicate()
@@ -74,7 +79,14 @@ func _input(event: InputEvent) -> void:
 func alternar_fps() -> void:
     mostrar_fps = not mostrar_fps
     _fps_label.visible = mostrar_fps
+    _medir(mostrar_fps)
     _salvar()
+
+## Liga/desliga a medição de tempo de GPU e CPU do quadro (só com o overlay F3 aberto, porque custa um pouco).
+func _medir(ligado: bool) -> void:
+    _soma_quadro = 0.0
+    _n_quadros = 0
+    RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), ligado)
 
 func _estilo(cor: Color) -> StyleBoxFlat:
     var st := StyleBoxFlat.new()
@@ -168,6 +180,14 @@ func _construir() -> void:
         aplicar()
         _salvar())
     coluna.add_child(_fps_opcao)
+    _vsync_opcao = CheckButton.new()
+    _vsync_opcao.text = "V-Sync (trava o FPS na taxa do monitor)"
+    _vsync_opcao.button_pressed = vsync
+    _vsync_opcao.toggled.connect(func(ligado: bool):
+        vsync = ligado
+        aplicar()
+        _salvar())
+    coluna.add_child(_vsync_opcao)
     var fechar := Button.new()
     fechar.text = "VOLTAR AO JOGO [F10]"
     fechar.pressed.connect(alternar)
@@ -194,6 +214,7 @@ func _atualizar_dica() -> void:
 
 func aplicar() -> void:
     Engine.max_fps = LIMITES[clampi(fps_indice, 0, LIMITES.size() - 1)]
+    DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
     var q: int = clampi(qualidade, 0, QUALIDADE_MAX)
     var ultra: bool = q >= 3
     var qb: int = mini(q, 2)                       # tabelas de três posições (Baixa, Média, Alta) usam a Alta no Ultra
@@ -253,9 +274,19 @@ func _process(delta: float) -> void:
     if not mostrar_fps:
         return
     _contador += delta
+    _soma_quadro += delta
+    _n_quadros += 1
     if _contador >= 0.5:
         _contador = 0.0
-        _fps_label.text = "FPS %d  |  %.1f ms  |  %s" % [Engine.get_frames_per_second(), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, NOMES[clampi(qualidade, 0, QUALIDADE_MAX)]]
+        # quadro = tempo médio entre quadros; GPU/CPU = tempo de desenho medido pelo renderizador ("n/d" se ele não medir).
+        var rid: RID = get_viewport().get_viewport_rid()
+        var gpu: float = RenderingServer.viewport_get_measured_render_time_gpu(rid)
+        var cpu: float = RenderingServer.viewport_get_measured_render_time_cpu(rid) + RenderingServer.get_frame_setup_time_cpu()
+        var quadro: float = _soma_quadro / maxf(1.0, float(_n_quadros)) * 1000.0
+        _soma_quadro = 0.0
+        _n_quadros = 0
+        var gpu_txt: String = ("%.1f ms" % gpu) if gpu > 0.0 else "n/d"
+        _fps_label.text = "FPS %d  |  quadro %.1f ms  |  GPU %s  |  CPU %.1f ms  |  %s  |  V-Sync %s" % [Engine.get_frames_per_second(), quadro, gpu_txt, cpu, NOMES[clampi(qualidade, 0, QUALIDADE_MAX)], "ligado" if vsync else "desligado"]
 
 ## Mede o FPS medio em janelas de 1 s. Se ficar abaixo da meta por 4 janelas seguidas, desce um nivel.
 ## Nunca sobe sozinho (evita vai-e-vem) e para de agir se o jogador mexer na qualidade.
@@ -298,8 +329,9 @@ func _carregar() -> void:
     automatica = bool(dados.get("automatica", true))
     fps_indice = clampi(int(dados.get("fps", 1)), 0, 3)
     mostrar_fps = bool(dados.get("mostrar_fps", false))
+    vsync = bool(dados.get("vsync", true))
 
 func _salvar() -> void:
     var arquivo := FileAccess.open(ARQUIVO, FileAccess.WRITE)
     if arquivo != null:
-        arquivo.store_string(JSON.stringify({"qualidade": qualidade, "automatica": automatica, "fps": fps_indice, "mostrar_fps": mostrar_fps}))
+        arquivo.store_string(JSON.stringify({"qualidade": qualidade, "automatica": automatica, "fps": fps_indice, "mostrar_fps": mostrar_fps, "vsync": vsync}))

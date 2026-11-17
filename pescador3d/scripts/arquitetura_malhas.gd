@@ -720,3 +720,366 @@ static func poste() -> Dictionary:
     a.tronco(Vector3(0, 4.52, 0), 0.34, 0.05, 0.26, 4, ferro, ferro.lightened(0.1), true, Callable(), 1, PI * 0.25)    # chapéu piramidal
     a.tronco(Vector3(0, 4.78, 0), 0.04, 0.04, 0.10, 6, ferro, ferro)
     return {"acab": a.malha(), "vidro": v.malha()}
+
+
+## ---- cais vivo (v0.5.2) -------------------------------------------------------------------------------------------
+## Cargas, bomba de diesel, pneus, cabeços, lampião e o pescador do cais. Todos com a origem no chão (y = 0 é o convés)
+## e a cor nos vértices; o material (ilha.gd / vida_portuaria.gd) decide o brilho. Frente do pescador = -Z.
+
+## Elipsoide com normais exatas. "rot" gira em torno do centro.
+static func _elipsoide(m: Malha, c: Vector3, r: Vector3, cor: Color, nu: int = 12, nv: int = 8, rot: Basis = Basis.IDENTITY) -> void:
+    var primeiro: int = m.v.size()
+    for j in nv + 1:
+        var ph: float = PI * float(j) / float(nv)
+        for i in nu + 1:
+            var ang: float = TAU * float(i) / float(nu)
+            var d := Vector3(cos(ang) * sin(ph), -cos(ph), sin(ang) * sin(ph))
+            var nl := Vector3(d.x / r.x, d.y / r.y, d.z / r.z).normalized()
+            m.ponto(c + rot * Vector3(d.x * r.x, d.y * r.y, d.z * r.z), (rot * nl).normalized(), cor)
+    for j in nv:
+        for i in nu:
+            var a: int = primeiro + j * (nu + 1) + i
+            m.quad(a, a + 1, a + nu + 2, a + nu + 1)
+
+
+## Toro (pneu, volta de corda, boia). Eixo em Y antes de "rot". "cor_fn(ang_maior)" opcional.
+static func _toro(m: Malha, c: Vector3, raio: float, tubo: float, cor: Color, nu: int = 16, nv: int = 6, rot: Basis = Basis.IDENTITY, cor_fn: Callable = Callable()) -> void:
+    var primeiro: int = m.v.size()
+    for i in nu + 1:
+        var ang: float = TAU * float(i) / float(nu)
+        var cor_i: Color = cor
+        if cor_fn.is_valid():
+            cor_i = cor_fn.call(ang)
+        for j in nv + 1:
+            var ph: float = TAU * float(j) / float(nv)
+            var dir := Vector3(cos(ang), 0.0, sin(ang))
+            var nl: Vector3 = dir * cos(ph) + Vector3.UP * sin(ph)
+            var p: Vector3 = dir * raio + nl * tubo
+            m.ponto(c + rot * p, (rot * nl).normalized(), cor_i)
+    for i in nu:
+        for j in nv:
+            var a: int = primeiro + i * (nv + 1) + j
+            m.quad(a, a + 1, a + nv + 2, a + nv + 1)
+
+
+## Tubo cônico de "a" até "b" com seção redonda (braço, perna, vara, cabo).
+static func _seg(m: Malha, a: Vector3, b: Vector3, r0: float, r1: float, cor: Color, lados: int = 8, cor1: Color = Color(0, 0, 0, 0)) -> void:
+    var eixo: Vector3 = b - a
+    var alt: float = eixo.length()
+    if alt < 0.001:
+        return
+    var y: Vector3 = eixo / alt
+    var ref: Vector3 = Vector3.UP if absf(y.y) < 0.95 else Vector3.RIGHT
+    var x: Vector3 = ref.cross(y).normalized()
+    var z: Vector3 = y.cross(x)
+    var c1: Color = cor if cor1.a == 0.0 else cor1
+    var inclina: float = (r0 - r1) / alt
+    var primeiro: int = m.v.size()
+    for j in 2:
+        var rr: float = r0 if j == 0 else r1
+        var cc: Color = cor if j == 0 else c1
+        var centro: Vector3 = a if j == 0 else b
+        for i in lados + 1:
+            var ang: float = TAU * float(i) / float(lados)
+            var dir: Vector3 = x * cos(ang) + z * sin(ang)
+            m.ponto(centro + dir * rr, (dir + y * inclina).normalized(), cc)
+    for i in lados:
+        var k: int = primeiro + i
+        m.quad(k, k + 1, k + lados + 2, k + lados + 1)
+
+
+## Tubo ao longo de uma linha quebrada (mangueira, alça, corda solta).
+static func _tubo(m: Malha, pts: Array, raio: float, cor: Color, lados: int = 6) -> void:
+    var ref := Vector3(0.267, 0.534, 0.802).normalized()
+    var primeiro: int = m.v.size()
+    var n: int = pts.size()
+    for i in n:
+        var p: Vector3 = pts[i]
+        var t: Vector3 = ((pts[mini(i + 1, n - 1)] as Vector3) - (pts[maxi(i - 1, 0)] as Vector3)).normalized()
+        var x: Vector3 = ref.cross(t).normalized()
+        var z: Vector3 = t.cross(x)
+        for k in lados + 1:
+            var ang: float = TAU * float(k) / float(lados)
+            var dir: Vector3 = x * cos(ang) + z * sin(ang)
+            m.ponto(p + dir * raio, dir, cor)
+    for i in n - 1:
+        for k in lados:
+            var a: int = primeiro + i * (lados + 1) + k
+            m.quad(a, a + 1, a + lados + 2, a + lados + 1)
+
+
+## Tronco de pirâmide de base quadrada com faces chapadas (caixa de plástico). Meia-largura "h0" embaixo e "h1" em cima.
+static func _frustro(m: Malha, c: Vector3, h0: float, h1: float, alt: float, cor0: Color, cor1: Color, rot: Basis = Basis.IDENTITY) -> void:
+    var q0: Array = [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]
+    for i in 4:
+        var a: Vector2 = q0[i]
+        var b: Vector2 = q0[(i + 1) % 4]
+        var p0 := Vector3(a.x * h0, 0.0, a.y * h0)
+        var p1 := Vector3(b.x * h0, 0.0, b.y * h0)
+        var p2 := Vector3(b.x * h1, alt, b.y * h1)
+        var p3 := Vector3(a.x * h1, alt, a.y * h1)
+        var nl: Vector3 = (p1 - p0).cross(p3 - p0).normalized()
+        if nl.dot((p0 + p2) * 0.5 - Vector3(0, alt * 0.5, 0)) < 0.0:
+            nl = -nl
+        var nw: Vector3 = (rot * nl).normalized()
+        var i0: int = m.ponto(c + rot * p0, nw, cor0)
+        var i1: int = m.ponto(c + rot * p1, nw, cor0)
+        var i2: int = m.ponto(c + rot * p2, nw, cor1)
+        var i3: int = m.ponto(c + rot * p3, nw, cor1)
+        m.quad(i0, i1, i2, i3)
+    var fundo: Vector3 = (rot * Vector3.DOWN).normalized()
+    var f0: int = m.ponto(c + rot * Vector3(-h0, 0, -h0), fundo, cor0)
+    var f1: int = m.ponto(c + rot * Vector3(h0, 0, -h0), fundo, cor0)
+    var f2: int = m.ponto(c + rot * Vector3(h0, 0, h0), fundo, cor0)
+    var f3: int = m.ponto(c + rot * Vector3(-h0, 0, h0), fundo, cor0)
+    m.quad(f0, f1, f2, f3)
+
+
+## Caixote de madeira de ripas (80 x 55 x 80 cm): miolo escuro, três ripas por face, quatro quinas, tampa e travessa em X.
+static func caixote(cor: Color) -> ArrayMesh:
+    var m := Malha.new()
+    var t: float = 0.80
+    var h: float = 0.55
+    m.caixa(Vector3(0, h * 0.5, 0), Vector3(t - 0.08, h - 0.08, t - 0.08), cor.darkened(0.62))
+    var rng := RandomNumberGenerator.new()
+    rng.seed = 31
+    for lado in 4:
+        for k in 3:
+            var y: float = 0.095 + float(k) * 0.18
+            var tom: float = rng.randf_range(0.84, 1.08)
+            var cr := Color(cor.r * tom, cor.g * tom, cor.b * tom)
+            var off: float = t * 0.5 - 0.02
+            if lado < 2:
+                m.caixa(Vector3(0, y, off * (1.0 if lado == 0 else -1.0)), Vector3(t - 0.02, 0.135, 0.04), cr)
+            else:
+                m.caixa(Vector3(off * (1.0 if lado == 2 else -1.0), y, 0), Vector3(0.04, 0.135, t - 0.02), cr)
+    for sx in [-1.0, 1.0]:
+        for sz in [-1.0, 1.0]:
+            m.caixa(Vector3(float(sx) * (t * 0.5 - 0.035), h * 0.5, float(sz) * (t * 0.5 - 0.035)), Vector3(0.07, h, 0.07), cor.lightened(0.05))
+    for k in 4:
+        var x: float = -0.285 + 0.19 * float(k)
+        m.caixa(Vector3(x, h - 0.012 + rng.randf_range(-0.004, 0.004), 0), Vector3(0.17, 0.03, t - 0.02), cor.darkened(0.08 * float(k % 2)))
+    for s in [-1.0, 1.0]:
+        m.caixa(Vector3(0, h * 0.5, float(s) * (t * 0.5 + 0.004)), Vector3(0.66, 0.055, 0.016), cor.darkened(0.15), Basis(Vector3.BACK, 0.62))
+    return m.malha()
+
+
+static func _caixa_peixe(m: Malha, c: Vector3, rot: Basis, cor: Color) -> void:
+    var h0: float = 0.27
+    var h1: float = 0.31
+    var alt: float = 0.33
+    _frustro(m, c, h0, h1, alt, cor.darkened(0.12), cor, rot)
+    var claro: Color = cor.lightened(0.10)
+    # aro de cima e nervuras
+    for s in [-1.0, 1.0]:
+        m.caixa(c + rot * Vector3(0, alt - 0.02, float(s) * (h1 + 0.012)), Vector3(h1 * 2.0 + 0.05, 0.05, 0.035), claro, rot)
+        m.caixa(c + rot * Vector3(float(s) * (h1 + 0.012), alt - 0.02, 0), Vector3(0.035, 0.05, h1 * 2.0 + 0.05), claro, rot)
+    for k in 2:
+        var y: float = 0.10 + 0.095 * float(k)
+        var hh: float = lerpf(h0, h1, y / alt) + 0.006
+        for s in [-1.0, 1.0]:
+            m.caixa(c + rot * Vector3(0, y, float(s) * hh), Vector3(hh * 1.5, 0.018, 0.012), claro, rot)
+            m.caixa(c + rot * Vector3(float(s) * hh, y, 0), Vector3(0.012, 0.018, hh * 1.5), claro, rot)
+    # vãos de pegada nas faces opostas
+    var escuro: Color = cor.darkened(0.7)
+    for s in [-1.0, 1.0]:
+        m.caixa(c + rot * Vector3(0, alt - 0.095, float(s) * (lerpf(h0, h1, 0.7) + 0.004)), Vector3(0.20, 0.045, 0.012), escuro, rot)
+
+
+## Pilha de três caixas de peixe (amarela, azul, laranja), levemente giradas.
+static func pilha_caixas() -> ArrayMesh:
+    var m := Malha.new()
+    _caixa_peixe(m, Vector3(0, 0.0, 0), Basis(Vector3.UP, 0.10), Color(0.90, 0.72, 0.16))
+    _caixa_peixe(m, Vector3(0.01, 0.33, -0.01), Basis(Vector3.UP, -0.32), Color(0.20, 0.45, 0.62))
+    _caixa_peixe(m, Vector3(-0.02, 0.66, 0.01), Basis(Vector3.UP, 0.55), Color(0.86, 0.42, 0.16))
+    return m.malha()
+
+
+## Rolo de corda: quatro voltas empilhadas sobre um miolo.
+static func bobina_corda() -> ArrayMesh:
+    var m := Malha.new()
+    var corda := Color(0.80, 0.68, 0.44)
+    m.tronco(Vector3(0, 0, 0), 0.20, 0.20, 0.36, 12, corda.darkened(0.45), corda.darkened(0.40), true)
+    for k in 4:
+        var tom: float = 1.0 - 0.07 * float(k % 2)
+        _toro(m, Vector3(0, 0.058 + 0.105 * float(k), 0), 0.265 - 0.012 * float(k), 0.058, Color(corda.r * tom, corda.g * tom, corda.b * tom), 18, 6)
+    var pts: Array = [Vector3(0.22, 0.12, 0.08), Vector3(0.36, 0.06, 0.10), Vector3(0.48, 0.045, 0.02), Vector3(0.56, 0.04, -0.08)]
+    _tubo(m, pts, 0.032, corda.lightened(0.08), 6)
+    return m.malha()
+
+
+## Monte de rede de pesca com bóias.
+static func rede_pilha() -> ArrayMesh:
+    var m := Malha.new()
+    var fundo := Color(0.18, 0.34, 0.30)
+    var fio := Color(0.62, 0.58, 0.40)
+    var f := func(u: float, v: float) -> Vector3:
+        var ang: float = u * TAU
+        var ph: float = v * PI * 0.5
+        var r: float = 0.58 * sin(ph) * (1.0 + 0.16 * sin(ang * 3.0 + 1.1) + 0.10 * sin(ang * 5.0))
+        var y: float = 0.30 * cos(ph) + 0.05 * sin(ang * 4.0 + ph * 6.0) * sin(ph)
+        return Vector3(cos(ang) * r, y, sin(ang) * r * 0.85)
+    var cf := func(u: float, v: float, p: Vector3) -> Color:
+        var malha_x: float = sin(u * TAU * 11.0) * sin(v * 17.0 + u * 5.0)
+        return fundo.lerp(fio, clampf(0.5 + 0.9 * malha_x, 0.0, 1.0))
+    m.superficie(f, 28, 8, cf, Callable(), Vector3(0, -0.2, 0))
+    var cores: Array = [Color(0.92, 0.92, 0.88), Color(0.90, 0.40, 0.14), Color(0.92, 0.92, 0.88), Color(0.90, 0.40, 0.14), Color(0.92, 0.92, 0.88)]
+    var pos: Array = [Vector3(0.38, 0.12, 0.20), Vector3(-0.30, 0.16, 0.30), Vector3(0.05, 0.31, -0.08), Vector3(-0.42, 0.10, -0.20), Vector3(0.30, 0.10, -0.38)]
+    for i in 5:
+        _elipsoide(m, pos[i], Vector3(0.055, 0.055, 0.055), cores[i], 8, 5)
+    return m.malha()
+
+
+## Bomba de diesel do cais: base de concreto, corpo vermelho com painel e faixa amarela, mangueira e bico. Painéis em ±Z.
+static func bomba_diesel() -> ArrayMesh:
+    var m := Malha.new()
+    var vermelho := Color(0.78, 0.17, 0.12)
+    var concreto := Color(0.56, 0.55, 0.52)
+    var preto := Color(0.09, 0.09, 0.10)
+    m.caixa(Vector3(0, 0.07, 0), Vector3(0.84, 0.14, 0.62), concreto, Basis.IDENTITY, concreto.lightened(0.08))
+    m.caixa(Vector3(0, 0.68, 0), Vector3(0.58, 1.08, 0.38), vermelho, Basis.IDENTITY, vermelho.darkened(0.2))
+    m.caixa(Vector3(0, 1.26, 0), Vector3(0.64, 0.10, 0.44), vermelho.darkened(0.25), Basis.IDENTITY, vermelho.darkened(0.3))
+    m.caixa(Vector3(0, 1.33, 0), Vector3(0.46, 0.05, 0.30), preto)
+    for s in [-1.0, 1.0]:
+        m.caixa(Vector3(0, 0.92, float(s) * 0.195), Vector3(0.40, 0.26, 0.02), preto)
+        m.caixa(Vector3(0, 0.94, float(s) * 0.207), Vector3(0.30, 0.10, 0.006), Color(0.62, 0.86, 0.50))
+        m.caixa(Vector3(0, 0.80, float(s) * 0.202), Vector3(0.30, 0.03, 0.012), Color(0.85, 0.86, 0.85))
+        m.caixa(Vector3(0, 0.42, float(s) * 0.196), Vector3(0.58, 0.11, 0.012), Color(0.94, 0.76, 0.14))
+        m.caixa(Vector3(0, 0.26, float(s) * 0.196), Vector3(0.58, 0.04, 0.012), Color(0.94, 0.94, 0.92))
+    m.caixa(Vector3(0.335, 0.90, 0), Vector3(0.09, 0.28, 0.16), Color(0.42, 0.42, 0.44))
+    m.caixa(Vector3(0.38, 0.80, 0), Vector3(0.05, 0.08, 0.10), preto)
+    var pts: Array = [Vector3(0.33, 1.02, 0.06), Vector3(0.50, 0.92, 0.10), Vector3(0.62, 0.60, 0.16), Vector3(0.56, 0.28, 0.22), Vector3(0.40, 0.16, 0.26), Vector3(0.22, 0.18, 0.32)]
+    _tubo(m, pts, 0.028, Color(0.12, 0.12, 0.13), 6)
+    m.caixa(Vector3(0.20, 0.19, 0.33), Vector3(0.12, 0.05, 0.05), Color(0.30, 0.30, 0.32))
+    return m.malha()
+
+
+## Defensa de pneus: três pneus empilhados (substitui o cilindro de borracha).
+static func defensa_pneus() -> ArrayMesh:
+    var m := Malha.new()
+    var cor := Color(0.10, 0.10, 0.11)
+    for k in 3:
+        _toro(m, Vector3(0, 0.085 + 0.17 * float(k), 0), 0.19, 0.088, cor if k != 1 else cor.lightened(0.06), 14, 6)
+    return m.malha()
+
+
+## Cabeço de amarração: base, pescoço, cabeça alargada e duas voltas de corda.
+static func cabeco() -> ArrayMesh:
+    var m := Malha.new()
+    var ferro := Color(0.20, 0.19, 0.18)
+    var corda := Color(0.74, 0.62, 0.40)
+    m.tronco(Vector3(0, 0, 0), 0.20, 0.15, 0.14, 12, ferro.darkened(0.2), ferro, false)
+    m.tronco(Vector3(0, 0.14, 0), 0.115, 0.105, 0.20, 12, ferro, ferro.lightened(0.05), false)
+    m.tronco(Vector3(0, 0.34, 0), 0.105, 0.20, 0.07, 12, ferro, ferro.lightened(0.1), false)
+    m.tronco(Vector3(0, 0.41, 0), 0.20, 0.17, 0.05, 12, ferro.lightened(0.1), ferro.lightened(0.12), true)
+    _toro(m, Vector3(0, 0.20, 0), 0.115, 0.034, corda, 14, 5)
+    _toro(m, Vector3(0, 0.27, 0), 0.113, 0.034, corda.darkened(0.08), 14, 5)
+    return m.malha()
+
+
+## Lampião do fim do cais: mastro de ferro com colar na base, boia salva-vidas presa, lampião de vidro com chapéu.
+## y = 0 é o convés; o vidro fica em y = 3,24 (a luz do jogo fica logo acima). Devolve {"acab", "vidro"}.
+static func lampiao_cais() -> Dictionary:
+    var a := Malha.new()
+    var v := Malha.new()
+    var ferro := Color(0.17, 0.16, 0.15)
+    a.tronco(Vector3(0, -0.06, 0), 0.17, 0.10, 0.26, 10, ferro.darkened(0.1), ferro, false)
+    a.tronco(Vector3(0, 0.18, 0), 0.10, 0.062, 2.80, 10, ferro, ferro.lightened(0.05), false, Callable(), 3)
+    a.tronco(Vector3(0, 2.98, 0), 0.13, 0.13, 0.05, 10, ferro, ferro)
+    for s in [-1.0, 1.0]:
+        a.caixa(Vector3(float(s) * 0.12, 2.90, 0), Vector3(0.36, 0.045, 0.045), ferro, Basis(Vector3.BACK, float(s) * 0.75))
+    # boia salva-vidas presa ao mastro, virada para o lado (+Z)
+    var gira := Basis(Vector3.RIGHT, PI * 0.5)
+    _toro(a, Vector3(0, 1.30, 0.30), 0.25, 0.062, Color.WHITE, 20, 6, gira, func(ang: float) -> Color:
+        return Color(0.88, 0.16, 0.12) if int(floor(ang / (PI * 0.5))) % 2 == 0 else Color(0.93, 0.93, 0.90))
+    a.caixa(Vector3(0, 1.30, 0.07), Vector3(0.05, 0.06, 0.24), ferro)
+    v.caixa(Vector3(0, 3.24, 0), Vector3(0.30, 0.38, 0.30), Color.WHITE)
+    a.caixa(Vector3(0, 3.02, 0), Vector3(0.36, 0.04, 0.36), ferro)
+    for sx in [-1.0, 1.0]:
+        for sz in [-1.0, 1.0]:
+            a.caixa(Vector3(float(sx) * 0.16, 3.24, float(sz) * 0.16), Vector3(0.035, 0.42, 0.035), ferro)
+    a.tronco(Vector3(0, 3.45, 0), 0.30, 0.05, 0.22, 4, ferro, ferro.lightened(0.1), true, Callable(), 1, PI * 0.25)
+    a.tronco(Vector3(0, 3.67, 0), 0.035, 0.035, 0.09, 6, ferro, ferro)
+    return {"acab": a.malha(), "vidro": v.malha()}
+
+
+## Pescador de chapéu de palha com vara, corpo inteiro (frente = -Z, pés em y = 0). "balde" põe um balde ao lado.
+## Vem com a cor nos vértices: o material é o mesmo de sempre (vertex_color_use_as_albedo).
+static func pescador(jaqueta: Color, bermuda: Color, balde: bool = false) -> ArrayMesh:
+    var m := Malha.new()
+    var pele := Color(0.68, 0.47, 0.32)
+    var palha := Color(0.88, 0.74, 0.40)
+    var bota := Color(0.24, 0.18, 0.14)
+    var cinto := Color(0.18, 0.15, 0.12)
+    for s in [-1.0, 1.0]:
+        var x: float = float(s) * 0.095
+        _elipsoide(m, Vector3(x, 0.07, -0.035), Vector3(0.082, 0.07, 0.15), bota, 10, 6)
+        _seg(m, Vector3(x, 0.09, 0.0), Vector3(x, 0.28, 0.0), 0.076, 0.07, bota, 8)
+        _seg(m, Vector3(x, 0.26, 0.0), Vector3(x, 0.66, 0.0), 0.075, 0.095, bermuda, 8)
+    _elipsoide(m, Vector3(0, 0.69, 0), Vector3(0.20, 0.13, 0.145), bermuda, 12, 6)
+    _elipsoide(m, Vector3(0, 0.83, -0.005), Vector3(0.205, 0.17, 0.15), jaqueta, 12, 7)
+    _elipsoide(m, Vector3(0, 1.02, 0), Vector3(0.22, 0.24, 0.145), jaqueta, 12, 8)
+    _elipsoide(m, Vector3(0, 1.17, 0), Vector3(0.26, 0.10, 0.13), jaqueta, 12, 6)
+    _elipsoide(m, Vector3(0, 0.76, -0.002), Vector3(0.200, 0.034, 0.150), cinto, 14, 4)
+    _seg(m, Vector3(0, 1.22, 0), Vector3(0, 1.33, 0), 0.062, 0.058, pele, 8)
+    _toro(m, Vector3(0, 1.23, 0), 0.075, 0.022, jaqueta.darkened(0.18), 12, 4)
+    # cabeça
+    _elipsoide(m, Vector3(0, 1.41, -0.005), Vector3(0.100, 0.125, 0.112), pele, 12, 8)
+    _elipsoide(m, Vector3(0, 1.395, -0.112), Vector3(0.022, 0.030, 0.030), pele.darkened(0.06), 8, 5)
+    for s in [-1.0, 1.0]:
+        _elipsoide(m, Vector3(float(s) * 0.102, 1.41, 0.0), Vector3(0.018, 0.038, 0.028), pele.darkened(0.08), 8, 5)
+        _elipsoide(m, Vector3(float(s) * 0.040, 1.435, -0.100), Vector3(0.012, 0.014, 0.010), Color(0.08, 0.06, 0.05), 6, 4)
+    _elipsoide(m, Vector3(0, 1.365, -0.094), Vector3(0.050, 0.018, 0.030), Color(0.22, 0.16, 0.12), 8, 4)        # bigode
+    # chapéu de palha: aba levemente caída, copa e fita
+    var aba_cima := func(u: float, v: float) -> Vector3:
+        var ang: float = u * TAU
+        var r: float = 0.115 + 0.205 * v
+        return Vector3(cos(ang) * r, 1.50 - 0.030 * v * v, sin(ang) * r)
+    var aba_baixo := func(u: float, v: float) -> Vector3:
+        var ang: float = u * TAU
+        var r: float = 0.115 + 0.205 * v
+        return Vector3(cos(ang) * r, 1.488 - 0.030 * v * v, sin(ang) * r)
+    m.superficie(aba_cima, 20, 3, Callable(), Callable(), Vector3(0, 1.0, 0), palha)
+    m.superficie(aba_baixo, 20, 3, Callable(), Callable(), Vector3(0, 2.0, 0), palha.darkened(0.18))
+    m.tronco(Vector3(0, 1.495, 0), 0.118, 0.098, 0.115, 14, palha.darkened(0.04), palha.lightened(0.06), true, Callable(), 2)
+    m.tronco(Vector3(0, 1.505, 0), 0.121, 0.116, 0.028, 14, Color(0.60, 0.20, 0.16), Color(0.60, 0.20, 0.16), false)
+    # braços e mãos segurando a vara (mão de trás perto do corpo, mão da frente mais adiante)
+    var ombro_d := Vector3(0.265, 1.15, 0.0)
+    var ombro_e := Vector3(-0.265, 1.15, 0.0)
+    var cotovelo_d := Vector3(0.30, 0.93, -0.17)
+    var cotovelo_e := Vector3(-0.30, 0.95, -0.21)
+    var mao_d := Vector3(0.025, 1.00, -0.33)
+    var mao_e := Vector3(-0.025, 1.075, -0.47)
+    for par in [[ombro_d, cotovelo_d, mao_d], [ombro_e, cotovelo_e, mao_e]]:
+        var o: Vector3 = par[0]
+        var co: Vector3 = par[1]
+        var ma: Vector3 = par[2]
+        _elipsoide(m, o, Vector3(0.085, 0.085, 0.085), jaqueta, 8, 5)
+        _seg(m, o, co, 0.074, 0.062, jaqueta, 8)
+        _elipsoide(m, co, Vector3(0.063, 0.063, 0.063), jaqueta, 8, 5)
+        var punho: Vector3 = co.lerp(ma, 0.78)
+        _seg(m, co, punho, 0.062, 0.052, jaqueta, 8)
+        _seg(m, punho, ma, 0.046, 0.040, pele, 8)
+        _elipsoide(m, ma, Vector3(0.046, 0.042, 0.050), pele, 8, 5)
+    # vara com cabo de cortiça, carretel, linha e boia
+    var base_vara := Vector3(0.0, 0.81, 0.016)
+    var dir := Vector3(0, 0.469, -0.883)
+    var cortica := Color(0.72, 0.56, 0.38)
+    _seg(m, base_vara, base_vara + dir * 0.62, 0.026, 0.024, cortica, 8)
+    _seg(m, base_vara + dir * 0.62, base_vara + dir * 2.30, 0.019, 0.005, Color(0.14, 0.12, 0.10), 6)
+    _seg(m, Vector3(0.028, 0.93, -0.22), Vector3(0.028, 0.93, -0.30), 0.040, 0.040, Color(0.72, 0.72, 0.74), 10)
+    var ponta: Vector3 = base_vara + dir * 2.30
+    var agua := Vector3(0.0, -1.02, -2.25)
+    _seg(m, ponta, agua, 0.0032, 0.0032, Color(0.88, 0.88, 0.84), 3)
+    _elipsoide(m, agua + Vector3(0, 0.02, 0), Vector3(0.03, 0.04, 0.03), Color(0.9, 0.2, 0.15), 8, 5)
+    if balde:
+        var cor_b: Color = jaqueta.lerp(Color(0.18, 0.40, 0.60), 0.6)
+        m.tronco(Vector3(0.46, 0, 0.06), 0.12, 0.155, 0.27, 12, cor_b.darkened(0.15), cor_b, false)
+        _toro(m, Vector3(0.46, 0.27, 0.06), 0.155, 0.012, cor_b.darkened(0.25), 14, 4)
+        var alca: Array = []
+        for k in 7:
+            var ang: float = PI * float(k) / 6.0
+            alca.append(Vector3(0.46 + cos(ang) * 0.155, 0.27 + sin(ang) * 0.16, 0.06))
+        _tubo(m, alca, 0.007, Color(0.55, 0.55, 0.58), 4)
+        _elipsoide(m, Vector3(0.46, 0.25, 0.06), Vector3(0.11, 0.025, 0.11), Color(0.5, 0.62, 0.66), 10, 4)     # peixes e gelo no fundo
+    return m.malha()

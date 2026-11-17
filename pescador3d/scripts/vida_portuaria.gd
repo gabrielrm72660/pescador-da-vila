@@ -1,4 +1,5 @@
 extends Node3D
+const Arq = preload("res://scripts/arquitetura_malhas.gd")
 ## Vida visual portuária de baixo custo: barcos NPC e pescadores nos cais.
 ## Os barcos NPC são o MESMO modelo do barco do jogador (PE-3476), só com outra pintura
 ## (shaders/pintura_npc.gdshader troca a cor mantendo o desgaste da textura). Seguem as ondas como o do jogador.
@@ -266,7 +267,10 @@ func _criar_pescadores(ilha: Node3D) -> void:
     for i in 3:
         var pessoa := MeshInstance3D.new()
         pessoa.name = "PescadorNPC"
-        pessoa.mesh = _malha_pescador(roupas[i][0], roupas[i][1])
+        if OS.get_environment("PESCADOR_CASA_SIMPLES") == "1":
+            pessoa.mesh = _malha_pescador(roupas[i][0], roupas[i][1])
+        else:
+            pessoa.mesh = Arq.pescador(roupas[i][0], roupas[i][1], i != 1)
         pessoa.material_override = material
         pessoa.visibility_range_end = 260.0
         add_child(pessoa)
