@@ -1,0 +1,47 @@
+PESCADOR 0.3.11 — RECONSTRUÇÃO DA VILA, PEIXES E CARDUMES
+
+Projeto derivado da versão 0.3.10, mantendo o sistema de pesca,
+salvamento, comércio, carta náutica (M), clima e o comportamento do mar.
+
+1. NOVA ILHA PRINCIPAL
+- Novo campo de alturas exclusivo da Vila do Porto, com serra arredondada e
+  recuada, duas colinas pequenas, encostas sem picos piramidais e enseada.
+- Faixa da vila suavizada para alojar ruas, praças e casas mais coerentes.
+- Cais, postos de diesel, loja e farol principal preservados.
+- Ilha Rata mantém sua geração separada, posto isolado e farol desativado.
+
+2. VILA REORGANIZADA
+- Rua de chegada ao cais, rua costeira, caminho do interior e praça com bancos.
+- Novas posições de casinhas agrupadas (com verificação da altura e declive).
+- Galpão de pescadores, mercado e capela reorganizados.
+
+3. PEIXES E INVENTÁRIO
+- Nove sprites individuais para o porão e nove texturas top-down para o mar:
+  sardinha, tainha, xaréu, cavala, barracuda, dourado, atum,
+  olho-de-cão e garoupa.
+- Texturas por espécie, sem identificação genérica para todos os cardumes.
+- O porão recebeu forro de madeira naval, casas com acabamento metálico
+  e imagens próprias dos peixes nas casas que ocupam.
+- Os peixes podem continuar sendo reposicionados/rotacionados com os controles já existentes.
+
+4. CARDUMES
+- Substituído o movimento circular por um modelo local de alinhamento,
+  coesão e separação entre indivíduos.
+- Pequenas variações de velocidade e rumo, afastamento do barco e da costa.
+- Os peixes seguem o relevo das ondas já implementado.
+
+5. VEGETAÇÃO
+- Três silhuetas de coqueiro, com curvatura, altura e folhagem diferentes.
+- Árvores nativas de copa em volumes assimétricos no interior da ilha.
+- Distribuição limitada pela inclinação do terreno e pela ocupação da vila.
+
+TESTES
+- Verificação estática de arquivos, imagens, caminhos e integridade do ZIP.
+- O projeto não foi executado no Godot neste ambiente. Os shaders, a aparência
+  final, a navegação e o input devem ser validados no editor Godot 4.3+.
+
+COMANDOS
+- M: abre/fecha a carta náutica (preservado da versão 0.3.10).
+- Ícone de caixa: abre o porão com as novas imagens dos peixes.
+- R (no porão, segurando um peixe): gira a peça.
+- F6: alterna estados do mar, como na versão anterior.

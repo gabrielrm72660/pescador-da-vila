@@ -8,7 +8,7 @@ uniform sampler2D tex_grama : source_color, repeat_enable, filter_linear_mipmap;
 uniform sampler2D tex_rocha : source_color, repeat_enable, filter_linear_mipmap;
 uniform sampler2D tex_manchas : hint_default_white, repeat_enable, filter_linear_mipmap;
 uniform float altura_grama = 2.2;        // m acima do mar onde a areia vira mato
-uniform float altura_pedra = 24.0;       // m onde o mato rareia e sobra pedra
+uniform float altura_pedra = 22.0;       // m onde o mato rareia e sobra pedra
 
 varying vec3 pos_mundo;
 varying vec3 normal_mundo;
@@ -23,6 +23,7 @@ void fragment() {
     float h = pos_mundo.y;
     float larga = texture(tex_manchas, pos_mundo.xz * 0.021).r;
     float fina = texture(tex_manchas, pos_mundo.xz * 0.17 + vec2(0.3, 0.7)).r;
+    float granito = texture(tex_manchas, pos_mundo.xz * 0.035 + vec2(0.17, 0.59)).r;
 
     vec3 areia = texture(tex_areia, pos_mundo.xz * 0.11).rgb * vec3(1.0, 0.97, 0.93);
     vec3 grama = texture(tex_grama, pos_mundo.xz * 0.085).rgb * mix(0.80, 1.04, larga) * vec3(0.76, 0.90, 0.84);   // menos amarelo
@@ -34,22 +35,30 @@ void fragment() {
                + texture(tex_rocha, pos_mundo.xy * 0.045).rgb * peso.z;
     // camadas deitadas, como rocha vulcanica: faixas mais claras e mais escuras conforme a altura
     float camada = texture(tex_manchas, vec2(h * 0.045 + larga * 0.25, (pos_mundo.x + pos_mundo.z) * 0.004)).r;
-    rocha *= mix(0.86, 1.30, camada);
+    // Camadas geologicas descontinuas: paredes mais definidas sem listras retas.
+    float laminacao = sin(h * 0.72 + larga * 3.5 + granito * 2.0);
+    rocha *= mix(0.82, 1.27, camada) * (0.94 + 0.08 * laminacao);
+    rocha = mix(rocha, rocha * vec3(0.73, 0.77, 0.80), (1.0 - n.y) * (1.0 - fina) * 0.26);
     rocha *= mix(0.85, 1.25, smoothstep(30.0, 66.0, h));                 // o alto do pico e mais claro
 
     float borda = (larga - 0.5) * 1.6 + (fina - 0.5) * 0.5;             // a fronteira entre as tintas e irregular
     float inclinacao = 1.0 - n.y;
     vec3 cor = mix(areia, grama, smoothstep(-0.5, 0.7, h - altura_grama + borda * 1.4));
-    float pedra = smoothstep(0.16, 0.34, inclinacao + borda * 0.07);
+    float pedra = smoothstep(0.12, 0.38, inclinacao + borda * 0.08);
     pedra = max(pedra, smoothstep(-5.0, 6.0, h - altura_pedra + borda * 6.0));
     cor = mix(cor, rocha, pedra);
+    // Reentrancias e sombra natural nas fendas; evita um morro liso e plastico.
+    float cavidades = (1.0 - fina) * (0.5 + 0.5 * (1.0 - granito));
+    cor *= 1.0 - cavidades * pedra * 0.16;
+    // Variacao suave de exposicao solar e vegetacao nas encostas.
+    cor *= 0.95 + 0.10 * clamp(dot(n, normalize(vec3(0.55, 0.95, -0.22))), 0.0, 1.0);
 
     // areia molhada na beira e o fundo raso, que se ve atraves da agua
-    float molhado = smoothstep(0.75, 0.05, h) * (1.0 - pedra * 0.6);
+    float molhado = (1.0 - smoothstep(0.05, 0.75, h)) * (1.0 - pedra * 0.6);
     cor = mix(cor, cor * vec3(0.62, 0.60, 0.56), molhado);
-    cor = mix(cor, vec3(0.50, 0.66, 0.60), smoothstep(-0.2, -2.5, h) * 0.7);
+    cor = mix(cor, vec3(0.50, 0.66, 0.60), (1.0 - smoothstep(-2.5, -0.2, h)) * 0.7);
 
     ALBEDO = cor * (0.90 + 0.16 * larga);                     // sem granulado fino: a pintura ja traz a pincelada
-    ROUGHNESS = mix(1.0, 0.62, molhado);                      // pintura fosca: nada brilha, so a areia molhada
+    ROUGHNESS = mix(mix(0.98, 0.90, pedra), 0.66, molhado);                      // pintura fosca: nada brilha, so a areia molhada
     SPECULAR = mix(0.04, 0.32, molhado);
 }

@@ -1,9 +1,108 @@
-MAR ABERTO — Versão 0.1 (protótipo Godot 4)
+PESCADOR — Versão 0.3.18 (Godot 4.7)
+================================================
+Base única: a 0.3.17 (integrada) mais as melhorias abaixo. Detalhes em docs/PESCADOR_v0.3.18_NOVIDADES.txt.
+
+DESEMPENHO (PC sem placa de vídeo dedicada)
+- Qualidade padrão agora é MÉDIA e há ajuste automático: se o jogo ficar abaixo de ~33 FPS por alguns segundos,
+  a qualidade desce sozinha (nunca sobe sozinha). Dá para desligar em F10. Sem GPU de verdade, o jogo já abre na Baixa.
+- Mar em níveis de detalhe (malha fina perto, grossa longe), sem sombra no mar. Peças fixas da vila e do cais são
+  juntas por material: de 960 para ~300 chamadas de desenho na vista inicial. Média usa 2 faixas de sombra (Alta, 4).
+- Texturas com mipmaps e compressão: menos memória de vídeo e menos serrilhado ao longe.
+
+MUNDO
+- Cais novo em "T", com estacas de madeira (textura nova), defensas, cabeços, corrimão, escada e barris.
+- O barco nasce encostado ao cais (novo jogo e reinício), de proa para o mar.
+- Radar virou minimapa: praia, mata e águas rasas das ilhas, girando com a proa, mais o cais e as boias.
+- Farol à noite: feixe de luz visível girando sobre o mar, além do clarão da lanterna.
+- Duas boias de sinalização na entrada da baía (vermelha a boreste, verde a bombordo; piscam à noite).
+- Mar com profundidade: azul-escuro no mar aberto, turquesa clara na plataforma rasa perto da costa.
+- Trilha de terra e calçada com texturas novas (SpriteCook); a plataforma escura perto da calçada sumiu.
+- Barcos NPC são o mesmo modelo do seu barco (PE-3476), pintados com outras cores, e balançam nas ondas.
+- Pescadores no cais (chapéu de palha, jaqueta, vara) e fauna (golfinho, tartaruga, gaivota) com formas melhores.
+
+PESCA E TELAS
+- Cardumes aparecem de dia como silhuetas escuras (à noite, claras); fim dos textos cortados na loja e na missão.
+
+ECONOMIA (peixes grandes valiam demais: um atum pagava quase todas as melhorias)
+- R$/kg: Sardinha 8, Tainha 9, Xaréu 11, Cavala 12, Barracuda 12, Dourado 15, Atum 13, Olho-de-cão 20, Garoupa 14.
+- Melhorias do 2º nível ~30% mais caras; prêmios das encomendas ajustados. Tabela completa em docs/.
+
+TESTE RÁPIDO V0.3.18
+1. Novo jogo: o barco deve estar ao lado do cais em T. Pesque, venda, abra a loja (tudo deve caber na tela).
+2. Olhe o radar: ilhas e pontinhos vermelho/verde (as boias) no lugar certo.
+3. À noite, olhe para o farol: o feixe gira. As boias piscam.
+4. F10: confira a qualidade (Média) e o ajuste automático; F3 mostra FPS.
+5. Navegue e veja os barcos NPC com outras cores.
+
+VALIDAÇÃO (honesta)
+Testado com sondas automáticas no Godot 4.7 (renderizador por software, sem GPU, sem áudio): sem erros de script,
+fluxo pescar/vender/comprar/salvar, capturas de tela de cada novidade. NÃO testado: Forward+ de verdade (brilho/SSAO),
+som, jogo por uma pessoa, FPS real em placa de vídeo, carregar o save depois de fechar e abrir o jogo.
+As sondas ficam em ferramentas/sondas (veja o LEIA-ME de lá).
+
+--- HISTÓRICO DAS VERSÕES ANTERIORES ---
+
+PESCADOR — Versão 0.3.15D (Godot 4)
+Correção de entrada dos portos e farol da baía. Consulte docs/CORRECAO_PORTOS_v0.3.15D.txt.
+
+PESCADOR — Versão 0.3.15 (projeto Godot 4)
+================================================
+
+NOVIDADES V0.3.15 — MUNDO E ILHAS
+- Relevo da Vila do Porto: pequenas ravinas, costão mais rochoso na face oposta à vila,
+  transição para praias baixas no lado portuário e recife novo no litoral.
+- Vila: trilhas curtas de acesso às casas, plataforma próxima ao cais,
+  defensas, canoas em seco, suportes de redes e iluminação costeira.
+- Mirante discreto na dorsal com cerca de madeira e trilha visual.
+- Carta náutica: marcadores do mirante e do Recife das Tainhas; os nomes aparecem com zoom.
+- Vegetação: coqueiros e árvores nativas distribuídos por manchas e altitude,
+  respeitando áreas de edificações, caminhos e declividades.
+- Shader do solo: gradientes de areia úmida e áreas rasas corrigidos.
+- Mantidos todos os sistemas e controles da 0.3.14, inclusive a Ilha Rata sem farol.
+
+TESTE RÁPIDO V0.3.15
+1. Da posição inicial, navegue até a Vila do Porto e compare a faixa de praia
+   e a transição das encostas, especialmente na face oposta à vila.
+2. Aproxime-se do cais e procure canoas em seco, redes, iluminação e ruas.
+3. Pressione M e use a roda do mouse para ver os pontos de interesse.
+4. Confirme que o cais ainda permite atracação e saída com E.
+5. Verifique na Ilha Rata que o farol continua ausente.
+
+VALIDAÇÃO
+Arquivos alterados e integridade dos ZIPs conferidos estaticamente.
+Não foi possível compilar ou executar o projeto: o Godot não está instalado.
+Veja docs/MUNDO_E_ILHAS_v0.3.15.txt.
+
+--- HISTÓRICO DAS VERSÕES ANTERIORES ---
+
+PESCADOR — Histórico v0.3.14 (projeto Godot 4)
 ================================================
 
 Este ZIP é um projeto Godot COMPLETO, não apenas um cenário.
-Inclui o barco pesqueiro PE-3476 v3 com motor visível e a
+Inclui o barco pesqueiro PE-3476 com motor visível e a
 água pintada/animada que construímos anteriormente.
+
+NOVIDADES V0.3.14 — OCEANO E FÍSICA DO BARCO
+- Ondas cruzadas adicionais que crescem com a agitação; altura e tempo sincronizados entre shader e barco.
+- Normais de onda atualizadas também nas faixas de transição costeira.
+- Transições de espuma corrigidas: cristas, costa, sombra sob o casco e onda de proa.
+- Espuma de proa proporcional à velocidade e ao impacto das ondas; três pontos de respingo ligados ao casco.
+- Esteira gerada por distância percorrida, com manchas alongadas que se dissipam.
+- Deriva lateral suave em curvas e sob vento; perda moderada de velocidade ao navegar contra as ondas.
+- Mantidos K (clima), F6 (estado do mar), F7 (teste temporal), L (luz), M (carta náutica) e salvamento.
+
+TESTE RÁPIDO
+1. Comece uma viagem e aproxime-se da Vila do Porto: ondas menores perto da costa.
+2. Navegue para o mar aberto: maior altura das ondas e mudança nos reflexos.
+3. Pressione F6 para comparar estados e F7 para ligar uma tempestade.
+4. Acelere e vire o leme: observe a deriva e a esteira nas curvas.
+5. Tente navegar contra as ondas; verifique os respingos na proa.
+6. Verifique K, L, M e se o jogo continua salvando.
+
+VALIDAÇÃO
+Verificações estáticas e 2.000 comparações numéricas das funções de ondas passaram.
+Não foi possível compilar os scripts nem testar o renderizador neste ambiente: o Godot não está instalado.
+Veja docs/ONDAS_E_FISICA_v0.3.14.txt para detalhes.
 
 ABRIR
 1. Extraia o ZIP em uma pasta (ex.: Documentos/MarAberto).
@@ -20,10 +119,14 @@ ESPAÇO          = frear o barco
 F               = lançar linha / capturar após fisgada
 C               = trocar a distância da câmera
 R               = reiniciar viagem (pressione duas vezes para confirmar)
+F6              = alternar o estado do mar (automático, calmaria, moderado, agitado e temporal)
 ESC             = pausar e retomar pelo menu
-M               = ligar e desligar o som
+M               = abrir/fechar carta cartográfica (o mudo permanece no menu de som)
+L               = ligar/desligar a luz do barco
+K               = alternar clima: automático, ensolarado, nublado, chuva, tempestade
+F7              = alternar tempestade de teste
 E               = atracar no cais / zarpar
-T               = alternar entre pôr do sol e dia claro
+T               = avançar três horas no relógio do jogo
 Botão direito   = segurar e arrastar o mouse gira a câmera em volta do barco (e sobe/desce)
 Z / X           = girar a câmera pelo teclado
 V               = câmera de volta para trás da popa (ou clique com a roda do mouse)
@@ -228,7 +331,7 @@ SONS
   e de tom com a velocidade; a água no casco aparece ao navegar.
 MENU DE VOLUME (na tela inicial e na pausa: ESC ou o botão da engrenagem)
 - Quatro controles: Geral, Mar e vento, Motor e casco, Efeitos. Mudam na hora, enquanto você arrasta.
-- "Silenciar tudo" faz o mesmo que a tecla M.
+- "Silenciar tudo" atua só pelo botão do menu de som.
 - As escolhas ficam guardadas (user://mar_aberto.cfg) e voltam na próxima vez que abrir o jogo.
 CÂMERA
 - Segure o botão direito do mouse e arraste: a câmera gira em volta do barco; para cima e para baixo
@@ -347,3 +450,129 @@ VERSÃO 0.3.6 - 16/11/2026 — TEXTURAS PINTADAS (SPRITECOOK) E VISUAL MAIS "PIN
 - Tudo mais fosco: chão, casas, telhados e barco quase sem brilho e com relevo fraco, como pintura.
 - Luz: sombras azul-arroxeadas em vez de cinza, sol um pouco mais quente.
 - Ainda com as texturas antigas (feitas por código): rede, bandeira, matrícula, coqueiros, moitas, o mar e o céu.
+
+
+PESCADOR v0.3.7 — MAR DINÂMICO
+--------------------------------
+- Ondas longas agrupadas em séries e marolas curtas seguindo a direção do vento.
+- O estado do mar varia em ciclos lentos; F6 alterna cinco perfis para comparar.
+- A água e o barco usam a mesma equação de altura. O barco acompanha proa, popa e bordos.
+- Mar agitado aumenta espuma e respingos, altera o som do vento e faz a esteira se dissipar.
+- Corrente fraca desloca o barco; a checagem da costa permanece ativa.
+- As cores e o ciclo dia/noite existentes foram preservados.
+- Ajustes em scripts/oceano.gd: VALORES (perfil), _altura, _velocidade.
+- Não há física de fluidos completa nem previsão meteorológica.
+
+
+VERSÃO 0.3.8 — ONDAS VISÍVEIS E VENTO MAIS DISCRETO — 17/11/2026
+- Relevo da água aproximadamente 3x mais pronunciado em mar moderado; ondas
+  cruzadas de comprimento suficiente para aparecerem de fato na malha.
+- A malha do oceano usa mais subdivisões (599x599, cerca de 6,7 m por célula).
+- Cristas turquesa, vales escuros e pequenas faixas de espuma nas ondas mais altas.
+- O barco continua calculando a altura pela mesma fórmula do shader.
+- Vento não é mais contínuo e alto: rajadas de 6-11 s, com pausas normalmente
+  de 20-45 s, ataque e decaimento suaves e nível máximo reduzido.
+- F6 alterna os perfis: automático > calmaria > moderado > agitado > temporal.
+- Para VER as ondas claramente: F6 três vezes, a partir do modo automático,
+  até MAR AGITADO. Use V para centralizar e rode a câmera para perto da água.
+- Não foi possível validar visualmente no editor Godot neste ambiente.
+
+VERSÃO 0.3.9 — SHADERS, SONS E ILHAS — 17/11/2026
+- Melhorias nos shaders da água, céu e terreno; reflexos do sol, luz em águas rasas,
+  cirros, rochas com fissuras e melhor profundidade visual de encostas.
+- Ilha principal (Vila do Porto) recebe espigões e ravinas, preservando o cais.
+- Ilha Rata fica sem o farol; o posto, cais e serviços continuam existentes.
+- Ambiente sonoro reequilibrado: mar com dinâmica lenta, vento baixo e mais espaçado,
+  arrebentação predominante junto à costa e novos tratamentos dos áudios originais.
+- Detalhes: docs/SHADERS_SONS_ILHAS_v0.3.9.txt.
+- Ainda requer validação visual e sonora dentro do Godot 4.3+.
+
+
+PESCADOR 0.3.11 — RECONSTRUÇÃO DA VILA, PEIXES E CARDUMES
+
+Projeto derivado da versão 0.3.10, mantendo o sistema de pesca,
+salvamento, comércio, carta náutica (M), clima e o comportamento do mar.
+
+1. NOVA ILHA PRINCIPAL
+- Novo campo de alturas exclusivo da Vila do Porto, com serra arredondada e
+  recuada, duas colinas pequenas, encostas sem picos piramidais e enseada.
+- Faixa da vila suavizada para alojar ruas, praças e casas mais coerentes.
+- Cais, postos de diesel, loja e farol principal preservados.
+- Ilha Rata mantém sua geração separada, posto isolado e farol desativado.
+
+2. VILA REORGANIZADA
+- Rua de chegada ao cais, rua costeira, caminho do interior e praça com bancos.
+- Novas posições de casinhas agrupadas (com verificação da altura e declive).
+- Galpão de pescadores, mercado e capela reorganizados.
+
+3. PEIXES E INVENTÁRIO
+- Nove sprites individuais para o porão e nove texturas top-down para o mar:
+  sardinha, tainha, xaréu, cavala, barracuda, dourado, atum,
+  olho-de-cão e garoupa.
+- Texturas por espécie, sem identificação genérica para todos os cardumes.
+- O porão recebeu forro de madeira naval, casas com acabamento metálico
+  e imagens próprias dos peixes nas casas que ocupam.
+- Os peixes podem continuar sendo reposicionados/rotacionados com os controles já existentes.
+
+4. CARDUMES
+- Substituído o movimento circular por um modelo local de alinhamento,
+  coesão e separação entre indivíduos.
+- Pequenas variações de velocidade e rumo, afastamento do barco e da costa.
+- Os peixes seguem o relevo das ondas já implementado.
+
+5. VEGETAÇÃO
+- Três silhuetas de coqueiro, com curvatura, altura e folhagem diferentes.
+- Árvores nativas de copa em volumes assimétricos no interior da ilha.
+- Distribuição limitada pela inclinação do terreno e pela ocupação da vila.
+
+TESTES
+- Verificação estática de arquivos, imagens, caminhos e integridade do ZIP.
+- O projeto não foi executado no Godot neste ambiente. Os shaders, a aparência
+  final, a navegação e o input devem ser validados no editor Godot 4.3+.
+
+COMANDOS
+- M: abre/fecha a carta náutica (preservado da versão 0.3.10).
+- Ícone de caixa: abre o porão com as novas imagens dos peixes.
+- R (no porão, segurando um peixe): gira a peça.
+- F6: alterna estados do mar, como na versão anterior.
+
+
+ATUALIZAÇÃO 0.3.12
+- Cardumes surgem em faixas adequadas à distância costeira e são reciclados após dispersão,
+  expiração ou deslocamento distante, com tempo de recuperação local.
+- Baleias ocasionais são geradas em águas profundas (não pescáveis), com borrifos superficiais.
+- Tempestades automáticas alteram ondas, iluminação e névoa. F7 aciona um teste imediato.
+- Costas oferecem água protegida; no oceano aberto, ondulação mais acentuada.
+- Tecla L controla a luz do barco. A escolha é guardada no salvamento.
+- Tecla K alterna o clima; o modo automático recupera o ciclo meteorológico natural.
+- O modo climático selecionado também é persistido no salvamento.
+
+
+ATUALIZAÇÃO 0.3.13 — CARTA, OFICINA, MAR E ÁUDIO
+------------------------------------------------
+1) CARTA NÁUTICA: M abre/fecha. Cabeçalho e rodapé separados,
+   coordenadas métricas locais, ilhas em escala uniforme, contorno das
+   encostas, águas rasas, cais, barco, bússola e escala real.
+   Roda do mouse = zoom; botão direito arrastar = mover; duplo clique = centralizar.
+2) OFICINA DO CAIS: 4 novas melhorias com dois níveis cada: 
+   [7] Estabilizadores (reduz balanço), [8] Leme (maior giro),
+   [9] Hélice (aceleração e eficiência), [0] Radar (150/225/320 m).
+   Itens persistem no salvamento. Loja em duas colunas; tecla 3-6 preservada.
+3) ÁGUA/CASCO: amostragem de 9 pontos e molas amortecidas para
+   subida/descida, arfagem e adernamento; inércia ao leme e resistência
+   proporcional à agitação local do mar. Navegação arcade preservada.
+4) ÁUDIO: substituídos os 8 arquivos originais pelos novos áudios
+   de mar, vento, casco, motor, arrebentação e pesca; adicionados chuva
+   e trovão com volume reativo ao clima. Vento mantém rajadas espaçadas.
+
+ATENÇÃO: conferência estática/ZIP apenas. Render, física e som devem ser
+ensaiados no Godot 4.3+ antes de considerar a versão final validada.
+
+============================================================
+NOVIDADES v0.3.17 (base v0.3.16)
+============================================================
+F3: FPS; F4: diagnóstico; F10: qualidade gráfica/limite de FPS.
+J: alternar técnica de recolhimento; U: reforçar a linha na oficina.
+M: carta náutica; clique esquerdo marca destino, Shift+clique remove.
+Novos animais costeiros e barcos/pescadores decorativos nos portos.
+Consulte docs/PESCADOR_v0.3.17_ATUALIZACAO_INTEGRADA.txt.

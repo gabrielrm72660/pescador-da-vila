@@ -1,0 +1,44 @@
+PESCADOR v0.3.16 — NAVEGAÇÃO, PESCA, ECONOMIA E EXPLORAÇÃO
+Base: v0.3.15F (mantém baía, porto, farol na serra, baleias e clima).
+
+1) NAVEGAÇÃO E SEGURANÇA
+- O barco verifica a colisão em cinco pontos do casco, incluindo proa e popa.
+- Aproximar-se de águas rasas reduz a velocidade admissível.
+- Recifes também provocam risco de encalhamento; navegue devagar.
+- A entrada da baía e a atracação na Vila do Porto continuam como antes.
+
+2) PESCA AMPLIADA
+- B alterna iscas: Comum (ilimitada), Camarão e Lula (consumíveis).
+- N alterna a profundidade: Superfície, Meia-água, Fundo.
+- Cada espécie tem afinidade com isca e camada de água.
+- Durante o minijogo F, existe tensão da linha, exibida em barra colorida.
+- Puxadas consecutivas elevam a tensão; espere baixar para evitar ruptura.
+- No cais, Q ou botão compra kit de 6 camarões + 3 lulas por R$ 25.
+- A melhoria de Vara antiga continua ampliando a facilidade de captura.
+
+3) ECONOMIA E ENCOMENDAS
+- Preço de peixe varia suavemente com espécie e hora do jogo (faixa +-18%).
+- O porto exibe a encomenda atual; entregue todos os peixes solicitados de
+  uma vez para ganhar bônus de contrato. A próxima encomenda aparece após a entrega.
+- Bônus comercial da Ilha Rata e da Ilha das Conchas é preservado.
+- Dinheiro, pedidos concluídos, iscas e descobertas são persistidos no save JSON.
+
+4) ECOLOGIA E EXPLORAÇÃO
+- Novos pontos físicos: Recife do Leste e Pedras do Norte (rasos navegáveis com risco).
+- Novo Banco das Cavalas (ponto submarino, profundidade moderada).
+- Cardumes priorizam espécies diferentes perto dos recifes e do banco.
+- Explorar essas áreas pela primeira vez dá R$ 25.
+- Nova Ilha das Conchas com pequeno cais, combustível e preço de venda próprio.
+- O shader costeiro aceita três ilhas sem perder a baía nem a Ilha Rata.
+- A carta náutica passa a mostrar os novos pontos e ampliar a escala para incluí-los.
+- Três missões foram acrescentadas após as missões anteriores.
+
+5) COMPATIBILIDADE
+- Os antigos saves continuam reconhecidos. Campos novos têm valores padrão.
+- Foram preservados F para pescar, E para atracar, M mapa, L luz, K clima,
+  F6 mar, F7 tempestade, F8 baleia, além de 1..0 para serviços e melhorias.
+
+VERIFICAÇÃO
+- Integridade do ZIP e checagens estáticas do código podem ser executadas aqui.
+- A compilação/execução no Godot 4.3+ e testes gráficos devem ser feitos no PC,
+  porque o editor Godot não está instalado neste ambiente.

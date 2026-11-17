@@ -84,14 +84,14 @@ func cabe(especie: String) -> bool:
     return ok
 
 ## Guarda um peixe; arruma o porão se for preciso. Falso = não coube.
-func guardar(especie: String, peso: float) -> bool:
+func guardar(especie: String, peso: float, qualidade: String = "Regular") -> bool:
     var lugar := achar_lugar(especie)
     if lugar.is_empty():
         arrumar()
         lugar = achar_lugar(especie)
         if lugar.is_empty():
             return false
-    itens.append({"especie": especie, "peso": peso, "x": lugar.x, "y": lugar.y, "rot": lugar.rot})
+    itens.append({"especie": especie, "peso": peso, "qualidade": qualidade, "x": lugar.x, "y": lugar.y, "rot": lugar.rot})
     mudou.emit()
     return true
 

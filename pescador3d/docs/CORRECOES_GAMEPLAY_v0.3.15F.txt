@@ -1,0 +1,18 @@
+PESCADOR v0.3.15F — Correções após análise da gameplay de 41,8 segundos
+
+Base: v0.3.15E (Baía do Porto + Farol da Serra + Fauna aprimorada).
+
+1. Ondas: amplitude total reduzida para impedir que cristas encubram a cabine em tempestades; mantida a transição costa/mar aberto.
+2. Flutuabilidade: mola vertical criticamente amortecida e reserva de borda livre nas cristas; suporte médio de nove pontos da água.
+3. Motor: aceleração inicial e resposta progressiva do acelerador, inclusive após melhorias de hélice.
+4. Espuma: atenuação do branco nas cristas e do efeito contínuo de espuma profunda. Espuma local de casco e esteira preservadas.
+5. Chuva: gotas mais curtas, discretas e espalhadas.
+
+Verificar no Godot:
+- F6 / F7 e K: tempestade em alto-mar, acompanhando borda livre e arfagem do PE-3476.
+- Partida parado até velocidade de cruzeiro: progressão suave.
+- Espuma diante da proa, esteira atrás do barco e cristas brancas menos intensas.
+- Chuva leve e forte, tanto na visão atrás do barco quanto próxima da cabine.
+- Acessar a Baía do Porto e checar que o farol continua na serra.
+
+Nota: alterações verificadas estaticamente; execução GPU e compilação Godot devem ser testadas no editor.

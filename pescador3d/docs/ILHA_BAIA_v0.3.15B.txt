@@ -1,0 +1,13 @@
+PESCADOR v0.3.15B — Ilha principal com baía e porto interno
+
+Alterações principais:
+- Ilha principal ampliada (raio base maior).
+- Relevo redesenhado para formar uma baía ampla e protegida na face da Vila do Porto.
+- Cais reposicionado para dentro da baía.
+- Dique portuário curvo adicionado junto ao porto.
+- Vila reorganizada com praça e moradias mais distribuídas ao redor da baía.
+- Marcador novo na carta náutica: Baía do Porto.
+
+Arquivos alterados:
+- scripts/ilha.gd
+- scripts/jogo.gd

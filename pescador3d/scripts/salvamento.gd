@@ -15,10 +15,19 @@ static func apagar() -> void:
 static func salvar(jogo: Node) -> bool:
     var peixes: Array = []
     for item in jogo.porao.itens:
-        peixes.append({"especie": item.especie, "peso": item.peso, "x": item.x, "y": item.y, "rot": item.rot})
+        peixes.append({"especie": item.especie, "peso": item.peso, "qualidade": item.get("qualidade", "Regular"), "x": item.x, "y": item.y, "rot": item.rot})
     var dados := {
         "versao": VERSAO, "dinheiro": jogo.dinheiro, "hora": jogo.clima.hora,
         "objetivo_cumprido": jogo.objetivo_cumprido, "ja_vendeu": jogo.ja_vendeu, "num_peixes": jogo.pesca.num_peixes,
+        "luz_ligada": jogo.luz_ligada, "clima_modo": jogo.clima.modo_clima,
+        "isca": jogo.pesca.tipo_isca, "profundidade": jogo.pesca.profundidade,
+        "iscas_camarao": jogo.pesca.iscas_camarao, "iscas_lula": jogo.pesca.iscas_lula,
+        "linha_nivel": jogo.pesca.linha_nivel, "desgaste_linha": jogo.pesca.desgaste_linha, "tecnica": jogo.pesca.tecnica,
+        "destino_ativo": jogo.interface.mapa.tem_marcador,
+        "destino_x": jogo.interface.mapa.marcador.x, "destino_z": jogo.interface.mapa.marcador.y,
+        "contrato_indice": jogo.economia.indice,
+        "contratos_concluidos": jogo.economia.contratos_concluidos,
+        "explorados": jogo.explorados.duplicate(),
         "missao": jogo.missoes.indice, "missao_progresso": jogo.missoes.progresso,
         "melhorias": jogo.melhorias.nivel.duplicate(),
         "barco": {"x": jogo.barco.global_position.x, "z": jogo.barco.global_position.z, "giro": jogo.barco.rotation.y,
@@ -43,7 +52,22 @@ static func carregar(jogo: Node) -> bool:
     jogo.clima.hora = fposmod(float(d.get("hora", jogo.clima.HORA_INICIAL)), 24.0)
     jogo.objetivo_cumprido = bool(d.get("objetivo_cumprido", false))
     jogo.ja_vendeu = bool(d.get("ja_vendeu", false))
+    jogo.luz_ligada = bool(d.get("luz_ligada", true))
+    jogo.clima.definir_clima(int(d.get("clima_modo", 0)))
     jogo.pesca.num_peixes = maxi(0, int(d.get("num_peixes", 0)))
+    jogo.pesca.tipo_isca = clampi(int(d.get("isca", 0)), 0, jogo.pesca.ISCAS.size() - 1)
+    jogo.pesca.profundidade = clampi(int(d.get("profundidade", 1)), 0, jogo.pesca.PROFUNDIDADES.size() - 1)
+    jogo.pesca.iscas_camarao = maxi(0, int(d.get("iscas_camarao", 6)))
+    jogo.pesca.iscas_lula = maxi(0, int(d.get("iscas_lula", 4)))
+    jogo.pesca.linha_nivel = clampi(int(d.get("linha_nivel", 0)), 0, 3)
+    jogo.pesca.desgaste_linha = clampf(float(d.get("desgaste_linha", 0.0)), 0.0, 1.0)
+    jogo.pesca.tecnica = clampi(int(d.get("tecnica", 1)), 0, 2)
+    jogo.interface.mapa.tem_marcador = bool(d.get("destino_ativo", false))
+    jogo.interface.mapa.marcador = Vector2(float(d.get("destino_x", 0.0)), float(d.get("destino_z", 0.0)))
+    jogo.economia.indice = maxi(0, int(d.get("contrato_indice", 0)))
+    jogo.economia.contratos_concluidos = maxi(0, int(d.get("contratos_concluidos", 0)))
+    var descobertas = d.get("explorados", {})
+    jogo.explorados = descobertas.duplicate() if typeof(descobertas) == TYPE_DICTIONARY else {}
     if d.has("missao"):
         jogo.missoes.indice = clampi(int(d.missao), 0, jogo.missoes.LISTA.size())
         jogo.missoes.progresso = maxi(0, int(d.get("missao_progresso", 0)))
@@ -54,7 +78,7 @@ static func carregar(jogo: Node) -> bool:
     if typeof(niveis) == TYPE_DICTIONARY:
         for id in jogo.melhorias.ORDEM:
             jogo.melhorias.nivel[id] = clampi(int(niveis.get(id, 0)), 0, jogo.melhorias.TABELA[id].niveis.size() - 1)
-    jogo.melhorias.aplicar(jogo.barco, jogo.porao, jogo.pesca)
+    jogo.melhorias.aplicar(jogo.barco, jogo.porao, jogo.pesca, jogo.interface.hud)
     var b = d.get("barco", {})
     if typeof(b) == TYPE_DICTIONARY:
         var pos := Vector3(float(b.get("x", 0.0)), 0.0, float(b.get("z", 0.0)))
@@ -71,11 +95,11 @@ static func carregar(jogo: Node) -> bool:
         for p in peixes:
             if typeof(p) != TYPE_DICTIONARY or not jogo.porao.FORMAS.has(p.get("especie", "")):
                 continue
-            var item := {"especie": str(p.especie), "peso": maxf(0.1, float(p.get("peso", 1.0))), "x": int(p.get("x", 0)), "y": int(p.get("y", 0)), "rot": posmod(int(p.get("rot", 0)), 4)}
+            var item := {"especie": str(p.especie), "peso": maxf(0.1, float(p.get("peso", 1.0))), "qualidade": String(p.get("qualidade", "Regular")), "x": int(p.get("x", 0)), "y": int(p.get("y", 0)), "rot": posmod(int(p.get("rot", 0)), 4)}
             if jogo.porao.cabe_em(item.especie, item.x, item.y, item.rot):
                 jogo.porao.itens.append(item)
             else:
-                jogo.porao.guardar(item.especie, item.peso)          # não cabe onde estava: procura outro lugar
+                jogo.porao.guardar(item.especie, item.peso, item.qualidade)          # não cabe onde estava: procura outro lugar
     jogo.porao.mudou.emit()
     jogo.clima.atualizar()
     return true

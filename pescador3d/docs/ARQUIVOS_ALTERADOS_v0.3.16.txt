@@ -1,0 +1,18 @@
+PESCADOR v0.3.16 — ARQUIVOS ADICIONADOS E MODIFICADOS
+
+project.godot
+shaders/oceano_pintado.gdshader
+scripts/economia.gd
+scripts/barco.gd
+scripts/recifes.gd
+scripts/oceano.gd
+scripts/missoes.gd
+scripts/mapa_cartografico.gd
+scripts/salvamento.gd
+scripts/cardumes.gd
+scripts/ilha.gd
+scripts/hud.gd
+scripts/interface.gd
+scripts/pesca.gd
+scripts/jogo.gd
+docs/NOVIDADES_v0.3.16.txt

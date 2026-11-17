@@ -47,6 +47,13 @@ void sky() {
         vec3 cor_nuvem = mix(cor_nuvem_luz, cor_nuvem_sombra, miolo * 0.75);
         cor_nuvem = mix(cor_nuvem, cor_sol, pow(para_o_sol, 4.0) * 0.55); // perto do sol elas acendem
         cor = mix(cor, cor_nuvem, nuvem * 0.88);
+        // Cirros altos finos, em escala diferente das nuvens baixas.
+        vec2 uv_cirro = d.xz / (d.y + 0.35);
+        float cirro_a = texture(tex_nuvens, uv_cirro * 0.31 + vec2(TIME * 0.00065, TIME * 0.00031)).r;
+        float cirro_b = texture(tex_nuvens, uv_cirro * 0.56 - vec2(TIME * 0.00043, 0.0)).r;
+        float cirros = smoothstep(0.64, 0.86, cirro_a * 0.70 + cirro_b * 0.30);
+        cirros *= smoothstep(0.03, 0.21, d.y) * (1.0 - nuvem * 0.55);
+        cor = mix(cor, mix(cor_nuvem_luz, cor_sol, pow(para_o_sol, 4.0) * 0.4), cirros * quantidade_nuvens * 0.22);
 
         // faixas de nuvens baixas, deitadas sobre o horizonte (as que mais aparecem do barco)
         float az = atan(d.x, d.z) / 6.2831853;

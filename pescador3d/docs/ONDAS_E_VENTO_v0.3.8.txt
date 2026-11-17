@@ -1,0 +1,32 @@
+PESCADOR v0.3.8 — CORREÇÃO DE ONDAS E RAJADAS DE VENTO
+
+MOTIVO DA CORREÇÃO
+Na v0.3.7 o mar automático deslocava a geometria apenas cerca de 0,4 m.
+Com câmera acima do barco e malha de 10 m por quadrícula, as ondas quase
+não apareciam, embora o shader calculasse a ondulação.
+
+ALTERAÇÕES
+- Novos valores de altura do mar e ondas mais visíveis e coerentes.
+- Fórmulas de onda atualizadas igualmente no GDScript e no shader, de modo
+  que o balanço do barco continue sincronizado com a superfície.
+- Malha 599x599 (antes 399x399): quadras de ~6,7 m (antes 10 m).
+- Sombras nos vales, faixas iluminadas nas cristas, espuma mais nítida em
+  estado agitado. Textura de marolas finas permanece no shader.
+- Vento de fundo quase inaudível (-60 dB), com rajadas de volume
+  entre aproximadamente -41 e -29 dB (antes -20 a -7 dB, contínuo).
+- Cada rajada dura 6-11 segundos, com transições suaves de volume,
+  e pausas de 20-45 segundos (um pouco menores em temporal).
+- Sons de mar, casco, motor e efeitos não foram substituídos.
+
+TESTE
+1. Extraia o ZIP e importe project.godot no Godot 4.3+.
+2. F5, inicie a viagem e observe as ondas passando ao redor do barco.
+3. F6 três vezes a partir de automático: MAR AGITADO.
+4. F6 outra vez: TEMPORAL. Compare volume das ondas e balanço do casco.
+5. Ouça por pelo menos 1 minuto: rajadas de vento devem ser baixas
+   e separadas por pausas claras.
+6. Caso o PC fique lento, diminua a malha para 499x499 na cena Jogo.tscn.
+
+LIMITAÇÕES
+Revisão estática do shader/GDScript; não foi renderizado nem executado no
+Godot neste ambiente. As alturas são aproximações artísticas, não físicas.

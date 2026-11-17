@@ -1,0 +1,23 @@
+SONDAS DE TESTE (Godot 4.7)
+Scripts que abrem o jogo sozinhos, tiram fotos (res://_NOME.png) e imprimem medidas no console.
+Rodar, a partir da pasta do projeto (precisa de uma janela; em servidor sem tela, use xvfb-run):
+
+  godot --path . --rendering-method gl_compatibility --resolution 1280x720 --fixed-fps 10 --script res://ferramentas/sondas/sonda2.gd
+
+Variáveis úteis: PESCADOR_SEM_AUTO=1 (desliga o ajuste automático de qualidade),
+PESCADOR_QUALIDADE=0|1|2 (fixa Baixa/Média/Alta), PESCADOR_DIAG=1 (resumo da junção de malhas).
+
+sonda.gd / sonda2.gd  jogo completo: pesca, venda, compras, salvar e carregar
+sonda3.gd             cardumes de dia e de noite
+perf.gd, draws.gd     custo por quadro e chamadas de desenho nas três qualidades
+mar.gd                mar nas três qualidades (alta, média, baixa)
+cais.gd, trilha.gd    cais novo, partida do barco, trilhas e calçada
+radar.gd              radar como minimapa
+farol.gd              farol à noite (feixe visível girando)
+boias.gd              boias da entrada da baía e barcos NPC
+fauna.gd              golfinho, tartaruga e gaivota
+fundo.gd              profundidade da água (rasa na costa, funda no mar aberto)
+bat.gd                batimetria / profundidade perto das ilhas
+fino.gd               acha objetos altos e finos na cena
+perf2.gd, tris.gd     quem custa quantas chamadas de desenho e triângulos
+modelo.gd             lista as peças e os materiais do modelo do barco

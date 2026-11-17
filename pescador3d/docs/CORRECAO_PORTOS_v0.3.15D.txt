@@ -1,0 +1,15 @@
+PESCADOR v0.3.15D — CORREÇÃO DOS PORTOS E FAROL
+
+Base: v0.3.15C (inclui ilha maior e baía da v0.3.15B).
+
+1. O dique de 40 m que bloqueava visualmente a entrada da Vila do Porto foi removido.
+2. No seu lugar, existe apenas um pequeno esporão de 13 m na ponta lateral da baía, a grande distância do canal e do cais.
+3. Ilha Rata voltou a usar um cais de ilha pequena; não recebe dique e permanece sem farol.
+4. O farol da ilha principal foi transferido para uma elevação junto à entrada da baía, fora da área navegável.
+5. A carta náutica marca o Farol da Baía.
+6. Mantidas rotas comerciais, atracação, luz do cais e sistemas do barco.
+
+TESTE SUGERIDO
+Navegue até a Baía do Porto, aproxime-se pelo eixo central, chegue pela lateral do cais e pressione E. Verifique também o cais da Ilha Rata e o farol na margem da baía.
+
+NOTA: Godot não está instalado neste ambiente; verificações estáticas não substituem execução e análise visual dentro do editor.

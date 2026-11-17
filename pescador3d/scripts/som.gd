@@ -1,5 +1,5 @@
 extends Node
-## Som do jogo: mar e vento sempre; motor e água no casco conforme a velocidade; uma onda quebrando de vez
+## Som do jogo: ressaca costeira, mar com respiracao lenta e vento em rajadas espaçadas; motor e água no casco conforme a velocidade; uma onda quebrando de vez
 ## em quando; efeitos da pesca. Quatro volumes (geral, ambiente, barco, efeitos), ajustados no menu e
 ## guardados em user://pescador.cfg. Os arquivos ficam em assets/sons/; se algum faltar, o jogo segue.
 
@@ -13,14 +13,24 @@ const NOME_GRUPO := {"geral": "Geral", "ambiente": "Mar e vento", "barco": "Moto
 const CANAL := {"geral": "Master", "ambiente": "Ambiente", "barco": "Barco", "efeitos": "Efeitos"}
 
 var barco: Node3D
+var oceano: Node3D
 var navegando: bool = false          # falso no menu e na pausa: o motor cala
 var volumes: Dictionary = {"geral": 0.8, "ambiente": 0.8, "barco": 0.8, "efeitos": 0.8}
 var _mar: AudioStreamPlayer
 var _vento: AudioStreamPlayer
 var _agua: AudioStreamPlayer
 var _motor: AudioStreamPlayer
+var _chuva: AudioStreamPlayer
 var _avulsos: Dictionary = {}
+var _proximo_trovao: float = 19.0
 var _prox_onda: float = 9.0
+var _tempo_ambiente: float = 0.0  # ciclo lento, evita volume de ambiente mecanicamente constante
+# O arquivo vento.ogg roda em laco, mas fica inaudivel entre rajadas.
+# Dessa maneira nao ha corte seco no meio do arquivo e o vento deixa de dominar o som.
+var _proxima_rajada: float = 15.0
+var _tempo_rajada: float = 0.0
+var _duracao_rajada: float = 0.0
+var _pico_rajada_db: float = -36.0
 
 func _ready() -> void:
     for grupo in GRUPOS:                                     # um canal de áudio por grupo, todos saindo no geral
@@ -30,11 +40,15 @@ func _ready() -> void:
             AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
     _carregar_config()
     barco = get_node_or_null("../Barco")
-    _mar = _laco("mar", -10.0, "ambiente")
-    _vento = _laco("vento", -19.0, "ambiente")
+    oceano = get_node_or_null("../Oceano")
+    _mar = _laco("mar", -14.0, "ambiente")
+    _vento = _laco("vento", -60.0, "ambiente")
+    _proxima_rajada = randf_range(12.0, 25.0)
     _agua = _laco("agua_casco", -60.0, "barco")
     _motor = _laco("motor_diesel", -60.0, "barco")
-    for nome in ["onda"]:
+    _chuva = _laco("chuva", -60.0, "ambiente")
+    _proximo_trovao = randf_range(18.0, 36.0)
+    for nome in ["onda", "trovao"]:
         _guardar_avulso(nome, "ambiente")
     for nome in ["pesca_lancar", "aviso", "peixe"]:
         _guardar_avulso(nome, "efeitos")
@@ -87,7 +101,7 @@ func definir_volume(grupo: String, valor: float, guardar: bool = true) -> void:
     if grupo != "geral":
         AudioServer.set_bus_mute(canal, volumes[grupo] <= 0.0)
     elif volumes[grupo] > 0.0 and guardar:
-        AudioServer.set_bus_mute(canal, false)               # mexer no geral tira o mudo da tecla M
+        AudioServer.set_bus_mute(canal, false)               # mexer no geral tira o mudo geral
     if guardar:
         _salvar_config()
         volumes_mudaram.emit()
@@ -124,20 +138,75 @@ func _process(delta: float) -> void:
     var fracao: float = 0.0
     if barco != null:
         fracao = clampf(absf(barco.velocidade) / barco.velocidade_maxima, 0.0, 1.0)
-    var suave: float = 1.0 - exp(-4.0 * delta)
+    var mar_agitado: float = oceano.intensidade() if oceano != null and oceano.has_method("intensidade") else 0.0
+    _tempo_ambiente += delta
+    var proximidade_costa: float = 0.0
+    var mundo: Node = get_parent()
+    if barco != null and mundo.has_method("distancia_da_costa"):
+        var distancia: float = maxf(0.0, mundo.distancia_da_costa(barco.global_position))
+        proximidade_costa = 1.0 - smoothstep(30.0, 170.0, distancia)
+    var suave: float = 1.0 - exp(-2.5 * delta)
+    if _mar != null:
+        # O respiro das ondas e lento; pertinho da praia o ambiente cresce um pouco.
+        var ciclo: float = 0.68 * sin(_tempo_ambiente * 0.21) + 0.32 * sin(_tempo_ambiente * 0.37 + 1.2)
+        var alvo_mar: float = lerpf(-15.0, -10.0, mar_agitado) + 2.2 * proximidade_costa + 1.4 * ciclo
+        _mar.volume_db = lerpf(_mar.volume_db, alvo_mar, suave)
     if _motor != null:                                       # marcha lenta baixinha, acelera com o barco
         var com_diesel: bool = barco == null or barco.combustivel > 0.0        # sem combustível o motor cala
-        var alvo_motor: float = lerpf(-17.0, -5.0, fracao) if (navegando and com_diesel) else -60.0
+        var alvo_motor: float = lerpf(-18.0, -7.5, fracao) if (navegando and com_diesel) else -60.0
         _motor.volume_db = lerpf(_motor.volume_db, alvo_motor, suave)
         _motor.pitch_scale = lerpf(_motor.pitch_scale, 0.88 + 0.42 * fracao, suave)
     if _agua != null:                                        # água correndo pelo casco
-        var alvo_agua: float = lerpf(-24.0, 0.0, sqrt(fracao)) if fracao > 0.03 else -60.0
+        var alvo_agua: float = lerpf(-26.0, -10.5, sqrt(fracao)) if fracao > 0.03 else -60.0
+        alvo_agua += 2.0 * mar_agitado if fracao > 0.03 else 0.0
         _agua.volume_db = lerpf(_agua.volume_db, alvo_agua, suave)
-        _agua.pitch_scale = lerpf(_agua.pitch_scale, 0.9 + 0.2 * fracao, suave)
-    if _vento != null:                                       # mais vento no rosto quando corre
-        _vento.volume_db = lerpf(_vento.volume_db, lerpf(-19.0, -13.0, fracao), suave)
+        _agua.pitch_scale = lerpf(_agua.pitch_scale, 0.96 + 0.07 * fracao, suave)
+    if _vento != null:
+        # Rajadas calmas e intermitentes: 6 a 11 s, seguidas de 25 a 55 s de descanso.
+        # No temporal o descanso encurta um pouco, mas sem virar vento continuo.
+        var alvo_vento: float = -60.0
+        if _duracao_rajada > 0.0:
+            _tempo_rajada += delta
+            var entrada: float = smoothstep(0.0, 2.3, _tempo_rajada)
+            var saida: float = 1.0 - smoothstep(_duracao_rajada - 3.0, _duracao_rajada, _tempo_rajada)
+            var envelope: float = clampf(entrada * saida, 0.0, 1.0)
+            alvo_vento = lerpf(-60.0, _pico_rajada_db + 1.5 * fracao, envelope)
+            if _tempo_rajada >= _duracao_rajada:
+                _duracao_rajada = 0.0
+                _proxima_rajada = randf_range(25.0, 55.0) * lerpf(1.0, 0.72, mar_agitado)
+        else:
+            _proxima_rajada -= delta
+            if _proxima_rajada <= 0.0:
+                _tempo_rajada = 0.0
+                _duracao_rajada = randf_range(6.0, 11.0)
+                _pico_rajada_db = lerpf(-39.0, -30.0, mar_agitado) + randf_range(-2.0, 1.0)
+        _vento.volume_db = lerpf(_vento.volume_db, alvo_vento, 1.0 - exp(-5.0 * delta))
+
+    # Chuva e tempestade recebem trilhas separadas para não usar vento como chuva.
+    var chuva_forca: float = 0.0
+    var clima: Node = get_node_or_null("../Clima")
+    if clima != null:
+        if int(clima.modo_clima) == 3:
+            chuva_forca = 0.64
+        elif int(clima.modo_clima) == 4:
+            chuva_forca = 1.0
+    if oceano != null:
+        chuva_forca = maxf(chuva_forca, float(oceano.tempestade_nivel))
+    if _chuva != null:
+        var volume_chuva: float = lerpf(-60.0, -18.0, pow(chuva_forca, 1.3))
+        _chuva.volume_db = lerpf(_chuva.volume_db, volume_chuva, 1.0 - exp(-1.3 * delta))
+    if chuva_forca > 0.75:
+        _proximo_trovao -= delta
+        if _proximo_trovao <= 0.0:
+            tocar("trovao", randf_range(-22.0, -15.0), randf_range(0.82, 1.03))
+            _proximo_trovao = randf_range(18.0, 42.0)
+    else:
+        _proximo_trovao = maxf(_proximo_trovao, 10.0)
 
     _prox_onda -= delta
     if _prox_onda <= 0.0:
-        _prox_onda = randf_range(11.0, 26.0)
-        tocar("onda", randf_range(-22.0, -16.0), randf_range(0.8, 1.05))
+        # Rebentacao tem sentido junto da costa; alto-mar tem ondas largas, sem estalos constantes.
+        _prox_onda = randf_range(8.0, 17.0) * lerpf(1.0, 0.70, mar_agitado)
+        if proximidade_costa > 0.13:
+            var volume_onda: float = lerpf(-34.0, -21.0, proximidade_costa) + 2.0 * mar_agitado
+            tocar("onda", volume_onda + randf_range(-2.0, 1.0), randf_range(0.87, 1.04))

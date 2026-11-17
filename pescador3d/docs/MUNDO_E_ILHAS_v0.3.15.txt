@@ -1,0 +1,38 @@
+PESCADOR v0.3.15 — Mundo e Ilhas
+
+BASE: v0.3.14, mantida sem alterações no comportamento do barco, no clima, na pesca e no salvamento.
+
+GEOGRAFIA
+- Dois sulcos de erosão rasos na parte interna da Vila do Porto.
+- Costão rochoso na face oposta ao cais, transição gradual para praia nas zonas abrigadas.
+- Recife das Tainhas: elevação rasa e pequeno rochedo a sudeste da ilha principal.
+- A Ilha Rata permanece com o mesmo terreno, posto de pesca e sem farol.
+- O mar continua usando o mesmo campo de alturas do terreno para rasos e espuma.
+
+VILA
+- Acessos de terra às moradias desde as ruas existentes.
+- Reforço do cais: prancha de acesso e defensas.
+- Dois pontos de redes secando e até duas canoas coloridas em seco.
+- Postes de iluminação suave, integrados ao ciclo de dia/noite.
+- Mirante sobre a dorsal com cerca e trilha visual, sem missão interativa nesta versão.
+
+CARTA NÁUTICA
+- Marcadores da posição do recife e do mirante. Legendas após aproximar o zoom.
+- O mapa continua com coordenadas locais em metros.
+
+VEGETAÇÃO
+- Coqueiros selecionados por altitude, inclinação e manchas de vegetação.
+- Árvores nativas com distribuição mais agrupada, sem invadir edificações.
+
+CORREÇÃO VISUAL
+- Gradientes de areia molhada e águas rasas no shader do terreno agora têm limites em ordem crescente.
+
+VERIFICAÇÕES RECOMENDADAS NO GODOT
+- Testar atracação e colisão no cais, aspecto dos caminhos em terreno inclinado,
+  alinhamento das defensas e dos barcos em seco; comparar manhã/noite.
+- Verificar sombras e fps perto da Vila do Porto e renderização no modo chuva.
+
+LIMITAÇÕES
+- Os objetos portuários e o mirante são cenários estáticos, sem interação própria.
+- Não existe nova ilha completa: os novos rochedos e o recife pertencem à ilha principal.
+- A renderização não foi testada em Godot neste ambiente.

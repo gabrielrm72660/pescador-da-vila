@@ -20,10 +20,11 @@ TAMANHO = 1024
 DESTINOS = {
     "areia": (ILHA, None), "grama": (ILHA, None), "rocha": (ILHA, 2.2), "reboco": (ILHA, 1.0),
     "telhas": (ILHA, 2.6), "madeira": (ILHA, None),
+    "estaca": (ILHA, None), "trilha": (ILHA, None), "calcada": (ILHA, 1.6),
     "conves": (BARCO, 1.6), "madeira_escura": (BARCO, 1.2), "metal": (BARCO, 1.0), "corda": (BARCO, 2.4),
 }
 # desenhos com fileiras (telhas, tábuas, corda): dissolver uma faixa larga borraria as fileiras
-COM_FILEIRAS = {"telhas", "madeira", "conves", "madeira_escura", "corda", "tabuas_pintadas"}
+COM_FILEIRAS = {"estaca", "telhas", "madeira", "conves", "madeira_escura", "corda", "tabuas_pintadas"}
 # "tabuas_pintadas" é branca e vira todas as pinturas do barco, tingida com estas cores
 PINTURAS = {
     "casco_branco": (0.93, 0.90, 0.84), "casco_vermelho": (0.62, 0.19, 0.14), "pintura_azul": (0.18, 0.38, 0.60),
@@ -43,6 +44,18 @@ def fechar_emenda(img, faixa=96):
     tudo = lado[:n - faixa].copy()
     tudo[:faixa] = lado[n - faixa:] * (1 - t) + lado[:faixa] * t
     return np.clip(cv2.resize(tudo, (TAMANHO, TAMANHO), interpolation=cv2.INTER_LANCZOS4), 0, 255).astype(np.uint8)
+
+
+# ajustes de cor por textura: (saturacao, brilho). A trilha do SpriteCook vem laranja forte; no jogo ela
+# precisa combinar com a areia clara e a grama, entao e dessaturada.
+AJUSTES = {"trilha": (0.74, 1.0)}
+
+
+def ajustar_cor(img, saturacao, brilho):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float32)
+    hsv[..., 1] *= saturacao
+    hsv[..., 2] = np.clip(hsv[..., 2] * brilho, 0, 255)
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
 
 
 def emenda(img):
@@ -81,6 +94,8 @@ def preparar(origem):
             img = fechar_emenda(img, 20 if nome in COM_FILEIRAS else 96)
         elif img.shape[0] != TAMANHO:
             img = cv2.resize(img, (TAMANHO, TAMANHO), interpolation=cv2.INTER_AREA)
+        if nome in AJUSTES:
+            img = ajustar_cor(img, *AJUSTES[nome])
         print("%-16s emenda %.2f -> %.2f" % (nome, antes, emenda(img)))
         if nome == "tabuas_pintadas":
             for pintura, cor in PINTURAS.items():

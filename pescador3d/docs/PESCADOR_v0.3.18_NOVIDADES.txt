@@ -1,0 +1,28 @@
+PESCADOR 0.3.18 — NOVIDADES E MEDIDAS
+================================================
+
+1. Desempenho (medido em renderizador por software, que é um bom "PC fraco"; FPS real em GPU não foi medido)
+   Vista inicial, chamadas de desenho / triângulos:
+     0.3.17  Alta 960 / 4,0 M   Média 979 / 2,0 M   Baixa 557 / 0,27 M
+     0.3.18  Alta ~420 / 0,74 M  Média ~280 / 0,39 M  Baixa ~118 / 0,14 M
+   (a 0.3.18 inclui o cais novo, os barcos NPC e as boias, e a câmera agora olha a ilha)
+   O que mudou: mar sem sombra e em níveis de detalhe; junção de malhas por material (scripts/mesclador.gd);
+   Média com 2 faixas de sombra; ajuste automático de qualidade; mipmaps.
+
+2. Economia
+   Preço por kg (antes -> agora): Sardinha 6->8, Tainha 9->9, Xaréu 12->11, Cavala 15->12, Barracuda 18->12,
+   Dourado 26->15, Atum 34->13, Olho-de-cão 22->20, Garoupa 24->14.
+   Valor médio de um peixe (peso médio x preço): Sardinha 2, Tainha 14, Xaréu 41, Cavala 66, Barracuda 51,
+   Dourado 112, Atum 247 (antes 646), Garoupa 119 (antes 204), Olho-de-cão 20.
+   Melhorias (nível 1 / nível 2): Motor 130/340, Tanque 90/240, Porão 160/420, Vara 110/300, Estabilizadores 200/520,
+   Leme 150/400, Hélice 190/500, Radar 170/450. Linha: 90/190/350 (igual).
+   Encomendas: Tainha x3 R$70, Xaréu x2 R$90, Garoupa R$130, Cavala x2 R$120, Atum R$200.
+
+3. Mundo
+   Cais em T (scripts/ilha.gd, _criar_cais) com estacas de textura nova; o barco nasce no cais (Ilha.posicao_de_partida).
+   Boias da entrada da baía (scripts/boias.gd; posições em Ilha.posicoes_boias): IALA-B, vermelha a boreste.
+   Barcos NPC (scripts/vida_portuaria.gd + shaders/pintura_npc.gdshader): mesmo modelo PE3476_v4.glb, outra pintura.
+   Farol: cone aditivo "FeixeVisivel" girando com a lanterna (scripts/ilha.gd).
+   Profundidade do mar: shaders/oceano_pintado.gdshader (dist_costa, mar_aberto, plataforma).
+
+4. Texturas novas (SpriteCook, arte_original/): estaca, trilha de terra, calçada. Ajuste de cor em ferramentas/preparar_pintadas.py.

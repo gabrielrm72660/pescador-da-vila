@@ -1,0 +1,32 @@
+PESCADOR — MAR DINÂMICO — v0.3.7
+
+ESCOPO
+- Ondas longas e direcionais com agrupamento de cristas.
+- Altura e velocidade suaves, com vento e estado de mar variáveis.
+- Texturas de pequenas marolas arrastadas pelo vento.
+- Espuma em cristas, faixa dinâmica de arrebentação e rastro sob corrente.
+- Movimento do barco sobre 5 pontos da superfície, com inclinação, peso e deriva.
+- Sons existentes misturados de acordo com a agitação; novos áudios não foram criados.
+
+TESTE EM GODOT 4.3+
+1. Abra o project.godot e execute a cena.
+2. Navegue e pressione F6 para percorrer: Automático > Calmaria > Moderado > Agitado > Temporal > Automático.
+3. Observe ondas cruzadas e respingos, inclusive parado e perpendicular às ondas.
+4. Perto da costa, observe a espuma; se afastar do cais, note a pequena deriva.
+5. Volte à calmaria e confirme redução gradual de movimento, espuma e vento.
+
+LIMITAÇÕES
+- A malha distante permanece com 10 m por célula para preservar desempenho.
+- O algoritmo é um modelo visual (ondas senoidais somadas), não uma simulação completa de fluidos.
+- O perfil automático usa oscilação determinística lenta, não clima meteorológico real.
+- Não foi executado no Godot neste ambiente; necessário validar shader e comportamento dentro do editor.
+
+ARQUIVOS ALTERADOS
+  scripts/oceano.gd
+  shaders/oceano_pintado.gdshader
+  scripts/barco.gd
+  scripts/som.gd
+  scripts/jogo.gd
+  project.godot
+  LEIA-ME.txt
+  docs/MAR_DINAMICO_v0.3.7.txt

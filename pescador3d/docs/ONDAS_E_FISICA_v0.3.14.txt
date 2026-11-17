@@ -1,0 +1,33 @@
+PESCADOR 0.3.14 — MAR E FÍSICA DO BARCO
+=======================================
+Base: PESCADOR v0.3.13, sem alterar os sistemas de pesca, baleias, clima, oficinas ou salvamento.
+
+OCEANO — scripts/oceano.gd e shaders/oceano_pintado.gdshader
+- Quinta componente de swell transversal, mais perceptível no mar agitado.
+- Correção dos smoothsteps invertidos no shader, especialmente espuma, rasos e sombra.
+- Normais do shader consideram o gradiente da transição de profundidade/costa.
+- Esteira registra pontos quando há deslocamento significativo, evitando marcas repetidas quando lento.
+- Espuma da esteira acompanha a direção e se espalha durante o decaimento.
+- A onda de proa agora responde ao sinal de velocidade e ao impacto calculado do casco.
+- Mantida transição costeira: 0.27 perto das ilhas, chegando a 1.27 em mar aberto.
+
+BARCO — scripts/barco.gd
+- Deriva lateral amortecida em curvas e com vento cruzado.
+- Perda leve de velocidade enfrentando ondas de proa, sem alterar o consumo base.
+- Medição de velocidade vertical da água na proa para estimar interação casco/onda.
+- Respingos gerados no centro e nos bordos, presos ao nó Balanceio para acompanhar a água.
+- A física continua arcade, não é hidrodinâmica naval completa.
+
+TESTE NO GODOT 4.3+
+- W/S aceleração e ré, A/D leme; F6 alternar intensidade, F7 testar temporal, K clima.
+- Saia da enseada e compare as ondas e o balanço em mar aberto.
+- Vire em velocidade para conferir deriva/esteira; retorne à costa para verificar colisão.
+- Teste o temporário e desative com F7; verifique M mapa, L luz e salvamento existente.
+
+VALIDAÇÃO REALIZADA
+- Arquivo ZIP íntegro; recursos mantidos, sem alterações em outros sistemas.
+- Modelos numéricos de onda CPU/GPU comparados em 2.000 combinações aleatórias.
+- Verificadas transições costeiras e limites dos smoothsteps do shader.
+- NÃO testado em Godot aqui: ausência de binário do engine e compilador de shader.
+
+Verificação repetível: python ferramentas/verificar_mar_0314.py

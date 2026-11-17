@@ -1,0 +1,10 @@
+PESCADOR v0.3.15E — Integração Baía + Farol da Serra + Fauna
+
+BASE: v0.3.15D (baía e porto liberado); preservadas a geografia, a cidade, o dique lateral e a Ilha Rata.
+FAROL: única torre na ilha principal, agora no ponto mais alto da serra, ilumina à noite e gira.
+FAUNA: incorpora as melhorias de peixes e baleias da versão v0.3.14 Fauna, baseada na v0.3.13.
+ILHA RATA: sem farol e sem dique.
+MAPA: marcador 'Farol da Serra' acompanha coordenadas do cume.
+ATENÇÃO: não substitua ilha.gd pela correção antiga de farol, que restauraria a topografia anterior.
+
+Testes recomendados em Godot: navegação pela baía e atracação, distância da torre aos edifícios, farol noturno, F8 em mar aberto, fuga dos cardumes.

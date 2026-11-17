@@ -1,0 +1,17 @@
+PESCADOR v0.3.12 — Mar, clima, cardumes e baleias
+
+K: Automático > Ensolarado > Nublado > Chuva > Tempestade > Automático
+L: ligar/desligar lanterna do barco
+F7: testar tempestade (alternar)
+F6: comparar perfis de ondas
+M: carta náutica
+
+Cardumes: espécies distribuídas por distância da costa; nascimento limitado por profundidade, proximidade de outros cardumes e descanso da região. Após 115–205 segundos, os cardumes podem se dispersar longe do barco. Recuperação local entre 45 e 95 segundos.
+
+Oceano: atenuação contínua nas ilhas; alto-mar gera ondas maiores. O casco calcula a mesma altura do shader para cada posição.
+
+Tempestade: surgimento ocasional; nuvens, luminosidade, neblina e ondas aumentam suavemente; chuva localizada acompanhando o barco.
+
+Baleias: aparecem raramente em mar profundo, nadam e emergem por um período. Não podem ser pescadas.
+
+OBS: validar no Godot 4.3+; este ambiente não possui executável do Godot.

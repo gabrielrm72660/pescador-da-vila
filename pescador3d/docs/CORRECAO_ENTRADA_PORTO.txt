@@ -1,0 +1,5 @@
+Correção da entrada do porto
+- Reposicionado o dique para a borda da baía.
+- Dique encurtado e afastado da boca do porto.
+- Canal de entrada deixado mais livre para aproximação do barco.
+Arquivo alterado: scripts/ilha.gd

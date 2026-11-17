@@ -1,0 +1,24 @@
+PESCADOR v0.3.10 — Carta Náutica, Peixes e Ilha Principal
+
+1) PEIXES
+- Adicionadas novas texturas pintadas para as espécies visíveis nos cardumes:
+  sardinha, tainha, xaréu, cavala, barracuda, dourado, atum, olho-de-cão e garoupa.
+- Os cardumes agora usam material por espécie, com textura própria e transparência.
+
+2) MAPA / CARTA CARTOGRÁFICA
+- A tecla M não silencia mais o som.
+- Agora M abre/fecha uma carta náutica em tela com:
+  * grade de coordenadas em metros;
+  * posição e rumo visual do barco;
+  * nome e contorno das ilhas;
+  * marcação dos cais;
+  * rosa dos ventos e barra de escala.
+- O botão de silenciar continua no menu de som.
+
+3) ILHA PRINCIPAL
+- Refeito o relevo da ilha principal para ficar mais coerente com uma vila portuária:
+  * enseada mais protegida na frente do cais;
+  * plataforma mais suave para a vila;
+  * serra principal mais recuada e larga;
+  * colina secundária e vales mais naturais.
+- Mantido o farol apenas onde já configurado.

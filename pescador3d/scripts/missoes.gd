@@ -21,6 +21,14 @@ const LISTA := [
             "dica": "Só longe das ilhas. Precisa de 6 casas livres."},
     {"texto": "Juntar R$ 1000", "tipo": "dinheiro", "alvo": "", "quantos": 1000, "premio": 0,
             "dica": "A Ilha Rata paga mais pelo peixe."},
+    {"texto": "Descobrir o Banco das Cavalas", "tipo": "explorar", "alvo": "Banco das Cavalas", "quantos": 1, "premio": 85,
+            "dica": "Consulte a carta náutica com M. Navegue até o banco submerso."},
+    {"texto": "Entregar uma encomenda", "tipo": "contrato", "alvo": "", "quantos": 1, "premio": 120,
+            "dica": "Veja a encomenda atual no cais. Venda a quantidade pedida."},
+    {"texto": "Atracar na Ilha das Conchas", "tipo": "atracar", "alvo": "Ilha das Conchas", "quantos": 1, "premio": 130,
+            "dica": "Há um pequeno porto a leste da Vila do Porto."},
+    {"texto": "Explorar o Canal das Sardinhas", "tipo": "explorar", "alvo": "Canal das Sardinhas", "quantos": 1, "premio": 95,
+            "dica": "Marque o destino na carta náutica e navegue até o novo banco."},
 ]
 
 var indice: int = 0

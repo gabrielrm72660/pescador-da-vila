@@ -41,8 +41,12 @@ var cais_dist := 0.0
 var dica := ""                  # texto fixo acima dos botões (ex.: "E: atracar no cais")
 var combustivel := 1.0          # 0..1 do tanque
 var litros := 0.0
-var radar_alvos: Array = []     # {pos: Vector2(m a boreste, m à frente), grande: bool}
-const ALCANCE_RADAR := 150.0    # metros até a borda do radar
+var radar_alvos: Array = []     # {pos: Vector2(m a boreste, m à frente), mundo: Vector2(x, z), grande: bool}
+var barco_ref: Node3D = null     # o radar lê a posição e o rumo do barco a cada quadro (gira sem engasgar)
+var radar_ilhas: Array = []     # por ilha: {centro, raio, raso, linha, alto: contornos no mundo, cais: [inicio, ponta]}
+var cais_mundo := Vector2.INF   # ponta do cais mais próximo (x, z no mundo)
+var radar_boias: Array = []     # boias de sinalização: {mundo: Vector2(x, z), cor: Color}
+var alcance_radar: float = 150.0    # metros até a borda do radar
 var painel_aberto := ""         # "", "porao" ou "diario"
 var linhas_painel: Array = []
 var titulo_painel := ""
@@ -54,12 +58,24 @@ const CASA := 50.0               # lado de uma casa da grade (px, antes de encol
 var pesca: Node = null           # scripts/pesca.gd: o anel do minijogo é lido direto dele, a cada quadro
 
 var _fonte: Font
+var _sprites_peixes: Dictionary = {}
+var _textura_madeira: Texture2D = null
+var _textura_casa: Texture2D = null
 var _sobre := ""                # botão sob o mouse
 
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_PASS
     _fonte = ThemeDB.fallback_font
+    var dir_sprites := "res://assets/texturas/peixes/porao/"
+    for par in [["Sardinha", "sardinha"], ["Tainha", "tainha"], ["Xaréu", "xareu"],
+            ["Cavala", "cavala"], ["Barracuda", "barracuda"], ["Dourado", "dourado"],
+            ["Atum", "atum"], ["Olho-de-cão", "olho_de_cao"], ["Garoupa", "garoupa"]]:
+        var arquivo: String = dir_sprites + par[1] + ".png"
+        if ResourceLoader.exists(arquivo):
+            _sprites_peixes[par[0]] = load(arquivo)
+    _textura_madeira = load("res://assets/texturas/inventario/forro_madeira.png")
+    _textura_casa = load("res://assets/texturas/inventario/casa_porao.png")
 
 func _process(delta: float) -> void:
     aviso_tempo = maxf(0.0, aviso_tempo - delta)
@@ -213,42 +229,120 @@ func _bussola() -> void:
 
 func _missao() -> void:
     var x := size.x - 372.0
+    var largura_util := 290.0
+    # A linha de estado da pesca e longa ("PUXANDO · Equilibrada · tensao 0% · [J] tecnica"): se nao cabe, quebra em duas.
+    var linhas: Array = _quebrar_para_caber(estado_pesca, 17, largura_util) if estado_pesca != "" else []
+    var extra := 18.0 if linhas.size() > 1 else 0.0
     _pincelada(Rect2(x, 30, 326, 50), 31)
-    _pincelada(Rect2(x, 86, 326, 62), 32)
+    _pincelada(Rect2(x, 86, 326, 62 + extra), 32)
     _icone_prancheta(Vector2(x + 30.0, 55.0), CREME)
     _texto(Vector2(x + 62.0, 64.0), missao_titulo, 22, DOURADO)
     var caixa := Rect2(x + 22.0, 98.0, 16.0, 16.0)
     draw_rect(caixa, CREME, false, 2.0)
     if missao_feita:
         draw_polyline(PackedVector2Array([caixa.position + Vector2(3, 8), caixa.position + Vector2(7, 13), caixa.position + Vector2(15, 1)]), VERDE, 3.0)
-    _texto(Vector2(x + 50.0, 113.0), missao_texto, 18, VERDE if missao_feita else CREME)
-    if estado_pesca != "":
-        _texto(Vector2(x + 22.0, 138.0), estado_pesca, 17, DOURADO if pesca_ativa else Color(CREME, 0.8))
+    var tam_texto := 18
+    while tam_texto > 12 and _fonte.get_string_size(missao_texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tam_texto).x > largura_util - 28.0:
+        tam_texto -= 1
+    _texto(Vector2(x + 50.0, 113.0), missao_texto, tam_texto, VERDE if missao_feita else CREME)
+    for i in linhas.size():
+        _texto(Vector2(x + 22.0, 138.0 + 18.0 * i), linhas[i], 16 if linhas.size() > 1 else 17, DOURADO if pesca_ativa else Color(CREME, 0.8))
+
+## Quebra um texto de uma linha em ate duas, no separador (" · " ou " — ") mais perto do meio, e reduz a fonte
+## se ainda assim nao couber. Devolve as linhas.
+func _quebrar_para_caber(texto: String, tam: int, largura: float) -> Array:
+    if _fonte.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tam).x <= largura:
+        return [texto]
+    var melhor := -1
+    var melhor_dist := 9999
+    for sep in [" · ", " — "]:
+        var i := texto.find(sep)
+        while i != -1:
+            var d := absi(i - texto.length() / 2)
+            if d < melhor_dist:
+                melhor_dist = d
+                melhor = i + sep.length()
+            i = texto.find(sep, i + 1)
+    if melhor == -1:
+        return [texto]
+    var a := texto.substr(0, melhor).rstrip(" ·—")
+    var b := texto.substr(melhor).strip_edges()
+    return [a, b]
+
+## Metros (x a boreste, y à frente) de um ponto do mundo em relação ao barco.
+func _rel_barco(mundo: Vector2) -> Vector2:
+    var base: Basis = barco_ref.global_transform.basis
+    var d := mundo - Vector2(barco_ref.global_position.x, barco_ref.global_position.z)
+    return Vector2(d.dot(Vector2(base.x.x, base.x.z)), d.dot(Vector2(-base.z.x, -base.z.z)))
+
+## Contorno do mundo -> pixels do radar (proa para cima), cortado pelo círculo do radar.
+func _poligono_radar(contorno: PackedVector2Array, c: Vector2, raio: float, disco: PackedVector2Array) -> Array:
+    var pontos := PackedVector2Array()
+    for pt in contorno:
+        var r := _rel_barco(pt)
+        pontos.append(c + Vector2(r.x, -r.y) / alcance_radar * raio)
+    return Geometry2D.intersect_polygons(pontos, disco)
 
 func _radar() -> void:
     var c := Vector2(150.0, size.y - 148.0)
     var raio := 104.0
     draw_circle(c, raio + 7.0, Color(TINTA, 0.85))
     draw_circle(c, raio, Color(0.06, 0.28, 0.36, 0.88))
+    # Minimapa: águas rasas, praia e mata das ilhas ao alcance, no lugar certo e girando com a proa.
+    if barco_ref != null and not radar_ilhas.is_empty():
+        var disco := PackedVector2Array()
+        for i in 64:
+            disco.append(c + Vector2.from_angle(TAU * float(i) / 64.0) * (raio - 0.5))
+        var pos_barco := Vector2(barco_ref.global_position.x, barco_ref.global_position.z)
+        for ilha in radar_ilhas:
+            if pos_barco.distance_to(ilha.centro) - float(ilha.raio) * 1.8 > alcance_radar:
+                continue
+            for camada in [["raso", Color(0.16, 0.58, 0.60, 0.80)], ["linha", Color(0.84, 0.75, 0.50, 1.0)], ["alto", Color(0.40, 0.58, 0.30, 1.0)]]:
+                for poligono in _poligono_radar(ilha[camada[0]], c, raio, disco):
+                    if poligono.size() >= 3:
+                        draw_colored_polygon(poligono, camada[1])
+                        if camada[0] == "linha":
+                            draw_polyline(poligono + PackedVector2Array([poligono[0]]), Color(CREME, 0.85), 1.5, true)
+            var cais_a := _rel_barco(ilha.cais[0])
+            var cais_b := _rel_barco(ilha.cais[1])
+            var pa := c + Vector2(cais_a.x, -cais_a.y) / alcance_radar * raio
+            var pb := c + Vector2(cais_b.x, -cais_b.y) / alcance_radar * raio
+            if pa.distance_to(c) < raio - 2.0 and pb.distance_to(c) < raio - 2.0:
+                draw_line(pa, pb, Color(0.55, 0.38, 0.22), 3.0)
+    if barco_ref != null:
+        for boia in radar_boias:                               # boias: pontinhos vermelho/verde/branco/amarelo
+            var rb := _rel_barco(boia.mundo)
+            var pb_boia := c + Vector2(rb.x, -rb.y) / alcance_radar * raio
+            if pb_boia.distance_to(c) < raio - 5.0:
+                draw_circle(pb_boia, 4.2, Color(TINTA, 0.95))
+                draw_circle(pb_boia, 2.9, boia.cor)
     draw_arc(c, raio, 0.0, TAU, 72, CREME, 2.5, true)
-    for i in 28:                                               # círculo tracejado: 100 m
+    for i in 28:                                               # círculo tracejado: metade do alcance
         if i % 2 == 0:
-            draw_arc(c, raio * 0.58, TAU * i / 28.0, TAU * (i + 1) / 28.0, 4, Color(CREME, 0.45), 1.5, true)
+            draw_arc(c, raio * 0.5, TAU * i / 28.0, TAU * (i + 1) / 28.0, 4, Color(CREME, 0.40), 1.5, true)
     # o radar gira com o barco: a proa aponta sempre para cima, e o N dá a volta na borda
     var norte := Vector2.UP.rotated(deg_to_rad(-rumo))
+    if barco_ref != null:
+        var ang: float = barco_ref.rotation.y                  # sem arredondar: gira suave
+        norte = Vector2.UP.rotated(ang)
     var pn := c + norte * (raio + 1.0)
     draw_circle(pn, 13.0, Color(TINTA, 1.0))
     _texto(pn + Vector2(-13.0, 6.0), "N", 16, DOURADO, HORIZONTAL_ALIGNMENT_CENTER, 26.0)
     for alvo in radar_alvos:                                   # cardumes: peixinho no lugar; fora do alcance, um traço na borda
         var rel: Vector2 = alvo.pos
-        var p := Vector2(rel.x, -rel.y) / ALCANCE_RADAR * raio
+        if barco_ref != null and alvo.has("mundo"):
+            rel = _rel_barco(alvo.mundo)
+        var p := Vector2(rel.x, -rel.y) / alcance_radar * raio
         if p.length() > raio - 14.0:
             var dir := p.normalized()
             draw_line(c + dir * (raio - 11.0), c + dir * (raio - 3.0), Color(CREME, 0.6), 3.0)
         else:
             _icone_peixe(c + p, 1.35 if alvo.get("grande", false) else 1.0, Color(0.75, 0.93, 0.95))
     if cais_rel != Vector2.INF:                                # o cais: âncora dourada; longe, uma seta na borda
-        var pc := Vector2(cais_rel.x, -cais_rel.y) / ALCANCE_RADAR * raio
+        var rel_cais: Vector2 = cais_rel
+        if barco_ref != null and cais_mundo != Vector2.INF:
+            rel_cais = _rel_barco(cais_mundo)
+        var pc := Vector2(rel_cais.x, -rel_cais.y) / alcance_radar * raio
         if pc.length() > raio - 16.0:
             var dc := pc.normalized()
             var ponta := c + dc * (raio - 4.0)
@@ -386,6 +480,10 @@ func _anel_de_pesca() -> void:
     # embaixo: barra do peixe, cardume e a tecla
     _barra(Rect2(c.x - 106.0, c.y + 132.0, 212.0, 18.0), p, DOURADO if p > 0.8 else VERDE)
     _texto(Vector2(c.x - 106.0, c.y + 174.0), "Cardume: %s" % pesca.estoque(), 16, CREME)
+    # Indicador de tensão: vermelho próximo do limite da linha.
+    var tensao_atual: float = clampf(float(pesca.tensao) / maxf(0.1, float(pesca.limite_linha)), 0.0, 1.0)
+    _barra(Rect2(c.x - 106.0, c.y + 183.0, 212.0, 8.0), tensao_atual,
+        Color(0.94, 0.28, 0.20) if tensao_atual > 0.72 else Color(0.90, 0.66, 0.28))
     var tecla := Rect2(c.x + 30.0, c.y + 157.0, 24.0, 24.0)
     _caixa_arredondada(tecla, CREME if pesca.trava <= 0.0 else Color(CREME, 0.4))
     draw_string(_fonte, Vector2(tecla.position.x, tecla.position.y + 18.0), "F", HORIZONTAL_ALIGNMENT_CENTER, 24.0, 16, Color(0.06, 0.10, 0.15))
@@ -467,51 +565,58 @@ func _input(event: InputEvent) -> void:
 
 ## Um peixe na grade: as casas dele pintadas, com contorno só por fora, e a silhueta por cima.
 func _peixe_na_grade(especie: String, casas: Array, origem: Vector2, cor: Color, alfa: float = 1.0) -> void:
+    if casas.is_empty():
+        return
     var centro := Vector2.ZERO
-    var deitado := true
     var maior := Vector2i(-99, -99)
     var menor := Vector2i(99, 99)
     for c in casas:
         menor = Vector2i(mini(menor.x, c.x), mini(menor.y, c.y))
-        var r := Rect2(origem + Vector2(c) * CASA, Vector2(CASA, CASA))
-        draw_rect(r.grow(-1.5), Color(cor.darkened(0.45), 0.92 * alfa))
-        centro += r.get_center()
         maior = Vector2i(maxi(maior.x, c.x), maxi(maior.y, c.y))
-        for lado in [[Vector2i(0, -1), r.position, Vector2(r.end.x, r.position.y)], [Vector2i(0, 1), Vector2(r.position.x, r.end.y), r.end],
-                [Vector2i(-1, 0), r.position, Vector2(r.position.x, r.end.y)], [Vector2i(1, 0), Vector2(r.end.x, r.position.y), r.end]]:
+        var r := Rect2(origem + Vector2(c) * CASA, Vector2(CASA, CASA))
+        draw_rect(r.grow(-3), Color(cor.darkened(0.48), 0.67 * alfa))
+        centro += r.get_center()
+        for lado in [[Vector2i(0, -1), r.position, Vector2(r.end.x, r.position.y)],
+                [Vector2i(0, 1), Vector2(r.position.x, r.end.y), r.end],
+                [Vector2i(-1, 0), r.position, Vector2(r.position.x, r.end.y)],
+                [Vector2i(1, 0), Vector2(r.end.x, r.position.y), r.end]]:
             if not (c + lado[0]) in casas:
-                draw_line(lado[1], lado[2], Color(cor, alfa), 3.0)
+                draw_line(lado[1], lado[2], Color(cor.lightened(0.2), alfa), 2.5)
     centro /= casas.size()
-    maior -= menor                                             # tamanho do formato, em casas
-    deitado = maior.x >= maior.y
-    var comprimento := float(maxi(maior.x, maior.y) + 1)
-    var s := minf(comprimento * 1.8, float(mini(maior.x, maior.y) + 1) * 4.0)      # cabe no comprimento e na altura
-    var pontos := [Vector2(-9, 0), Vector2(-3, -4.5), Vector2(5, -3), Vector2(8, 0), Vector2(5, 3), Vector2(-3, 4.5)]
-    var rabo := [Vector2(7, 0), Vector2(13, -5), Vector2(13, 5)]
-    var giro := 0.0 if deitado else PI / 2.0
-    var corpo := PackedVector2Array()
-    for q in pontos:
-        corpo.append(centro + (q - Vector2(2, 0)).rotated(giro) * s)
-    var cauda := PackedVector2Array()
-    for q in rabo:
-        cauda.append(centro + (q - Vector2(2, 0)).rotated(giro) * s)
-    draw_colored_polygon(corpo, Color(cor.lightened(0.25), alfa))
-    draw_colored_polygon(cauda, Color(cor.lightened(0.25), alfa))
-    draw_circle(centro + Vector2(-7, -1).rotated(giro) * s, 0.9 * s, Color(0.05, 0.08, 0.12, alfa))
+    var comprimento: float = float(maxi(maior.x - menor.x, maior.y - menor.y) + 1) * CASA - 8.0
+    var espessura: float = float(mini(maior.x - menor.x, maior.y - menor.y) + 1) * CASA - 9.0
+    var girado: bool = maior.y - menor.y > maior.x - menor.x
+    var textura: Texture2D = _sprites_peixes.get(especie)
+    if textura != null:
+        var largura_img := minf(comprimento, espessura * 2.7)
+        var altura_img := minf(espessura, largura_img / 2.12)
+        var fator := minf(1.0, escala + 0.2)
+        var ponto_tela := size * 0.5 * (1.0 - fator) + centro * fator
+        draw_set_transform(ponto_tela, PI * 0.5 if girado else 0.0, Vector2(fator, fator))
+        draw_texture_rect(textura, Rect2(-largura_img * 0.5, -altura_img * 0.5, largura_img, altura_img), false, Color(1.0, 1.0, 1.0, alfa))
+        _ancorar(0.5, 0.5, fator)
+    else:
+        _icone_peixe(centro, maxf(1.1, comprimento / 22.0), Color(cor, alfa))
 
 func _painel_porao() -> void:
     var r := _ret_painel_porao()
     _pincelada(r, 71, Color(TINTA, 0.96))
+    if _textura_madeira != null:
+        draw_texture_rect(_textura_madeira, r.grow(-5.0), false, Color(0.85, 0.93, 0.94, 0.62))
+    draw_rect(r.grow(-5.0), Color(0.02, 0.06, 0.10, 0.18), false, 3.0)
     _icone_caixa(Vector2(r.position.x + 44.0, r.position.y + 40.0), DOURADO)
     _texto(Vector2(r.position.x + 76.0, r.position.y + 46.0), "Porão", 26, DOURADO)
     _texto(Vector2(r.position.x + 160.0, r.position.y + 46.0), "%d de %d casas" % [porao.casas_ocupadas(), porao.colunas * porao.linhas], 16, Color(CREME, 0.8))
     draw_line(Vector2(r.position.x + 28.0, r.position.y + 58.0), Vector2(r.end.x - 28.0, r.position.y + 58.0), Color(CREME, 0.4), 1.5)
     var o := _origem_grade()
-    draw_rect(Rect2(o, Vector2(porao.colunas, porao.linhas) * CASA), Color(0.03, 0.09, 0.13, 0.9))
-    for i in porao.colunas + 1:
-        draw_line(o + Vector2(i * CASA, 0), o + Vector2(i * CASA, porao.linhas * CASA), Color(CREME, 0.22), 1.0)
-    for j in porao.linhas + 1:
-        draw_line(o + Vector2(0, j * CASA), o + Vector2(porao.colunas * CASA, j * CASA), Color(CREME, 0.22), 1.0)
+    draw_rect(Rect2(o, Vector2(porao.colunas, porao.linhas) * CASA), Color(0.015, 0.045, 0.07, 0.95))
+    for j in porao.linhas:
+        for i in porao.colunas:
+            var casa_rect := Rect2(o + Vector2(i, j) * CASA, Vector2(CASA, CASA))
+            if _textura_casa != null:
+                draw_texture_rect(_textura_casa, casa_rect, false, Color(1, 1, 1, 0.94))
+            else:
+                draw_rect(casa_rect.grow(-1), Color(0.10, 0.18, 0.22, 0.95), true)
     var sob: Dictionary = porao.item_em(_casa_em(_mouse)) if _na_mao.is_empty() else _na_mao
     for item in porao.itens:
         if is_same(item, _na_mao):
@@ -530,7 +635,7 @@ func _painel_porao() -> void:
     var y := r.position.y + 96.0
     if not sob.is_empty():
         _texto(Vector2(x, y), sob.especie, 22, porao.CORES.get(sob.especie, CREME))
-        _texto(Vector2(x, y + 26.0), "%s kg  •  R$ %d" % [("%.1f" % sob.peso).replace(".", ","), porao.valor(sob)], 16, CREME)
+        _texto(Vector2(x, y + 26.0), "%s kg  •  %s" % [("%.1f" % sob.peso).replace(".", ","), String(sob.get("qualidade", "Regular"))], 16, CREME)
     else:
         _texto(Vector2(x, y), "%d peixe(s)" % porao.itens.size(), 22, CREME)
         _texto(Vector2(x, y + 26.0), "%s kg  •  R$ %d" % [("%.1f" % porao.peso_total()).replace(".", ","), porao.valor_total()], 16, CREME)

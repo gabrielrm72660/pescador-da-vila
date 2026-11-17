@@ -12,8 +12,11 @@ signal zarpar_pressed
 signal melhoria_pressed(id: String)
 signal volume_mudou(grupo: String, valor: float)
 signal mudo_pressed
+signal comprar_iscas_pressed
+signal melhorar_linha_pressed
 
 const HudPintado = preload("res://scripts/hud.gd")
+const CartaMapa = preload("res://scripts/mapa_cartografico.gd")
 
 var raiz: Control
 var menu: ColorRect
@@ -22,6 +25,7 @@ var subtitulo_menu: Label
 var botao_principal: Button
 var botao_reiniciar: Button
 var hud: Control
+var mapa: Control
 var controles_volume: Dictionary = {}     # grupo -> {barra: HSlider, valor: Label}
 var botao_mudo: Button
 var porto: ColorRect
@@ -29,6 +33,8 @@ var porto_titulo: Label
 var porto_texto: Label
 var porto_vender: Button
 var porto_abastecer: Button
+var porto_iscas: Button
+var porto_linha: Button
 var porto_rotulo_loja: Label
 var porto_loja: Dictionary = {}           # id da melhoria -> botão
 var diario: Array = []          # histórico das mensagens (botão do livro)
@@ -50,6 +56,7 @@ func _ready() -> void:
     raiz.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(raiz)
     _construir_hud()
+    _construir_mapa()
     _construir_porto()
     _construir_menu()
 
@@ -101,6 +108,26 @@ func _construir_hud() -> void:
     raiz.add_child(hud)
     hud.botao.connect(_ao_apertar_botao)
 
+
+func _construir_mapa() -> void:
+    mapa = CartaMapa.new()
+    mapa.name = "MapaCartografico"
+    raiz.add_child(mapa)
+
+func conectar_mapa(barco: Node3D, ilhas: Array) -> void:
+    if mapa != null and mapa.has_method("configurar"):
+        mapa.configurar(barco, ilhas)
+
+func alternar_mapa() -> bool:
+    if mapa == null or not mapa.has_method("alternar"):
+        return false
+    hud.soltar_peixe()
+    hud.painel_aberto = ""
+    return mapa.alternar()
+
+func mapa_aberto() -> bool:
+    return mapa != null and mapa.has_method("aberto") and mapa.aberto()
+
 func _ao_apertar_botao(nome: String) -> void:
     match nome:
         "pescar":
@@ -117,9 +144,11 @@ func alternar_painel(nome: String) -> void:
     _preencher_painel()
 
 func fechar_painel() -> bool:
-    var estava: bool = hud.painel_aberto != ""
+    var estava: bool = hud.painel_aberto != "" or mapa_aberto()
     hud.soltar_peixe()
     hud.painel_aberto = ""
+    if mapa_aberto():
+        mapa.fechar()
     return estava
 
 func _preencher_painel() -> void:
@@ -199,7 +228,7 @@ func _construir_menu() -> void:
 
     _construir_volume(col)
 
-    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nBotão direito do mouse gira a câmera  •  roda aproxima  •  V recentra\nC câmera  •  T avança o tempo  •  M som  •  R reiniciar  •  ESC pausa", 14, Color(0.77, 0.87, 0.84, 1.0))
+    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nMouse direito: câmera  •  Roda: aproxima  •  V: recentra\nB isca  •  N profundidade  •  J técnica  •  M mapa\nK clima  •  L luz  •  F3 FPS  •  F4 diagnóstico  •  F10 gráficos", 14, Color(0.77, 0.87, 0.84, 1.0), true)
     dica.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(dica)
 
@@ -214,43 +243,78 @@ func _construir_porto() -> void:
     central.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     porto.add_child(central)
     var cartao := PanelContainer.new()
-    cartao.custom_minimum_size = Vector2(470, 0)
+    cartao.custom_minimum_size = Vector2(660, 0)
     cartao.add_theme_stylebox_override("panel", _estilo_painel())
     central.add_child(cartao)
     var margem := MarginContainer.new()
     for lado in ["left", "right", "top", "bottom"]:
-        margem.add_theme_constant_override("margin_" + lado, 22)
+        margem.add_theme_constant_override("margin_" + lado, 16)
     cartao.add_child(margem)
     var col := VBoxContainer.new()
-    col.add_theme_constant_override("separation", 9)
+    col.add_theme_constant_override("separation", 5)
     margem.add_child(col)
-    porto_titulo = _nova_label("Cais", 30, COR_CREME)
+    porto_titulo = _nova_label("Cais", 27, COR_CREME)
     col.add_child(porto_titulo)
-    porto_texto = _nova_label("", 17, COR_TEXTO, true)
+    porto_texto = _nova_label("", 15, COR_TEXTO, true)
     col.add_child(porto_texto)
+    # Vender e Abastecer lado a lado; iscas e linha também: o painel inteiro cabe nos 720 px da janela.
+    var fila_a := HBoxContainer.new()
+    fila_a.add_theme_constant_override("separation", 8)
+    col.add_child(fila_a)
     porto_vender = _botao_porto("Vender", Color(0.49, 0.89, 0.82, 1.0), Color(0.03, 0.13, 0.17, 1.0))
+    porto_vender.custom_minimum_size = Vector2(300, 38)
+    porto_vender.add_theme_font_size_override("font_size", 15)
+    porto_vender.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     porto_vender.pressed.connect(func(): vender_pressed.emit())
-    col.add_child(porto_vender)
+    fila_a.add_child(porto_vender)
     porto_abastecer = _botao_porto("Abastecer", Color(0.96, 0.62, 0.24, 1.0), Color(0.15, 0.07, 0.02, 1.0))
+    porto_abastecer.custom_minimum_size = Vector2(300, 38)
+    porto_abastecer.add_theme_font_size_override("font_size", 15)
+    porto_abastecer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     porto_abastecer.pressed.connect(func(): abastecer_pressed.emit())
-    col.add_child(porto_abastecer)
+    fila_a.add_child(porto_abastecer)
+    var fila_b := HBoxContainer.new()
+    fila_b.add_theme_constant_override("separation", 8)
+    col.add_child(fila_b)
+    porto_iscas = _botao_porto("Comprar iscas [Q]", Color(0.25, 0.43, 0.44, 1.0), COR_TEXTO)
+    porto_iscas.custom_minimum_size = Vector2(300, 32)
+    porto_iscas.add_theme_font_size_override("font_size", 13)
+    porto_iscas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    porto_iscas.clip_text = true
+    porto_iscas.pressed.connect(func(): comprar_iscas_pressed.emit())
+    fila_b.add_child(porto_iscas)
+    porto_linha = _botao_porto("Reforçar linha [U]", Color(0.26, 0.34, 0.48, 1.0), COR_TEXTO)
+    porto_linha.custom_minimum_size = Vector2(300, 32)
+    porto_linha.add_theme_font_size_override("font_size", 13)
+    porto_linha.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    porto_linha.clip_text = true
+    porto_linha.pressed.connect(func(): melhorar_linha_pressed.emit())
+    fila_b.add_child(porto_linha)
     porto_rotulo_loja = _nova_label("MELHORIAS DO BARCO", 14, COR_TURQUESA)
     col.add_child(porto_rotulo_loja)
-    for id in ["motor", "tanque", "porao", "vara"]:
+    var grade_oficina := GridContainer.new()
+    grade_oficina.columns = 2
+    grade_oficina.add_theme_constant_override("h_separation", 8)
+    grade_oficina.add_theme_constant_override("v_separation", 6)
+    col.add_child(grade_oficina)
+    for id in ["motor", "tanque", "porao", "vara", "casco", "leme", "helice", "radar"]:
         var b := _botao_porto(id, Color(0.16, 0.30, 0.42, 1.0), COR_TEXTO)
-        b.custom_minimum_size = Vector2(470, 36)
-        b.add_theme_font_size_override("font_size", 15)
+        b.custom_minimum_size = Vector2(300, 46)           # duas linhas: nome da melhoria e "antes -> depois · preço"
+        b.add_theme_font_size_override("font_size", 14)
+        b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        b.clip_text = true
         b.pressed.connect(func(): melhoria_pressed.emit(id))
-        col.add_child(b)
+        grade_oficina.add_child(b)
         porto_loja[id] = b
     var sair := _botao_porto("Zarpar   [E]", Color(0.14, 0.34, 0.39, 1.0), COR_TEXTO)
+    sair.custom_minimum_size = Vector2(300, 38)
     sair.pressed.connect(func(): zarpar_pressed.emit())
     col.add_child(sair)
 
 func _botao_porto(texto: String, cor: Color, cor_texto: Color) -> Button:
     var b := Button.new()
     b.text = texto
-    b.custom_minimum_size = Vector2(410, 46)
+    b.custom_minimum_size = Vector2(410, 40)
     b.add_theme_font_size_override("font_size", 18)
     b.add_theme_color_override("font_color", cor_texto)
     b.add_theme_color_override("font_hover_color", cor_texto)
@@ -268,23 +332,30 @@ func mostrar_porto(d: Dictionary) -> void:
     porto_rotulo_loja.visible = not d.get("loja", []).is_empty()
     for id in porto_loja:
         porto_loja[id].visible = porto_rotulo_loja.visible
-    porto_texto.text = "Carteira: R$ %d\nPorão: %d peixe(s), %s kg\nTanque: %d de %d L%s" % [d.dinheiro, d.peixes,
-            ("%.1f" % d.peso).replace(".", ","), roundi(d.litros), roundi(d.tanque), d.get("nota", "")]
-    porto_vender.text = "Vender os peixes por R$ %d   [1]" % d.valor if d.peixes > 0 else "Nada para vender"
+    porto_texto.text = "Carteira: R$ %d   ·   Porão: %d peixe(s), %s kg   ·   Tanque: %d de %d L\n%s%s" % [d.dinheiro, d.peixes,
+            ("%.1f" % d.peso).replace(".", ","), roundi(d.litros), roundi(d.tanque), d.get("contrato", ""), d.get("nota", "")]
+    porto_iscas.text = "Iscas: %s · kit R$ 25 [Q]" % d.get("iscas", "")
+    porto_iscas.disabled = not bool(d.get("pode_comprar_iscas", false))
+    var preco_linha: int = int(d.get("preco_linha", -1))
+    porto_linha.visible = bool(d.get("tem_oficina", false))
+    porto_linha.disabled = preco_linha < 0 or int(d.dinheiro) < preco_linha
+    porto_linha.text = "Linha reforçada (máximo)" if preco_linha < 0 else "Reforçar linha [U] · nível %d/4 · R$ %d" % [int(d.get("nivel_linha", 0)) + 1, preco_linha]
+    porto_vender.text = "Vender tudo por R$ %d  [1]" % d.valor if d.peixes > 0 else "Nada para vender"
     porto_vender.disabled = d.peixes == 0
     if d.falta_litros < 1.0:
         porto_abastecer.text = "Tanque cheio"
         porto_abastecer.disabled = true
     elif d.litros_possiveis < 1.0:
-        porto_abastecer.text = "Diesel a R$ %d o litro — sem dinheiro" % d.preco_litro
+        porto_abastecer.text = "Diesel R$ %d/L — sem dinheiro" % d.preco_litro
         porto_abastecer.disabled = true
     else:
-        porto_abastecer.text = "Abastecer %d L por R$ %d   [2]" % [roundi(d.litros_possiveis), roundi(d.litros_possiveis * d.preco_litro)]
+        porto_abastecer.text = "Abastecer %d L · R$ %d  [2]" % [roundi(d.litros_possiveis), roundi(d.litros_possiveis * d.preco_litro)]
         porto_abastecer.disabled = false
     for linha in d.get("loja", []):
         var b: Button = porto_loja.get(linha.id)
         if b != null:
             b.text = linha.texto
+            b.tooltip_text = linha.texto
             b.disabled = not linha.pode
 
 func esconder_porto() -> void:
@@ -322,7 +393,7 @@ func _construir_volume(col: VBoxContainer) -> void:
             valor.text = "%d%%" % roundi(v)
             volume_mudou.emit(grupo, v / 100.0))
     botao_mudo = Button.new()
-    botao_mudo.text = "Silenciar tudo   [M]"
+    botao_mudo.text = "Silenciar tudo"
     botao_mudo.custom_minimum_size = Vector2(395, 34)
     botao_mudo.add_theme_font_size_override("font_size", 14)
     botao_mudo.add_theme_stylebox_override("normal", _estilo_botao(Color(0.10, 0.24, 0.29, 1.0)))
@@ -337,7 +408,7 @@ func mostrar_volumes(volumes: Dictionary, mudo: bool) -> void:
             var c: Dictionary = controles_volume[grupo]
             c.barra.set_value_no_signal(float(volumes[grupo]) * 100.0)
             c.valor.text = "%d%%" % roundi(float(volumes[grupo]) * 100.0)
-    botao_mudo.text = "Som desligado — ligar   [M]" if mudo else "Silenciar tudo   [M]"
+    botao_mudo.text = "Som desligado — ligar" if mudo else "Silenciar tudo"
 
 func _clicar_iniciar() -> void:
     iniciar_pressed.emit()
@@ -374,6 +445,8 @@ func aviso(texto: String) -> void:
 func limpar_partida() -> void:
     diario.clear()
     hud.painel_aberto = ""
+    if mapa_aberto():
+        mapa.fechar()
 
 func atualizar(nos: float, rumo: int, distancia: float, peixes: int, peso: float, pesca_status: String, venceu: bool, fracao_motor: float = 0.0, pesca_ativa: bool = false) -> void:
     _peso = peso
@@ -383,6 +456,6 @@ func atualizar(nos: float, rumo: int, distancia: float, peixes: int, peso: float
     hud.fracao_motor = fracao_motor
     hud.estado_pesca = pesca_status
     hud.pesca_ativa = pesca_ativa
-    hud.visible = not menu.visible and not esconder_hud
+    hud.visible = not menu.visible and not esconder_hud and not mapa_aberto()
     if hud.painel_aberto != "":
         _preencher_painel()

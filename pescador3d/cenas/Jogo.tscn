@@ -16,8 +16,8 @@ shader = ExtResource("6_shader")
 [sub_resource type="PlaneMesh" id="PlaneMesh_agua"]
 material = SubResource("ShaderMaterial_agua")
 size = Vector2(4000, 4000)
-subdivide_width = 399
-subdivide_depth = 399
+subdivide_width = 599
+subdivide_depth = 599
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ceu"]
 sky_top_color = Color(0.2, 0.37, 0.56, 1)
@@ -42,9 +42,9 @@ tonemap_mode = 2
 tonemap_white = 1.4
 ssao_enabled = true
 ssao_radius = 0.6
-ssao_intensity = 1.4
+ssao_intensity = 1.15
 glow_enabled = true
-glow_intensity = 0.35
+glow_intensity = 0.26
 glow_bloom = 0.04
 glow_hdr_threshold = 1.1
 adjustment_enabled = true

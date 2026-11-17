@@ -1,0 +1,51 @@
+PESCADOR v0.3.17 — ATUALIZAÇÃO INTEGRADA
+Base: v0.3.16 — Pesca, Ecossistema e Exploração
+
+VISÃO GERAL
+1. Estabilidade/qualidade gráfica:
+   - F3: exibir/ocultar contador de FPS e tempo do frame.
+   - F4: diagnóstico de velocidade, nível da água, fundo e distância ao cais.
+   - F10: opções com qualidade Baixa/Média/Alta e limite 30/60/120/ilimitado.
+   - Presets ajustam subdivisões do oceano, MSAA, sombras, SSAO, brilho,
+     quantidade de instâncias de vegetação, partículas e alcance da câmera.
+   - Preferências gráficas são gravadas em user://pescador_graficos.json.
+2. Pesca:
+   - J: técnica de recolhimento Suave/Equilibrada/Firme durante a pesca.
+   - Tensão e desgaste de linha; técnica firme recolhe mais mas exige cuidado.
+   - Novo upgrade de linha no cais principal (U, 3 níveis de reforço).
+   - Qualidade do pescado: Regular, Boa ou Excepcional, associada à eficiência
+     da captura. Preço de venda com bônus de qualidade.
+3. Portos:
+   - Canoa de pesca NPC circulando na área marítima dos três portos.
+   - Pescadores decorativos nos cais com pequena animação de movimento.
+   - Não são NPCs interativos nesta etapa.
+4. Ecossistema:
+   - Novos golfinhos, tartarugas marinhas e aves costeiras de geometria leve.
+   - Aparições em áreas navegáveis, movimento periódico e reposicionamento
+     quando deixam o alcance da embarcação. As baleias anteriores permanecem.
+5. Carta náutica:
+   - Batimetria aproximada amostrando o relevo real do jogo.
+   - Clique esquerdo na carta: definir ponto de destino com linha direta.
+   - Shift + clique: apagar destino.
+   - O destino aparece com distância na carta e na dica do HUD.
+   - Salva a última marcação em conjunto com a viagem.
+   - Dois destinos novos: Baixo das Garoupas e Canal das Sardinhas;
+     acrescentada missão de exploração do Canal das Sardinhas.
+
+OBSERVAÇÕES
+- A rota na carta é uma linha DIRETA, não evita recifes/costas e não pilota o barco.
+- O jogo usa coordenadas locais simuladas, não latitude/longitude reais.
+- Os novos animais e NPCs são elementos visuais, sem captura nem diálogo.
+- O salvamento de viagem mantém formato de versão 1 com novos campos opcionais.
+- O farol na serra, a baía protegida e a Ilha das Conchas são preservados.
+- Verificação atual: estrutura de arquivos, recursos e referências, integridade ZIP.
+  Não foi possível executar a cena Godot, validar renderização ou medir FPS real.
+
+TESTES MANUAIS RECOMENDADOS
+A. Abra viagem salva de v0.3.16 e confira dinheiro, peixe, melhorias e posição.
+B. No cais principal, compre um reforço de linha com U; teste J em cardume.
+C. Compare FPS e mar usando F3 e F10 nos presets Baixa/Média/Alta.
+D. Aperte M, clique numa área oceânica e acompanhe distância até destino.
+E. Navegue no entorno das três ilhas: golfinhos, aves, tartarugas e NPCs.
+F. Use F4 para registrar profundidade e situação de navegação.
+G. Reinicie e verifique a baía, o dique, a entrada do porto e o farol.

@@ -1,0 +1,51 @@
+PESCADOR v0.3.9 — SHADERS, SONS E RELEVO
+===========================================
+Base: PESCADOR v0.3.8 (arquivo Godot 4 recebido anteriormente).
+
+GRÁFICOS / SHADERS
+- Mar: caminho de brilho do sol sobre as ondulações, cintilação contida nas marolas,
+  detalhe suave de luz na água rasa e ajuste da força de relevo visual durante o dia.
+- Céu: cirros finos sobre as nuvens anteriores, conservando o ciclo de dia e noite.
+- Solo: mistura de materiais mais irregular, sombreamento em fissuras, estratos discretos
+  nos paredões, melhor transição areia/vegetação/rocha e material molhado à beira-mar.
+- Ambiente: SSAO e brilho global levemente ajustados para sombras menos pesadas.
+- A malha e a lógica de ondas da v0.3.8 foram preservadas: os balanços seguem sincronizados.
+
+RELEVO DA ILHA PRINCIPAL
+- Nova opção por ilha: relevo_detalhado.
+- Vila do Porto: adicionadas dorsais, espigões e ravinas, com redução perto da costa
+  e da faixa de acesso à vila/cais para preservar o porto.
+- A resolução geométrica das ilhas passa de 150 a 180 divisões em cada eixo.
+- O mesmo cálculo de altura continua servindo para visual, encalhe e raso na água.
+- Ilha Rata mantém a forma anterior (relevo_detalhado = false).
+
+ILHA RATA SEM FAROL
+- Nova opção por ilha: tem_farol.
+- Apenas Ilha Rata: tem_farol = false, sem torre, lanterna nem luz do farol.
+- O posto de pesca, o cais e as regras de venda/combustível foram mantidos.
+- O farol da Vila do Porto foi preservado.
+
+ÁUDIO
+- Equilíbrio dos sons de mar, motor, casco, vento e arrebentação reprocessados com
+  filtragem de frequências incômodas e transições suaves nas alças originais.
+- Não foram adicionadas gravações externas: derivados dos áudios já existentes no jogo.
+- Mar tem respiração de volume suave, influenciada pelo clima e proximidade da costa.
+- Ondas isoladas agora aparecem principalmente perto das praias, em intervalos irregulares.
+- Água correndo no casco e motor mais equilibrados em volume e variação de tom.
+- Vento continua discreto: rajadas ocasionais de 6–11 segundos e pausas de 25–55 s.
+- Os controles de volume já existentes permanecem funcionais.
+
+TESTE NO GODOT 4.3+
+1. Importe project.godot e inicie com F5.
+2. Observe o mar durante dia e fim de tarde, girando a câmera perto do nível da água.
+3. F6: compare o mar em calmaria, agitado e temporal.
+4. Navegue até a Vila do Porto: veja o relevo e o farol preservado.
+5. Navegue até Ilha Rata: verifique a ausência completa de farol e a presença do posto.
+6. Compare os sons no cais, na costa e em alto-mar. Aguarde as rajadas ocasionais.
+7. Ajuste os volumes pelo menu existente.
+
+VALIDAÇÃO
+- Integridade do ZIP, referências e alterações estáticas conferidas.
+- NÃO foi possível executar/renderizar o projeto com Godot neste ambiente.
+- Portanto a qualidade visual final, o custo de GPU e possíveis erros de execução
+  dependem de teste no Godot local do usuário.
