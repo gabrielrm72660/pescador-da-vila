@@ -42,3 +42,8 @@ CORREÇÃO 0.4.0a
 Relato: "fica congelado e não faz nada no modo editor". Não reproduzido nos testes (F9 pelo menu inicial, janela 1920x1080 com stretch,
 custo do mouse). Mudanças de segurança: pausa só no fim do abrir(); mar anima durante a edição; aviso quando o clique cai fora da ilha;
 raio do mouse limitado a 900 m; linha de diagnóstico no painel; log em %APPDATA%\Pescador\construtor_diag.txt.
+
+0.4.0b — MUNDO DO GABRIEL
+O arquivo mundo_ilha_principal.json que o Gabriel salvou no Modo Construtor foi publicado em dados/ e é o mundo padrão do jogo.
+Botões do editor: "Mundo do jogo" (o publicado) e "Ilha original" (o desenho e a vegetação da 0.3.22).
+

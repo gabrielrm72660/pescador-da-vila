@@ -1,4 +1,12 @@
-PESCADOR — Versão 0.4.0a (Godot 4.7)
+PESCADOR — Versão 0.4.0b (Godot 4.7)
+================================================
+NOVO NA 0.4.0b: o mundo que o Gabriel montou no Modo Construtor virou o MUNDO DO JOGO (dados/mundo_ilha_principal.json):
+28 casas (25 casas + armazém + mercado + capela), 18 postes, 13 ruas, 5 props (3 bancos, rede, caixote), 747 pinheiros,
+95 coqueiros, 111 árvores nativas, 302 pedras e 172 moitas. Quem não tem mundo salvo vê esse. O seu salvo (%APPDATA%\Pescador) continua valendo primeiro.
+No editor: "Mundo do jogo" volta a ele; "Ilha original" volta ao desenho da 0.3.22 (apaga o seu salvo nos dois casos; Ctrl+Z desfaz).
+Peso (software, vila vista de cima): Baixa 198 -> 226 draw calls, 140 mil -> 195 mil triângulos; Alta 306 -> 351 draw calls. Mais 15 luzes de poste à noite: não medido em GPU.
+
+PESCADOR — Versão 0.4.0a (correção do editor)
 ================================================
 CORREÇÃO 0.4.0a (Modo Construtor parecia congelado):
 - O jogo só pausa depois que o editor abriu por inteiro (se algo falhar, não fica travado).

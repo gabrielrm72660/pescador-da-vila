@@ -642,15 +642,15 @@ func _exportar() -> void:
     var ok: bool = MundoDados.salvar(ilha.mundo, MundoDados.ARQUIVO_JOGO)
     _mostrar_aviso("Gravado na pasta do jogo: dados/mundo_ilha_principal.json" if ok else "Só dá para gravar na pasta do jogo rodando pelo editor do Godot.")
 
-func _restaurar_padrao() -> void:
+func _restaurar_padrao(publicado: bool = true) -> void:
     _guardar_desfazer()
-    ilha.restaurar_padrao()
+    ilha.restaurar_padrao(publicado)
     _sel = {}
     _rua_atual = []
     _atualizar_pontos_ruas()
     _atualizar_marca()
     modificado = false
-    _mostrar_aviso("Mundo padrão restaurado (Ctrl+Z desfaz).")
+    _mostrar_aviso(("Mundo do jogo restaurado" if publicado else "Ilha original restaurada") + " (Ctrl+Z desfaz).")
 
 # ---------------------------------------------------------------------------------------------------------------
 # geometria de apoio
@@ -1525,7 +1525,8 @@ func _construir_interface() -> void:
     linha_barra.add_child(_botao("Refazer (Ctrl+Y)", _refazer_acao))
     linha_barra.add_child(_botao("Salvar (Ctrl+S)", func(): _salvar(true)))
     linha_barra.add_child(_botao("Gravar na pasta do jogo", _exportar))
-    linha_barra.add_child(_botao("Mundo padrão", _restaurar_padrao))
+    linha_barra.add_child(_botao("Mundo do jogo", func(): _restaurar_padrao(true)))
+    linha_barra.add_child(_botao("Ilha original", func(): _restaurar_padrao(false)))
     linha_barra.add_child(_botao("Sair (F9)", fechar))
 
     _info = Label.new()

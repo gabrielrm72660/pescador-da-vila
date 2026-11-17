@@ -30,14 +30,30 @@ static func carregar() -> Dictionary:
     if OS.get_environment("PESCADOR_MUNDO_PADRAO") == "1":
         return {}
     for caminho in [caminho_usuario(), ARQUIVO_JOGO]:
-        if FileAccess.file_exists(caminho):
-            var dados = JSON.parse_string(FileAccess.get_file_as_string(caminho))
-            if typeof(dados) == TYPE_DICTIONARY and int(dados.get("versao", 0)) == VERSAO:
-                var limpo: Dictionary = {}
-                for chave in CHAVES:
-                    if dados.has(chave) and typeof(dados[chave]) == TYPE_ARRAY:
-                        limpo[chave] = dados[chave]
-                return limpo
+        var lido: Dictionary = _ler(caminho)
+        if not lido.is_empty():
+            return lido
+    return {}
+
+## Só o mundo publicado junto com o jogo (res://dados), sem olhar o que o jogador salvou. {} se não há.
+static func carregar_publicado() -> Dictionary:
+    if OS.get_environment("PESCADOR_MUNDO_PADRAO") == "1":
+        return {}
+    return _ler(ARQUIVO_JOGO)
+
+static func tem_publicado() -> bool:
+    return not carregar_publicado().is_empty()
+
+static func _ler(caminho: String) -> Dictionary:
+    if not FileAccess.file_exists(caminho):
+        return {}
+    var dados = JSON.parse_string(FileAccess.get_file_as_string(caminho))
+    if typeof(dados) == TYPE_DICTIONARY and int(dados.get("versao", 0)) == VERSAO:
+        var limpo: Dictionary = {}
+        for chave in CHAVES:
+            if dados.has(chave) and typeof(dados[chave]) == TYPE_ARRAY:
+                limpo[chave] = dados[chave]
+        return limpo
     return {}
 
 static func existe_salvo() -> bool:

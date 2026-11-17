@@ -85,29 +85,37 @@ func altura_em(pos: Vector3) -> float:
 func altura_local(x: float, z: float) -> float:
     return _altura_local(x, z)
 
-## Modo Construtor: volta ao mundo padrão (o desenho do Gabriel + vegetação sorteada) e apaga o arquivo salvo.
-func restaurar_padrao() -> void:
+## Modo Construtor: volta ao mundo do jogo (o publicado em res://dados, se houver) ou à ilha original (o desenho do Gabriel +
+## vegetação sorteada) e apaga o arquivo salvo.
+func restaurar_padrao(publicado: bool = true) -> void:
     if not editavel:
         return
     MundoDados.apagar_salvo()
     _ocupado = _ocupado_fixo.duplicate()
     _reservando = true
-    mundo = {}
+    mundo = MundoDados.carregar_publicado() if publicado else {}
     _padrao_da_vila()
     _construir_ruas()
     _construir_casas()
-    mundo["props"] = _gerar_props_padrao()
-    mundo["postes"] = _gerar_postes_padrao()
+    if not mundo.has("props"):
+        mundo["props"] = _gerar_props_padrao()
+    if not mundo.has("postes"):
+        mundo["postes"] = _gerar_postes_padrao()
     _construir_props()
     _construir_postes()
-    mundo["pinheiros"] = _gerar_pinheiros()
+    if not mundo.has("pinheiros"):
+        mundo["pinheiros"] = _gerar_pinheiros()
     _construir_pinheiros()
-    mundo["coqueiros"] = _gerar_coqueiros()
+    if not mundo.has("coqueiros"):
+        mundo["coqueiros"] = _gerar_coqueiros()
     _construir_coqueiros()
-    mundo["arvores"] = _gerar_arvores_nativas()
+    if not mundo.has("arvores"):
+        mundo["arvores"] = _gerar_arvores_nativas()
     _construir_arvores_nativas()
-    mundo["pedras"] = _gerar_pedras()
-    mundo["moitas"] = _gerar_moitas()
+    if not mundo.has("pedras"):
+        mundo["pedras"] = _gerar_pedras()
+    if not mundo.has("moitas"):
+        mundo["moitas"] = _gerar_moitas()
     _construir_pedras()
     _construir_moitas()
     _reservando = false
