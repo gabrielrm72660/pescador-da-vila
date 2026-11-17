@@ -5,7 +5,8 @@ signal tela_mudou
 signal qualidade_ajustada(texto: String)
 const ARQUIVO := "user://pescador_graficos.json"
 static var modo_editor: bool = false     # Modo Construtor aberto: nada de vegetação desbastada (quem edita precisa ver tudo)
-const NOMES := ["Baixa", "Média", "Alta"]
+const NOMES := ["Baixa", "Média", "Alta", "Ultra"]
+const QUALIDADE_MAX := 3
 const LIMITES := [30, 60, 120, 0]
 var qualidade: int = 1
 var automatica: bool = true      # abaixa a qualidade sozinha se o jogo ficar lento (nunca sobe sozinha)
@@ -14,6 +15,7 @@ var mostrar_fps: bool = false
 var _painel: Control
 var _fps_label: Label
 var _qualidade_opcao: OptionButton
+var _qualidade_dica: Label
 var _fps_opcao: OptionButton
 var _contador: float = 0.0
 var _ilhas: Array = []
@@ -42,7 +44,7 @@ func _ready() -> void:
     if OS.get_environment("PESCADOR_SEM_AUTO") == "1":
         automatica = false
     if OS.get_environment("PESCADOR_QUALIDADE") != "":
-        qualidade = clampi(int(OS.get_environment("PESCADOR_QUALIDADE")), 0, 2)
+        qualidade = clampi(int(OS.get_environment("PESCADOR_QUALIDADE")), 0, QUALIDADE_MAX)
     _construir()
 
 func configurar(ilhas: Array, sol: DirectionalLight3D, oceano: MeshInstance3D, ambiente: WorldEnvironment) -> void:
@@ -105,7 +107,7 @@ func _construir() -> void:
     central.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     _painel.add_child(central)
     var cartao := PanelContainer.new()
-    cartao.custom_minimum_size = Vector2(500, 350)
+    cartao.custom_minimum_size = Vector2(500, 420)
     cartao.add_theme_stylebox_override("panel", _estilo(Color(0.055, 0.13, 0.17, 0.98)))
     central.add_child(cartao)
     var margem := MarginContainer.new()
@@ -132,12 +134,20 @@ func _construir() -> void:
     _qualidade_opcao.select(qualidade)
     _qualidade_opcao.item_selected.connect(func(n: int):
         qualidade = n
+        _atualizar_dica()
         automatica = false          # quem escolhe a qualidade assume o controle
         if _auto_opcao != null:
             _auto_opcao.set_pressed_no_signal(false)
         aplicar()
         _salvar())
     coluna.add_child(_qualidade_opcao)
+    _qualidade_dica = Label.new()
+    _qualidade_dica.add_theme_font_size_override("font_size", 13)
+    _qualidade_dica.add_theme_color_override("font_color", Color(0.60, 0.81, 0.82))
+    _qualidade_dica.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _qualidade_dica.custom_minimum_size = Vector2(460, 0)
+    coluna.add_child(_qualidade_dica)
+    _atualizar_dica()
     _auto_opcao = CheckButton.new()
     _auto_opcao.text = "Ajuste automático (abaixa a qualidade se travar)"
     _auto_opcao.button_pressed = automatica
@@ -163,22 +173,64 @@ func _construir() -> void:
     fechar.pressed.connect(alternar)
     coluna.add_child(fechar)
 
+## Nome do renderizador em uso ("forward_plus", "mobile" ou "gl_compatibility").
+static func metodo_render() -> String:
+    if RenderingServer.has_method("get_current_rendering_method"):
+        return String(RenderingServer.call("get_current_rendering_method"))
+    return String(ProjectSettings.get_setting("rendering/renderer/rendering_method", "forward_plus"))
+
+static func e_forward_plus() -> bool:
+    return metodo_render() == "forward_plus"
+
+func _atualizar_dica() -> void:
+    if _qualidade_dica == null:
+        return
+    _qualidade_dica.text = [
+        "Baixa: sem sombras, vegetação reduzida. Para PCs fracos.",
+        "Média: sombras simples, vegetação reduzida.",
+        "Alta: sombras, vegetação detalhada e árvores que balançam com o vento.",
+        "Ultra: tudo da Alta + sombras suaves em alta resolução, mar mais fino, árvores e pedras com mais detalhe, filtro de textura máximo e alcance maior. Pede placa de vídeo boa; extras de iluminação só no renderizador Forward+.",
+    ][clampi(qualidade, 0, QUALIDADE_MAX)]
+
 func aplicar() -> void:
     Engine.max_fps = LIMITES[clampi(fps_indice, 0, LIMITES.size() - 1)]
-    var q: int = clampi(qualidade, 0, 2)
-    get_viewport().msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][q]
+    var q: int = clampi(qualidade, 0, QUALIDADE_MAX)
+    var ultra: bool = q >= 3
+    var qb: int = mini(q, 2)                       # tabelas de três posições (Baixa, Média, Alta) usam a Alta no Ultra
+    var fplus: bool = e_forward_plus()
+    var vp: Viewport = get_viewport()
+    var suavizacao: Viewport.MSAA = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][qb]
+    if ultra and fplus:
+        suavizacao = Viewport.MSAA_8X              # 8x só onde o renderizador aguenta (Forward+)
+    vp.msaa_3d = suavizacao
+    # Filtro de textura em ângulo raso (areia, mar, chão): a Alta sobe para 8x e o Ultra para 16x; as demais seguem o padrão do projeto.
+    var aniso_projeto: int = int(ProjectSettings.get_setting("rendering/textures/default_filters/anisotropic_filtering_level", 2))
+    vp.anisotropic_filtering_level = [aniso_projeto, aniso_projeto, maxi(aniso_projeto, 3), 4][q]
+    # Sombras do sol: o Ultra usa o atlas maior, filtro suave de alta qualidade e alcance maior.
+    RenderingServer.directional_shadow_atlas_set_size(8192 if ultra else 4096, true)
+    RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if ultra else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+    RenderingServer.positional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if ultra else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
     if _sol != null:
         _sol.shadow_enabled = q > 0
-        # Cada faixa de sombra redesenha a ilha de novo: Alta usa 4 faixas, Média só 2 (metade do custo de sombra).
-        _sol.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if q == 2 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+        # Cada faixa de sombra redesenha a ilha de novo: Alta e Ultra usam 4 faixas, Média só 2 (metade do custo de sombra).
+        _sol.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if qb == 2 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+        _sol.directional_shadow_max_distance = 190.0 if ultra else 120.0
+        _sol.shadow_blur = 1.0 if ultra else 1.6
     if _camera != null:
-        _camera.far = [850.0, 1350.0, 1900.0][q]
+        _camera.far = [850.0, 1350.0, 1900.0, 2600.0][q]
     if _ambiente != null and _ambiente.environment != null:
         _ambiente.environment.ssao_enabled = q > 0
         _ambiente.environment.glow_enabled = q > 0
+        if fplus:
+            # Só o Forward+ tem estes recursos: sombreamento de contato mais fino (SSAO em qualidade alta) no Ultra.
+            RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_HIGH if ultra else RenderingServer.ENV_SSAO_QUALITY_MEDIUM, true, 0.5, 2, 50.0, 300.0)
+            _ambiente.environment.ssao_radius = 2.0 if ultra else 1.0
     if _oceano != null and _oceano.has_method("definir_qualidade"):
         _oceano.definir_qualidade(q)
+    var nivel_detalhe: int = [0, 0, 1, 2][q]       # malhas de vegetação: leves, detalhadas (Alta, com vento) ou ultra
     for ilha in _ilhas:
+        if ilha.has_method("definir_detalhe"):
+            ilha.definir_detalhe(nivel_detalhe)
         for no in ilha.find_children("*", "MultiMeshInstance3D", true, false):
             var grupo: MultiMeshInstance3D = no as MultiMeshInstance3D
             if grupo != null and grupo.multimesh != null:
@@ -186,7 +238,7 @@ func aplicar() -> void:
                 if grupo.has_meta("sem_reducao") or modo_editor:      # pinheiros da serra: poucos e baratos, ficam sempre inteiros
                     grupo.multimesh.visible_instance_count = -1
                     continue
-                grupo.multimesh.visible_instance_count = -1 if q == 2 else maxi(1, roundi(conta * (0.35 if q == 0 else 0.68)))
+                grupo.multimesh.visible_instance_count = -1 if qb == 2 else maxi(1, roundi(conta * (0.35 if q == 0 else 0.68)))
     for no in get_tree().root.find_children("*", "CPUParticles3D", true, false):
         var efeito: CPUParticles3D = no as CPUParticles3D
         if efeito == null:
@@ -194,7 +246,7 @@ func aplicar() -> void:
         var chave: int = efeito.get_instance_id()
         if not _original_particulas.has(chave):
             _original_particulas[chave] = efeito.amount
-        efeito.amount = maxi(4, roundi(int(_original_particulas[chave]) * [0.35, 0.65, 1.0][q]))
+        efeito.amount = maxi(4, roundi(int(_original_particulas[chave]) * [0.35, 0.65, 1.0, 1.3][q]))
 
 func _process(delta: float) -> void:
     _ajuste_automatico(delta)
@@ -203,7 +255,7 @@ func _process(delta: float) -> void:
     _contador += delta
     if _contador >= 0.5:
         _contador = 0.0
-        _fps_label.text = "FPS %d  |  %.1f ms  |  %s" % [Engine.get_frames_per_second(), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, NOMES[clampi(qualidade, 0, 2)]]
+        _fps_label.text = "FPS %d  |  %.1f ms  |  %s" % [Engine.get_frames_per_second(), Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, NOMES[clampi(qualidade, 0, QUALIDADE_MAX)]]
 
 ## Mede o FPS medio em janelas de 1 s. Se ficar abaixo da meta por 4 janelas seguidas, desce um nivel.
 ## Nunca sobe sozinho (evita vai-e-vem) e para de agir se o jogador mexer na qualidade.
@@ -242,7 +294,7 @@ func _carregar() -> void:
     var dados = JSON.parse_string(FileAccess.get_file_as_string(ARQUIVO))
     if typeof(dados) != TYPE_DICTIONARY:
         return
-    qualidade = clampi(int(dados.get("qualidade", 1)), 0, 2)
+    qualidade = clampi(int(dados.get("qualidade", 1)), 0, QUALIDADE_MAX)
     automatica = bool(dados.get("automatica", true))
     fps_indice = clampi(int(dados.get("fps", 1)), 0, 3)
     mostrar_fps = bool(dados.get("mostrar_fps", false))

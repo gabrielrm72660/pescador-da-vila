@@ -1,3 +1,14 @@
+PESCADOR — Versão 0.5.0 (Godot 4.7)
+================================================
+NOVO NA 0.5.0 (detalhes em docs/PESCADOR_v0.5.0_NOVIDADES.txt):
+- QUALIDADE ULTRA no F10 (4ª opção): vegetação de máximo detalhe, sombras suaves em alta resolução, mar mais fino, filtro de textura 16x e alcance maior.
+  No renderizador Forward+ (o do projeto) liga também MSAA 8x e SSAO alto. O ajuste automático só desce de qualidade.
+- ÁRVORES E PEDRAS NOVAS (Alta e Ultra): pinheiros em camadas com dentes irregulares, árvores de copa com vários lóbulos, pedras facetadas com musgo e moitas volumosas.
+- VENTO (Alta e Ultra): pinheiros, árvores, moitas e coqueiros balançam; a força vem do clima (calmaria no sol, temporal na tempestade).
+- OCEANO x CLIMA: nublado, chuva e tempestade esfriam e escurecem a água, apagam o brilho do sol, a chuva faz anéis na água e cai inclinada pelo vento.
+- CUIDADO: a Alta ficou mais pesada que antes (mais triângulos). Se travar, use Média.
+- Print promocional 4K da ilha no Ultra (PESCADOR_promo_ilha_ultra_4k.png) enviado à parte.
+
 PESCADOR — Versão 0.4.0c (Godot 4.7)
 ================================================
 CORREÇÃO 0.4.0c: o atalho do Modo Construtor agora é TAB (e há um botão MODO CONSTRUTOR no menu inicial e de pausa).

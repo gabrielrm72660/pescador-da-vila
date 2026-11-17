@@ -3,7 +3,7 @@
 config_version=5
 
 [application]
-config/name="Pescador v0.4.0c"
+config/name="Pescador v0.5.0"
 run/main_scene="res://cenas/Jogo.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Pescador"
@@ -18,3 +18,14 @@ window/stretch/mode="canvas_items"
 renderer/rendering_method="forward_plus"
 textures/default_filters/use_nearest_mipmap_filter=false
 anti_aliasing/quality/msaa_3d=1
+
+[shader_globals]
+
+vento_forca={
+"type": "float",
+"value": 0.25
+}
+vento_dir={
+"type": "vec2",
+"value": Vector2(0.84, -0.54)
+}

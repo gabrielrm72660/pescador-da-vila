@@ -1,6 +1,8 @@
 extends Node3D
 const Mesclador = preload("res://scripts/mesclador.gd")
 const MundoDados = preload("res://scripts/mundo_dados.gd")
+const Vento = preload("res://scripts/vento.gd")
+const VegetacaoMalhas = preload("res://scripts/vegetacao_malhas.gd")   # pinheiro, árvore, pedra e moita em níveis de detalhe 1 e 2
 const LayoutPrincipal = preload("res://scripts/layout_principal.gd")   # ruas, casas e pinheiros da Vila do Porto (desenho do Gabriel)
 ## Ilha procedural: praia, encostas, dorsais, paredoes e costa com rochedos.
 ## Coqueiros, moitas, pedras, vila e cais. O farol e opcional em cada ilha. Responde onde há terra (para o barco não atravessar) e onde é o cais.
@@ -20,6 +22,8 @@ var tem_farol := true                          # cada ilha decide se tem farol; 
 var relevo_detalhado := true                    # espigoes e vales: apenas a ilha principal
 const TEX_COPA := "res://assets/texturas/ilha/copa.png"             # detalhe de folhagem (ferramentas/gerar_folhagem.py)
 const TEX_PALMEIRA := "res://assets/texturas/ilha/palmeira.png"       # folha em pena + casca
+const SHADER_COPA := "res://shaders/folhagem_vento.gdshader"          # folhagem que balança com o vento (Alta e Ultra)
+const SHADER_PALMA := "res://shaders/palmeira_vento.gdshader"
 const LADO := 300.0                            # lado da malha do terreno (m)
 const DIVISOES := 180
 const CALADO := 0.9                            # o barco encalha onde a água tem menos que isso (m)
@@ -593,6 +597,8 @@ var mundo: Dictionary = {}        # ruas, casas, postes, props e vegetação edi
 var editavel: bool = false        # só a ilha principal (a vila desenhada) pode ser editada no Modo Construtor
 var _reservando: bool = true      # durante o primeiro desenho, cada construção reserva espaço em _ocupado
 var _malhas: Dictionary = {}      # malhas de vegetação já montadas (cache)
+var _mats_veg: Dictionary = {}    # materiais de vegetação por família e nível (cache)
+var nivel_detalhe: int = 0        # vegetação: 0 leve (Baixa e Média), 1 detalhada (Alta), 2 ultra. Troca por definir_detalhe()
 var _ocupado_fixo: Array = []     # reservas que não são editáveis (pé do cais, farol, mirante e trilha): base do "restaurar padrão"
 
 ## Fita de chão que segue a altura do terreno. Também evita caminhos flutuando acima da praia.
@@ -970,7 +976,7 @@ func _construir_pinheiros() -> void:
     var lista: Array = mundo["pinheiros"]
     var mm := MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = _malha_em_cache("pinheiro")
+    mm.mesh = malha_para("pinheiro", nivel_detalhe)
     mm.instance_count = lista.size()
     for i in mm.instance_count:
         var d: Array = lista[i]
@@ -979,28 +985,135 @@ func _construir_pinheiros() -> void:
         var sc: float = r.randf_range(0.78, 1.22)
         var inclina := Basis.from_euler(Vector3(r.randf_range(-0.04, 0.04), r.randf_range(0.0, TAU), r.randf_range(-0.04, 0.04)))
         mm.set_instance_transform(i, Transform3D(inclina.scaled(Vector3(sc * r.randf_range(0.9, 1.1), sc * r.randf_range(0.95, 1.2), sc * r.randf_range(0.9, 1.1))), Vector3(float(d[0]), h - 0.25, float(d[1]))))
-    var mat := StandardMaterial3D.new()
-    mat.vertex_color_use_as_albedo = true
-    mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-    mat.roughness = 0.96
-    _aplicar_detalhe_de_folhagem(mat, 0.34)
     var inst := MultiMeshInstance3D.new()
     inst.name = "Pinheiros"
     inst.multimesh = mm
-    inst.material_override = mat
     inst.set_meta("sem_reducao", true)
+    _equipar_vegetacao(inst, "pinheiro")
     add_child(inst)
 
 ## Malhas de vegetação são caras de montar: cada tipo é feito uma vez e reaproveitado a cada reconstrução.
+## Nível 0 = as malhas leves de sempre (e coqueiros, que têm uma só); níveis 1 e 2 = vegetacao_malhas.gd.
+func malha_para(chave: String, nivel: int) -> Mesh:
+    var n: int = clampi(nivel, 0, 2)
+    if chave.begins_with("coqueiro"):
+        n = 0
+    var k: String = chave if n == 0 else "%s_n%d" % [chave, n]
+    if not _malhas.has(k):
+        if n == 0:
+            match chave:
+                "pinheiro": _malhas[k] = _malha_pinheiro()
+                "coqueiro0": _malhas[k] = _malha_coqueiro(0)
+                "coqueiro1": _malhas[k] = _malha_coqueiro(1)
+                "coqueiro2": _malhas[k] = _malha_coqueiro(2)
+                "arvore": _malhas[k] = _malha_arvore_nativa()
+                "pedra": _malhas[k] = _malha_pedra_leve()
+                "moita": _malhas[k] = _malha_moita_leve()
+        else:
+            _malhas[k] = VegetacaoMalhas.criar(chave, n)
+    return _malhas[k]
+
 func _malha_em_cache(chave: String) -> Mesh:
-    if not _malhas.has(chave):
-        match chave:
-            "pinheiro": _malhas[chave] = _malha_pinheiro()
-            "coqueiro0": _malhas[chave] = _malha_coqueiro(0)
-            "coqueiro1": _malhas[chave] = _malha_coqueiro(1)
-            "coqueiro2": _malhas[chave] = _malha_coqueiro(2)
-            "arvore": _malhas[chave] = _malha_arvore_nativa()
-    return _malhas[chave]
+    return malha_para(chave, 0)
+
+func _malha_pedra_leve() -> Mesh:
+    var pedra := SphereMesh.new()
+    pedra.radius = 1.0
+    pedra.height = 1.5
+    pedra.radial_segments = 7
+    pedra.rings = 4
+    return pedra
+
+func _malha_moita_leve() -> Mesh:
+    var moita := SphereMesh.new()
+    moita.radius = 1.0
+    moita.height = 1.3
+    moita.radial_segments = 6
+    moita.rings = 3
+    return moita
+
+## Material de cada família de vegetação no nível de detalhe dado. Folhagem em Alta e Ultra usa o shader do vento.
+func _material_vegetacao(familia: String, nivel: int) -> Material:
+    var k: String = "%s|%d" % [familia, clampi(nivel, 0, 2)]
+    if _mats_veg.has(k):
+        return _mats_veg[k]
+    var vento: bool = nivel >= 1
+    var m: Material = null
+    match familia:
+        "pinheiro": m = _material_copa(0.34, 0.96, 9.6, vento, true)
+        "arvore": m = _material_copa(0.30, 0.96, 7.6, vento, true)
+        "moita": m = _material_copa(0.75, 0.95, 1.1, vento, false)
+        "coqueiro": m = _material_palmeira(vento)
+        "pedra":
+            var rocha := _material(Color(0.95, 0.93, 0.90), "res://assets/texturas/ilha/rocha.png", 0.22, "res://assets/texturas/ilha/rocha_normal.png")
+            rocha.uv1_world_triplanar = true
+            rocha.vertex_color_use_as_albedo = nivel >= 1       # as pedras novas trazem musgo e sombra na cor do vértice
+            if nivel >= 1:
+                rocha.albedo_color = Color(1.30, 1.26, 1.22)    # a cor do vértice escurece; este fator devolve o brilho da pedra antiga
+            m = rocha
+    _mats_veg[k] = m
+    return m
+
+## Copa (pinheiro, árvore, moita): cor do vértice + detalhe de folhagem em triplanar. Com vento, o mesmo visual num shader.
+func _material_copa(escala: float, rugosidade: float, altura_ref: float, vento: bool, dois_lados: bool) -> Material:
+    if vento and ResourceLoader.exists(SHADER_COPA):
+        Vento.garantir()                                    # os globais do vento têm de existir antes do shader compilar
+        var sm := ShaderMaterial.new()
+        sm.shader = load(SHADER_COPA)
+        if ResourceLoader.exists(TEX_COPA):
+            sm.set_shader_parameter("tex_copa", load(TEX_COPA))
+        sm.set_shader_parameter("escala_tex", escala)
+        sm.set_shader_parameter("altura_ref", altura_ref)
+        sm.set_shader_parameter("rugosidade", rugosidade)
+        return sm
+    var mat := StandardMaterial3D.new()
+    mat.vertex_color_use_as_albedo = true
+    if dois_lados or vento:
+        mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+    mat.roughness = rugosidade
+    _aplicar_detalhe_de_folhagem(mat, escala)
+    return mat
+
+func _material_palmeira(vento: bool) -> Material:
+    if vento and ResourceLoader.exists(SHADER_PALMA) and ResourceLoader.exists(TEX_PALMEIRA):
+        Vento.garantir()
+        var sm := ShaderMaterial.new()
+        sm.shader = load(SHADER_PALMA)
+        sm.set_shader_parameter("tex_palma", load(TEX_PALMEIRA))
+        sm.set_shader_parameter("altura_ref", 9.0)
+        return sm
+    var mat := StandardMaterial3D.new()
+    mat.vertex_color_use_as_albedo = true
+    mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+    mat.roughness = 0.93
+    if ResourceLoader.exists(TEX_PALMEIRA):                    # folhas em "pena" (transparência) + casca no mesmo atlas
+        mat.albedo_texture = load(TEX_PALMEIRA)
+        mat.albedo_color = Color(1.40, 1.40, 1.40)
+        mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+        mat.alpha_scissor_threshold = 0.38
+        mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+    return mat
+
+func _familia_veg(chave: String) -> String:
+    return "coqueiro" if chave.begins_with("coqueiro") else chave
+
+## Põe num grupo (MultiMeshInstance3D) a malha e o material do nível de detalhe atual. A chave fica no grupo
+## ("malha_chave") para definir_detalhe() poder trocar tudo depois.
+func _equipar_vegetacao(inst: MultiMeshInstance3D, chave: String) -> void:
+    inst.set_meta("malha_chave", chave)
+    inst.multimesh.mesh = malha_para(chave, nivel_detalhe)
+    inst.material_override = _material_vegetacao(_familia_veg(chave), nivel_detalhe)
+
+## Troca o nível de detalhe de toda a vegetação da ilha (0 leve, 1 detalhada, 2 ultra). Barato: as malhas ficam em cache.
+func definir_detalhe(nivel: int) -> void:
+    var n: int = clampi(nivel, 0, 2)
+    if n == nivel_detalhe:
+        return
+    nivel_detalhe = n
+    for no in find_children("*", "MultiMeshInstance3D", false, false):
+        var grupo: MultiMeshInstance3D = no as MultiMeshInstance3D
+        if grupo != null and grupo.has_meta("malha_chave"):
+            _equipar_vegetacao(grupo, String(grupo.get_meta("malha_chave")))
 
 ## Caixa inclinada: gira em Y (como _caixa) e depois cai ou sobe ao longo do próprio eixo X.
 func _caixa_inclinada(pai: Node3D, tam: Vector3, pos: Vector3, mat: Material, giro_y: float, inclinacao: float) -> MeshInstance3D:
@@ -1578,16 +1691,6 @@ func _construir_coqueiros() -> void:
     var por_tipo: Array = [[], [], []]
     for d in mundo["coqueiros"]:
         por_tipo[clampi(int(d[3]), 0, 2)].append(d)
-    var mat := StandardMaterial3D.new()
-    mat.vertex_color_use_as_albedo = true
-    mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-    mat.roughness = 0.93
-    if ResourceLoader.exists(TEX_PALMEIRA):                    # folhas em "pena" (transparência) + casca no mesmo atlas
-        mat.albedo_texture = load(TEX_PALMEIRA)
-        mat.albedo_color = Color(1.40, 1.40, 1.40)
-        mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-        mat.alpha_scissor_threshold = 0.38
-        mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
     for tipo in 3:
         var itens: Array = por_tipo[tipo]
         var mm := MultiMesh.new()
@@ -1605,7 +1708,7 @@ func _construir_coqueiros() -> void:
         var inst := MultiMeshInstance3D.new()
         inst.name = "CoqueirosVar%d" % tipo
         inst.multimesh = mm
-        inst.material_override = mat
+        _equipar_vegetacao(inst, "coqueiro%d" % tipo)
         add_child(inst)
 
 func _malha_arvore_nativa() -> ArrayMesh:
@@ -1678,7 +1781,7 @@ func _construir_arvores_nativas() -> void:
     var lista: Array = mundo["arvores"]
     var mm := MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = _malha_em_cache("arvore")
+    mm.mesh = malha_para("arvore", nivel_detalhe)
     mm.instance_count = lista.size()
     for i in mm.instance_count:
         var d: Array = lista[i]
@@ -1686,15 +1789,10 @@ func _construir_arvores_nativas() -> void:
         var r := _rng_de(int(d[2]))
         var sc: float = r.randf_range(0.72, 1.35)
         mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, r.randf_range(0.0, TAU)).scaled(Vector3(sc, sc * r.randf_range(0.85, 1.15), sc)), Vector3(float(d[0]), h - 0.2, float(d[1]))))
-    var mat := StandardMaterial3D.new()
-    mat.vertex_color_use_as_albedo = true
-    mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-    mat.roughness = 0.96
-    _aplicar_detalhe_de_folhagem(mat, 0.30)
     var inst := MultiMeshInstance3D.new()
     inst.name = "ArvoresNativas"
     inst.multimesh = mm
-    inst.material_override = mat
+    _equipar_vegetacao(inst, "arvore")
     add_child(inst)
 
 func _criar_pedras_e_moitas() -> void:
@@ -1737,14 +1835,9 @@ func _gerar_moitas() -> Array:
 func _construir_pedras() -> void:
     _limpar_no("Pedras")
     var lista: Array = mundo["pedras"]
-    var pedra := SphereMesh.new()
-    pedra.radius = 1.0
-    pedra.height = 1.5
-    pedra.radial_segments = 7
-    pedra.rings = 4
     var mm := MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = pedra
+    mm.mesh = malha_para("pedra", nivel_detalhe)
     mm.instance_count = lista.size()
     for i in lista.size():
         var d: Array = lista[i]
@@ -1753,27 +1846,20 @@ func _construir_pedras() -> void:
         var e: float = r.randf_range(0.5, 1.9) * (1.5 if r.randf() < 0.12 else 1.0)
         var base := Basis.from_euler(Vector3(r.randf_range(-0.5, 0.5), r.randf_range(0.0, TAU), r.randf_range(-0.5, 0.5))).scaled(Vector3(e * r.randf_range(0.8, 1.5), e * r.randf_range(0.55, 1.0), e))
         mm.set_instance_transform(i, Transform3D(base, Vector3(float(d[0]), h + e * 0.1, float(d[1]))))
-    var mat := _material(Color(0.95, 0.93, 0.90), "res://assets/texturas/ilha/rocha.png", 0.22, "res://assets/texturas/ilha/rocha_normal.png")
-    mat.uv1_world_triplanar = true
     var inst := MultiMeshInstance3D.new()
     inst.name = "Pedras"
     inst.multimesh = mm
-    inst.material_override = mat
+    _equipar_vegetacao(inst, "pedra")
     add_child(inst)
 
 ## Moitas no mato.
 func _construir_moitas() -> void:
     _limpar_no("Moitas")
     var lista: Array = mundo["moitas"]
-    var moita := SphereMesh.new()
-    moita.radius = 1.0
-    moita.height = 1.3
-    moita.radial_segments = 6
-    moita.rings = 3
     var mb := MultiMesh.new()
     mb.transform_format = MultiMesh.TRANSFORM_3D
     mb.use_colors = true
-    mb.mesh = moita
+    mb.mesh = malha_para("moita", nivel_detalhe)
     mb.instance_count = lista.size()
     for i in lista.size():
         var d: Array = lista[i]
@@ -1782,14 +1868,10 @@ func _construir_moitas() -> void:
         var e: float = r.randf_range(0.7, 1.8)
         mb.set_instance_transform(i, Transform3D(Basis(Vector3.UP, r.randf_range(0.0, TAU)).scaled(Vector3(e * r.randf_range(1.0, 1.6), e * 0.75, e)), Vector3(float(d[0]), h + e * 0.15, float(d[1]))))
         mb.set_instance_color(i, Color(0.16, 0.34, 0.15).lerp(Color(0.38, 0.50, 0.20), r.randf()))
-    var verde := StandardMaterial3D.new()
-    verde.vertex_color_use_as_albedo = true
-    verde.roughness = 0.95
-    _aplicar_detalhe_de_folhagem(verde, 0.75)
     var moitas := MultiMeshInstance3D.new()
     moitas.name = "Moitas"
     moitas.multimesh = mb
-    moitas.material_override = verde
+    _equipar_vegetacao(moitas, "moita")
     add_child(moitas)
 
 ## À noite (0 a 1) as janelas, o farol e a lanterna do cais acendem.

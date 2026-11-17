@@ -7,8 +7,8 @@ extends MeshInstance3D
 ## A malha do mar e um "clipmap": um bloco fino em volta do barco e aneis cada vez mais largos e grossos.
 ## O bloco inteiro anda de PASSO em PASSO (8 celulas finas) acompanhando o barco.
 const SAIA: float = 3.0  # parede sob cada emenda entre aneis: esconde fendas entre celulas de tamanhos diferentes
-const CELULA_FINA = [10.0, 8.0, 5.0]   # metros, por qualidade (Baixa, Media, Alta)
-const ANEIS = [2, 3, 4]                # aneis alem do bloco fino
+const CELULA_FINA = [10.0, 8.0, 5.0, 3.5]   # metros, por qualidade (Baixa, Media, Alta, Ultra)
+const ANEIS = [2, 3, 4, 4]                  # aneis alem do bloco fino
 const PONTOS_RASTRO: int = 64
 const INTERVALO_RASTRO: float = 0.22
 const VIDA_RASTRO: float = 14.0
@@ -70,10 +70,10 @@ func _ready() -> void:
                 push_warning("Textura do mar não encontrada: " + arquivo)
         _atualizar_uniformes()
 
-## Reconstroi a malha do mar para a qualidade 0 (Baixa), 1 (Media) ou 2 (Alta).
+## Reconstroi a malha do mar para a qualidade 0 (Baixa), 1 (Media), 2 (Alta) ou 3 (Ultra: celulas de 3,5 m perto do barco).
 ## Triangulos: ~33 mil nas tres; muda so o tamanho das celulas (e ate onde o mar chega).
 func definir_qualidade(q: int) -> void:
-    q = clampi(q, 0, 2)
+    q = clampi(q, 0, CELULA_FINA.size() - 1)
     if _malha_q == q and mesh is ArrayMesh:
         return
     _malha_q = q

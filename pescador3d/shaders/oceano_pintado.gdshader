@@ -15,6 +15,8 @@ uniform float velocidade_ondas : hint_range(0.0, 3.0, 0.05) = 0.75;
 uniform float quantidade_espuma : hint_range(0.0, 1.0, 0.01) = 0.45;
 uniform float agitacao_mar : hint_range(0.0, 1.0, 0.01) = 0.36;
 uniform float tempestade_nivel : hint_range(0.0, 1.0, 0.01) = 0.0;
+uniform float cobertura : hint_range(0.0, 1.0, 0.01) = 0.0;     // ceu coberto (nublado, chuva, temporal): esfria e escurece a agua (enviada por scripts/clima.gd)
+uniform float chuva_mar : hint_range(0.0, 1.0, 0.01) = 0.0;     // chuva batendo na agua: aneis de gota e superficie picada (idem)
 // Proteção costeira: mesma interpolação em scripts/oceano.gd.
 uniform vec2 ilha_centro_a = vec2(1000000.0);
 uniform vec2 ilha_centro_b = vec2(1000000.0);
@@ -157,6 +159,25 @@ float turbulencia(vec2 p) {
     return a;
 }
 
+float hash21(vec2 c) {
+    return fract(sin(dot(c, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// Aneis de gota de chuva: uma gota por celula, que nasce, abre e some. Devolve a inclinacao (x, z) da superficie.
+vec2 gotas_chuva(vec2 p, float tt, float celula) {
+    vec2 g = p / celula;
+    vec2 id = floor(g);
+    vec2 f = fract(g) - 0.5;
+    float h = hash21(id);
+    float viva = step(hash21(id + 11.7), chuva_mar);                // quanto maior a chuva, mais celulas com gota
+    float fase = fract(tt * (0.75 + 0.6 * h) + h * 9.0);
+    vec2 d = f - (vec2(hash21(id + 3.1), hash21(id + 7.7)) - 0.5) * 0.5;
+    float r = length(d);
+    float x = (r - fase * 0.23) * 34.0;                             // o anel abre ate 0,23 da celula e nao cruza a vizinha
+    float anel = x * exp(-x * x) * (1.0 - fase) * (1.0 - fase);
+    return d / max(r, 0.001) * anel * viva;
+}
+
 void vertex() {
     vec2 p = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
     float h = onda(p, tempo_mar * velocidade_ondas);
@@ -180,6 +201,12 @@ void fragment() {
     vec2 n_media = texture(tex_ondas, p * 0.037 - vento * t * (0.012 + agitacao_mar * 0.012)).xy * 2.0 - 1.0;
     vec2 n_fina = texture(tex_marolas, p * 0.17 - (vento + cruz * 0.24) * t * (0.045 + agitacao_mar * 0.045)).xy * 2.0 - 1.0;
     vec2 relevo = (n_larga * 0.36 + n_media * 0.41 + n_fina * (0.20 + 0.25 * agitacao_mar) * perto) * forca_relevo;
+    if (chuva_mar > 0.001) {
+        // chuva: gotas em duas escalas + a superficie picada por gotas miudas (so perto, onde da para ver)
+        vec2 gotas = gotas_chuva(p, tempo_mar, 1.9) + gotas_chuva(p + vec2(17.3, 5.1), tempo_mar * 1.13 + 3.0, 3.4) * 0.8;
+        relevo += gotas * chuva_mar * perto * 2.0;
+        relevo += (texture(tex_marolas, p * 0.55 + vec2(tempo_mar * 0.9, -tempo_mar * 0.7)).xy * 2.0 - 1.0) * 0.16 * chuva_mar * perto;
+    }
     vec3 normal_mundo = normalize(vec3(-pendente.x - relevo.x, 1.0, -pendente.y - relevo.y));
     NORMAL = normalize((VIEW_MATRIX * vec4(normal_mundo, 0.0)).xyz);
 
@@ -332,7 +359,7 @@ void fragment() {
     base = mix(base, cor_espuma.rgb, espuma);
 
     // ---- ao longe a agua se desmancha na cor do horizonte (esconde a borda do mar)
-    float longe = smoothstep(500.0, 1800.0, distancia);
+    float longe = smoothstep(500.0 - 260.0 * chuva_mar, 1800.0 - 900.0 * chuva_mar, distancia);     // com chuva o horizonte fecha mais perto
     base = mix(base, cor_horizonte.rgb, longe * 0.85);
 
     // ---- neblina da noite: um veu baixo sobre a agua, com fiapos mais densos que andam devagar.
@@ -348,9 +375,14 @@ void fragment() {
 
     // Céu carregado escurece a cor sem desligar a espuma do temporal.
     base *= mix(vec3(1.0), vec3(0.67, 0.77, 0.83), tempestade_nivel * 0.78);
+    // Ceu coberto (nublado, chuva): a agua perde o verde-turquesa, esfria para cinza-azulado e escurece um pouco.
+    float nuvem = clamp(cobertura, 0.0, 1.0);
+    float lum = dot(base, vec3(0.299, 0.587, 0.114));
+    base = mix(base, vec3(lum) * vec3(0.94, 1.0, 1.03), nuvem * 0.34 * (1.0 - espuma * 0.6));
+    base *= 1.0 - 0.12 * nuvem;
     ALBEDO = base;
     ROUGHNESS = mix(mix(0.44 - brilho * 0.20, 0.85, max(espuma, longe)), 1.0, veu);
     SPECULAR = mix(0.28 + brilho * 0.22, 0.10, max(espuma, veu));
     METALLIC = 0.0;
-    EMISSION = base * (0.04 + 0.10 * espuma) * luz_propria + cor_nevoa.rgb * veu * 0.30;
+    EMISSION = base * (0.04 + 0.10 * espuma) * luz_propria * (1.0 - 0.5 * nuvem) + cor_nevoa.rgb * veu * 0.30;
 }

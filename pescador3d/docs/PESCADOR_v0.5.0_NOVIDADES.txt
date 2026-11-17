@@ -1,0 +1,49 @@
+PESCADOR 0.5.0 — ULTRA, VENTO, CLIMA NO MAR E VEGETAÇÃO NOVA
+=============================================================
+
+PEDIDO (17/11/2026, 16:58 e 17:00): "modo ultra com super gráficos"; "melhorar o 3D das estruturas como as árvores e pedras";
+"vento que no modo alto e ultra as árvores se mexem, que o oceano seja influenciado pelo clima"; "um print promocional bem bonito da ilha principal no modo ultra".
+(O pedido de mundo procedural que gera ilhas conforme o jogador navega ficou para a 0.6.0: mexe em radar, mapa, fauna e missões.)
+
+1) QUALIDADE ULTRA (F10, 4ª opção)
+   Baixa / Média / Alta como antes. Ultra = tudo da Alta e mais:
+   - vegetação de máximo detalhe (ver 2);
+   - sombras do sol com atlas de 8192, filtro suave "alto" e alcance de 190 m (Alta: 4096, filtro baixo, 120 m);
+   - malha do mar com células de 3,5 m perto do barco (Alta: 5 m), mesmo número de triângulos;
+   - filtro anisotrópico 16x (Alta 8x), câmera enxerga até 2600 m, 30% mais partículas;
+   - só no renderizador Forward+ (o do projeto): MSAA 8x e SSAO em qualidade alta.
+   O ajuste automático continua só DESCENDO (Ultra -> Alta -> Média -> Baixa). A qualidade fica salva como antes.
+   Quem tem Baixa salva continua na Baixa.
+
+2) VEGETAÇÃO NOVA (scripts/vegetacao_malhas.gd)
+   Pinheiro, árvore nativa, pedra e moita ganharam malhas novas em dois níveis (Alta = nível 1, Ultra = nível 2); Baixa e Média usam as de sempre.
+   - pinheiro: saias em camadas com borda de dentes irregulares e caídos, cone interno, tronco com raiz alargada. 64 -> 290 (Alta) -> 458 (Ultra) triângulos.
+   - árvore: tronco com ramos e copa de 7 (Alta) ou 9 (Ultra) lóbulos amassados, sombra por baixo e luz por cima. 286 -> 696 -> 1096.
+   - pedra: facetada e amassada, base achatada que "senta" no chão, musgo no topo. 70 -> 80 -> 320.
+   - moita: três ou quatro lóbulos juntos. 48 -> 240 -> ~560.
+   Cada malha monta em 0,2 a 3 ms e fica em cache. Trocar de qualidade troca as malhas na hora (Ilha.definir_detalhe).
+   CUSTO (contagem por software): vegetação visível na ilha principal: Baixa 83 mil triângulos (igual à 0.4.0c), Alta ~398 mil (era ~140 mil), Ultra ~700 mil.
+   Em GPU de verdade isso é pouco; em PC fraco a Alta ficou mais pesada que antes. Quem sentir, use Média.
+
+3) VENTO (Alta e Ultra)
+   Pinheiros, árvores, moitas e coqueiros balançam: o tronco se dobra a favor do vento, a copa vai e volta em rajadas que cruzam a ilha (vizinhas não balançam juntas)
+   e as folhas tremem. Shaders shaders/folhagem_vento.gdshader e palmeira_vento.gdshader; a base fica presa ao chão.
+   A força (0 = calmaria, 1 = temporal) sai da agitação do mar e a direção é a mesma do mar. Dois globais de shader no project.godot (vento_forca, vento_dir),
+   mantidos por scripts/vento.gd e clima.gd. Em Baixa e Média nada balança (o material continua o comum).
+
+4) OCEANO x CLIMA
+   Antes só as ondas mudavam. Agora, com céu coberto (Nublado, Chuva, Tempestade, e o Automático quando a tempestade chega):
+   - a água perde o turquesa e esfria para cinza-azulado, escurece, e o brilho do sol na água some;
+   - com chuva: anéis de gota em duas escalas e superfície picada perto do barco, horizonte que fecha mais cedo;
+   - a chuva (partículas) cai inclinada pelo vento.
+   Transições: a chuva na água sobe/desce em ~3 s; o resto segue o clima como antes (K troca o clima).
+
+5) PRINT PROMOCIONAL: PESCADOR_promo_ilha_ultra_4k.png (e _titulo): 3840x2160, 17h24, Ultra, barco PE-3476 em primeiro plano.
+
+ARQUIVOS NOVOS: scripts/vegetacao_malhas.gd, scripts/vento.gd, shaders/folhagem_vento.gdshader, shaders/palmeira_vento.gdshader, shaders/vento.gdshaderinc
+ALTERADOS: scripts/ilha.gd, scripts/opcoes_graficas.gd, scripts/oceano.gd, scripts/clima.gd, scripts/jogo.gd (versão), shaders/oceano_pintado.gdshader, project.godot (shader_globals), LEIA-ME.txt
+
+VALIDAÇÃO (honesta)
+Fotos de comparação lado a lado (nível 0/1/2), vento 0 x 1, quatro climas no mar e print 4K, tudo no renderizador de compatibilidade por software; bateria de regressão do jogo em Baixa, Alta e Ultra.
+NÃO testado: o Ultra no Forward+ (MSAA 8x, SSAO alto, atlas de sombra 8192) — o código só liga isso se o renderizador for Forward+, mas eu não consegui rodar daqui;
+FPS em GPU de verdade; custo da Alta/Ultra no seu PC; as ondulações de chuva em movimento (só vi quadros parados).

@@ -3,6 +3,8 @@ extends Node
 ## cores do mar. À noite desce uma neblina fechada sobre a água. Um dia inteiro dura DURACAO_DIA segundos.
 ## Os quatro momentos (DIA, TARDE, NOITE e o amanhecer, que reaproveita a tarde) são misturados aos poucos.
 
+const Vento = preload("res://scripts/vento.gd")
+
 signal anoiteceu
 signal amanheceu
 
@@ -63,6 +65,8 @@ var modo_clima: int = 0
 var _oceano: MeshInstance3D
 var _barco: Node3D
 var _chuva: CPUParticles3D
+var _chuva_mar: float = 0.0          # 0..1: quanto a chuva está batendo na água (sobe e desce devagar)
+var vento_forca: float = 0.25        # 0..1: calmaria ... temporal (vem da agitação do mar; alimenta o vento das folhagens)
 
 func configurar(ceu: WorldEnvironment, sol: DirectionalLight3D, oceano: MeshInstance3D) -> void:
     _ceu = ceu
@@ -92,12 +96,29 @@ func _process(delta: float) -> void:
         var qtd: int = 320 if (modo_clima == 4 or agua_forte) else 175
         if _chuva.amount != qtd:
             _chuva.amount = qtd
+    _chuva_mar = move_toward(_chuva_mar, _chuva_alvo(), delta * 0.30)
     if correndo:
         hora = fposmod(hora + delta * 24.0 / DURACAO_DIA, 24.0)
     _relogio += delta
     if _relogio >= 0.2:                              # cinco vezes por segundo basta: o céu muda devagar
         _relogio = 0.0
         atualizar()
+
+## Quanto de chuva o clima pede agora (0 a 1): 0 sem chuva; o modo Chuva é moderado; Tempestade, cheia; no Automático
+## acompanha a tempestade do mar.
+func _chuva_alvo() -> float:
+    if modo_clima == 3:
+        return 0.62
+    if modo_clima == 4:
+        return 1.0
+    if modo_clima == 0 and _oceano != null:
+        return smoothstep(0.30, 0.90, float(_oceano.tempestade_nivel))
+    return 0.0
+
+## Pula as transições lentas (chuva na água): para testes e fotos.
+func pular_transicoes() -> void:
+    _chuva_mar = _chuva_alvo()
+    atualizar()
 
 ## K alterna as condições meteorológicas; o modo Automático restaura o clima natural.
 func alternar_clima() -> String:
@@ -237,10 +258,29 @@ func atualizar() -> void:
     _mat_ceu.set_shader_parameter("cor_horizonte", (a.ceu.cor_horizonte as Color).lerp(Color(0.32, 0.36, 0.38), escurecer))
     _mat_ceu.set_shader_parameter("cor_nuvem_luz", (a.ceu.cor_nuvem_luz as Color).lerp(Color(0.36, 0.40, 0.43), escurecer))
     _mat_ceu.set_shader_parameter("cor_nuvem_sombra", (a.ceu.cor_nuvem_sombra as Color).lerp(Color(0.09, 0.12, 0.16), escurecer))
+    # ---- vento: a força segue a agitação do mar (calmaria no sol, temporal na tempestade) e sopra para onde o mar anda
+    var agitacao: float = float(_oceano.agitacao) if _oceano != null else 0.45
+    vento_forca = clampf(inverse_lerp(0.18, 0.95, agitacao), 0.0, 1.0)
+    var rumo: Vector2 = _oceano.direcao_vento if _oceano != null else Vector2(0.84, -0.54)
+    Vento.definir(vento_forca, rumo)
+    if _chuva != null:
+        var inclinacao: float = 0.08 + 0.55 * vento_forca                        # a chuva cai de lado com o vento
+        _chuva.direction = Vector3(rumo.x * inclinacao, -1.0, rumo.y * inclinacao).normalized()
     if _mar != null:
         _mar.set_shader_parameter("direcao_sol", _sol.global_transform.basis.z)      # a luz viaja em -Z; o sol fica em +Z
-        for chave in a.mar:
-            _mar.set_shader_parameter(chave, a.mar[chave])
+        # ---- o clima pinta o mar: céu coberto apaga o brilho do sol, esfria e escurece a água
+        var mar: Dictionary = a.mar.duplicate()
+        mar["brilho"] = float(mar.brilho) * (1.0 - 0.55 * escurecer)
+        mar["reflexo_no_sol"] = float(mar.reflexo_no_sol) * (1.0 - 0.92 * escurecer)
+        mar["reflexo_geral"] = lerpf(float(mar.reflexo_geral), 0.34, escurecer * 0.8)
+        mar["cor_reflexo_ceu"] = (mar.cor_reflexo_ceu as Color).lerp(Color(0.40, 0.45, 0.48), escurecer * 0.65)
+        mar["cor_horizonte"] = (mar.cor_horizonte as Color).lerp(Color(0.33, 0.37, 0.39), escurecer * 0.75)
+        mar["cor_turquesa"] = (mar.cor_turquesa as Color).lerp(Color(0.16, 0.36, 0.38), escurecer * 0.60)
+        mar["cor_raso"] = (mar.cor_raso as Color).lerp(Color(0.24, 0.50, 0.48), escurecer * 0.55)
+        for chave in mar:
+            _mar.set_shader_parameter(chave, mar[chave])
+        _mar.set_shader_parameter("cobertura", escurecer)
+        _mar.set_shader_parameter("chuva_mar", _chuva_mar)
         # os fiapos de neblina sobre a água respiram junto com a névoa do ar
         _mar.set_shader_parameter("nevoa", float(a.mar.nevoa) * (0.85 + 0.15 * sin(_tempo * 0.17)))
     var e_noite := noite() > 0.5
