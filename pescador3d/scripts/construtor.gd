@@ -81,6 +81,12 @@ var _arrasto_rua: Dictionary = {}             # estado do arrasto de um ponto de
 const RAIO_MACIO := 10.0
 var _rng := RandomNumberGenerator.new()
 var _aviso_tempo: float = 0.0
+var _estado: Label                            # linha de diagnóstico (FPS, GPU, mouse) no pé do painel
+var _estado_tempo: float = 0.0
+var _n_raw: int = 0                           # eventos de mouse que chegaram ao editor (antes da interface)
+var _n_mundo: int = 0                         # eventos de mouse que chegaram ao mundo (depois da interface)
+var _n_cliques: int = 0
+var _ultimo_mouse := Vector2.ZERO
 
 # --- visuais (filhos da ilha, em coordenadas locais) ---
 var _visuais: Node3D
@@ -114,6 +120,9 @@ func configurar(jogo_: Node3D, ilha_: Node3D) -> void:
     _rng.randomize()
 
 func _input(event: InputEvent) -> void:
+    if ativo and event is InputEventMouse:
+        _n_raw += 1
+        _ultimo_mouse = event.position
     if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F9:
         get_viewport().set_input_as_handled()
         if ativo:
@@ -129,7 +138,9 @@ func abrir() -> void:
     if ativo or ilha == null or not ilha.editavel:
         return
     ativo = true
-    get_tree().paused = true
+    _n_raw = 0
+    _n_mundo = 0
+    _n_cliques = 0
     OpcoesGraficas.modo_editor = true
     jogo.graficos.aplicar()                       # mostra toda a vegetação, mesmo na qualidade Baixa
     jogo.interface.visible = false
@@ -155,7 +166,9 @@ func abrir() -> void:
     _escolher_ferramenta(ferramenta)
     _atualizar_camera()
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-    _mostrar_aviso("Modo Construtor aberto. F9 sai e guarda.")
+    _mostrar_aviso("Modo Construtor aberto. Clique na ilha para colocar. F9 sai e guarda.")
+    _registrar_diagnostico("abriu")
+    get_tree().paused = true                      # por último: se algo acima falhar, o jogo não fica congelado
 
 func fechar() -> void:
     if not ativo:
@@ -240,6 +253,25 @@ func _process(delta: float) -> void:
     if _aviso_tempo > 0.0:
         _aviso_tempo -= delta
         _aviso.modulate.a = clampf(_aviso_tempo, 0.0, 1.0)
+    # O jogo fica pausado enquanto se edita, mas o mar continua mexendo (senão parece que travou).
+    var mar = jogo.get("oceano")
+    if mar != null and mar.get("_material") != null:
+        mar.tempo += delta
+        mar._material.set_shader_parameter("tempo_mar", mar.tempo)
+    _estado_tempo -= delta
+    if _estado_tempo <= 0.0 and _estado != null:
+        _estado_tempo = 0.4
+        var onde: String = "fora da ilha" if _hover == null else "(%d, %d)" % [roundi(_hover.x), roundi(_hover.y)]
+        _estado.text = "%d FPS · mouse %d/%d · cliques %d · cursor %s" % [Engine.get_frames_per_second(), _n_raw, _n_mundo, _n_cliques, onde]
+
+func _registrar_diagnostico(evento: String) -> void:
+    var metodo: String = str(RenderingServer.call("get_current_rendering_method")) if RenderingServer.has_method("get_current_rendering_method") else str(ProjectSettings.get_setting("rendering/renderer/rendering_method", "?"))
+    var linha: String = "%s | %s | Godot %s | %s | %s | janela %s" % [Time.get_datetime_string_from_system(), evento, Engine.get_version_info().get("string", "?"), metodo, RenderingServer.get_video_adapter_name(), DisplayServer.window_get_size()]
+    print("[CONSTRUTOR] ", linha)
+    var arq := FileAccess.open("user://construtor_diag.txt", FileAccess.READ_WRITE if FileAccess.file_exists("user://construtor_diag.txt") else FileAccess.WRITE)
+    if arq != null:
+        arq.seek_end()
+        arq.store_line(linha)
 
 ## Onde o raio do mouse encontra o terreno (coordenadas locais da ilha), ou null.
 func _ponto_no_terreno(tela: Vector2) -> Variant:
@@ -250,7 +282,7 @@ func _ponto_no_terreno(tela: Vector2) -> Variant:
     if d.y > -0.001:
         return null
     var t: float = maxf(0.0, (o.y - 48.0) / -d.y)
-    var t_fim: float = (o.y + 14.0) / -d.y
+    var t_fim: float = minf((o.y + 14.0) / -d.y, t + 900.0)     # raio quase horizontal não varre dezenas de km
     var anterior: float = t
     var achou := false
     while t <= t_fim:
@@ -281,6 +313,8 @@ func _ponto_no_terreno(tela: Vector2) -> Variant:
 func _unhandled_input(event: InputEvent) -> void:
     if not ativo:
         return
+    if event is InputEventMouse:
+        _n_mundo += 1
     if event is InputEventMouseButton:
         _mouse_botao(event)
     elif event is InputEventMouseMotion:
@@ -351,7 +385,9 @@ func _mouse_movimento(e: InputEventMouseMotion) -> void:
             _carimbar(p, _pintando == 2)
 
 func _esquerdo_aperta(e: InputEventMouseButton) -> void:
+    _n_cliques += 1
     if _hover == null:
+        _mostrar_aviso("O clique caiu fora da ilha (mar ou céu). Aponte para a terra.")
         return
     var p: Vector2 = _hover
     if categoria == "limpar":
@@ -1497,6 +1533,12 @@ func _construir_interface() -> void:
     _info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _info.custom_minimum_size = Vector2(226, 0)
     coluna.add_child(_info)
+    coluna.add_child(HSeparator.new())
+    _estado = _rotulo_pequeno("")
+    _estado.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _estado.custom_minimum_size = Vector2(226, 0)
+    _estado.add_theme_font_size_override("font_size", 11)
+    coluna.add_child(_estado)
 
     var faixa := PanelContainer.new()
     faixa.add_theme_stylebox_override("panel", _estilo(Color(0.02, 0.06, 0.09, 0.80)))

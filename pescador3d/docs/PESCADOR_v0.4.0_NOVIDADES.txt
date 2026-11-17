@@ -37,3 +37,8 @@ LIMITES DESTA VERSÃO
 VALIDAÇÃO (honesta)
 Sondas automáticas (_construtor.gd, _construtor2.gd) com cliques/teclas simulados; bateria de regressão do jogo (cais, farol, trilha, pesca, save, radar).
 NÃO testado: uso real com mouse, FPS do editor em GPU de verdade.
+
+CORREÇÃO 0.4.0a
+Relato: "fica congelado e não faz nada no modo editor". Não reproduzido nos testes (F9 pelo menu inicial, janela 1920x1080 com stretch,
+custo do mouse). Mudanças de segurança: pausa só no fim do abrir(); mar anima durante a edição; aviso quando o clique cai fora da ilha;
+raio do mouse limitado a 900 m; linha de diagnóstico no painel; log em %APPDATA%\Pescador\construtor_diag.txt.

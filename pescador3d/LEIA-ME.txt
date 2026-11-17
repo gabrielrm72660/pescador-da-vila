@@ -1,3 +1,12 @@
+PESCADOR — Versão 0.4.0a (Godot 4.7)
+================================================
+CORREÇÃO 0.4.0a (Modo Construtor parecia congelado):
+- O jogo só pausa depois que o editor abriu por inteiro (se algo falhar, não fica travado).
+- O mar continua se mexendo no editor, para não parecer parado.
+- Clique fora da ilha agora avisa na tela. No pé do painel há uma linha de diagnóstico: FPS, mouse (eventos recebidos / no mundo),
+  cliques e posição do cursor. Se ainda travar, tire um print dessa linha.
+- Cada abertura do editor anota Godot, renderizador e placa de vídeo em %APPDATA%\Pescador\construtor_diag.txt.
+
 PESCADOR — Versão 0.4.0 (Godot 4.7)
 ================================================
 Base: a 0.3.22 mais o MODO CONSTRUTOR (editor de mundo dentro do jogo). Detalhes em docs/PESCADOR_v0.4.0_NOVIDADES.txt.
