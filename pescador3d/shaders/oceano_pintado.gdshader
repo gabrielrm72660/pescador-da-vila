@@ -34,6 +34,8 @@ uniform vec2 costa_centro2 = vec2(0.0);
 uniform float costa_lado2 = 0.0;
 uniform vec2 costa_faixa = vec2(-12.0, 4.0);         // altura (m) que vale 0 e 1 no mapa
 uniform vec4 cor_raso : source_color = vec4(0.20, 0.78, 0.72, 1.0);
+uniform float nevoa = 0.0;                           // 0 a 1: fiapos de neblina deitados sobre a agua (a noite)
+uniform vec4 cor_nevoa : source_color = vec4(0.36, 0.45, 0.49, 1.0);
 uniform float luz_propria = 1.0;                     // a agua se acende um pouco sozinha de dia; a noite, nao
 
 // Enviados por scripts/oceano.gd. O tempo vem do script (e nao de TIME) para o barco
@@ -180,6 +182,9 @@ void fragment() {
     // a renda aparece onde ha pedido: pouco pedido = so os fios mais fortes; muito = espuma cheia
     float espuma = clamp((renda - (1.0 - pedido)) / 0.34, 0.0, 1.0);
     espuma = max(espuma, smoothstep(0.82, 1.0, pedido));
+    // em volta do casco e no rastro a espuma e batida, cheia: manchas macias em vez de fios de renda
+    float batida = max(max(casco * (0.45 + 0.55 * barco_vel), bigode * barco_vel * 0.85), esteira * 0.9);
+    espuma = max(espuma, smoothstep(0.30, 0.80, batida * (0.40 + 1.15 * detalhe)) * 0.92);
     espuma *= mix(0.55, 1.0, perto) ;
 
     // ---- sombra de contato sob o casco
@@ -191,9 +196,20 @@ void fragment() {
     float longe = smoothstep(500.0, 1800.0, distancia);
     base = mix(base, cor_horizonte.rgb, longe * 0.85);
 
+    // ---- neblina da noite: um veu baixo sobre a agua, com fiapos mais densos que andam devagar.
+    // Fica aqui (e nao so na nevoa do ceu) para aparecer tambem com a camera olhando de cima.
+    float veu = 0.0;
+    if (nevoa > 0.001) {
+        float fiapo = texture(tex_pigmento, p * 0.012 + vec2(t * 0.006, t * 0.004)).r * 0.6
+                    + texture(tex_pigmento, p * 0.047 - vec2(t * 0.011, -t * 0.007)).r * 0.4;
+        veu = nevoa * (0.22 + 0.78 * smoothstep(0.36, 0.70, fiapo));
+        veu *= 1.0 - 0.75 * smoothstep(9.0, 3.0, length(q));          // a lanterna do barco abre um claro em volta
+        base = mix(base, cor_nevoa.rgb, veu * 0.82);
+    }
+
     ALBEDO = base;
-    ROUGHNESS = mix(0.44 - brilho * 0.20, 0.85, max(espuma, longe));
-    SPECULAR = mix(0.28 + brilho * 0.22, 0.10, espuma);
+    ROUGHNESS = mix(mix(0.44 - brilho * 0.20, 0.85, max(espuma, longe)), 1.0, veu);
+    SPECULAR = mix(0.28 + brilho * 0.22, 0.10, max(espuma, veu));
     METALLIC = 0.0;
-    EMISSION = base * (0.04 + 0.10 * espuma) * luz_propria;
+    EMISSION = base * (0.04 + 0.10 * espuma) * luz_propria + cor_nevoa.rgb * veu * 0.30;
 }

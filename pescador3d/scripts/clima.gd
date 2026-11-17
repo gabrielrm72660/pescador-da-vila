@@ -18,7 +18,7 @@ const DIA := {
     "mar": {"cor_profunda": Color(0.025, 0.135, 0.215), "cor_media": Color(0.035, 0.315, 0.400),
             "cor_turquesa": Color(0.110, 0.560, 0.600), "cor_espuma": Color(0.90, 0.96, 0.95),
             "cor_reflexo_ceu": Color(0.66, 0.74, 0.78), "cor_horizonte": Color(0.64, 0.70, 0.71), "brilho": 0.55,
-            "reflexo_geral": 0.55, "reflexo_no_sol": 0.0, "cor_raso": Color(0.20, 0.78, 0.72)},
+            "reflexo_geral": 0.55, "reflexo_no_sol": 0.0, "forca_relevo": 0.55, "nevoa": 0.0, "cor_raso": Color(0.20, 0.78, 0.72)},
 }
 const TARDE := {
     "sol_cor": Color(1.0, 0.76, 0.54), "sol_energia": 1.15,
@@ -29,7 +29,7 @@ const TARDE := {
     "mar": {"cor_profunda": Color(0.02, 0.15, 0.27), "cor_media": Color(0.03, 0.33, 0.43),
             "cor_turquesa": Color(0.08, 0.55, 0.58), "cor_espuma": Color(1.0, 0.91, 0.84),
             "cor_reflexo_ceu": Color(1.0, 0.70, 0.42), "cor_horizonte": Color(0.84, 0.62, 0.52), "brilho": 0.45,
-            "reflexo_geral": 0.12, "reflexo_no_sol": 0.75, "cor_raso": Color(0.22, 0.70, 0.66)},
+            "reflexo_geral": 0.12, "reflexo_no_sol": 0.75, "forca_relevo": 0.55, "nevoa": 0.0, "cor_raso": Color(0.22, 0.70, 0.66)},
 }
 ## A noite: lua fraca e azulada, e a neblina que fecha o mar em volta do barco.
 const NOITE := {
@@ -40,8 +40,8 @@ const NOITE := {
             "cor_sol": Color(0.75, 0.83, 0.96), "cor_nuvem_luz": Color(0.16, 0.20, 0.27), "cor_nuvem_sombra": Color(0.04, 0.05, 0.08), "estrelas": 1.0},
     "mar": {"cor_profunda": Color(0.010, 0.040, 0.075), "cor_media": Color(0.015, 0.090, 0.125),
             "cor_turquesa": Color(0.040, 0.200, 0.230), "cor_espuma": Color(0.55, 0.64, 0.70),
-            "cor_reflexo_ceu": Color(0.26, 0.34, 0.44), "cor_horizonte": Color(0.17, 0.235, 0.26), "brilho": 0.40,
-            "reflexo_geral": 0.22, "reflexo_no_sol": 0.55, "cor_raso": Color(0.07, 0.30, 0.32)},
+            "cor_reflexo_ceu": Color(0.26, 0.34, 0.44), "cor_horizonte": Color(0.17, 0.235, 0.26), "brilho": 0.20,
+            "reflexo_geral": 0.22, "reflexo_no_sol": 0.45, "forca_relevo": 0.28, "nevoa": 1.0, "cor_raso": Color(0.07, 0.30, 0.32)},
 }
 ## hora -> momento. Entre duas linhas, mistura.
 const LINHA_DO_TEMPO := [[0.0, NOITE], [4.9, NOITE], [6.2, TARDE], [8.2, DIA], [16.0, DIA], [17.8, TARDE], [19.4, NOITE], [24.0, NOITE]]
@@ -154,6 +154,8 @@ func atualizar() -> void:
         _mar.set_shader_parameter("direcao_sol", _sol.global_transform.basis.z)      # a luz viaja em -Z; o sol fica em +Z
         for chave in a.mar:
             _mar.set_shader_parameter(chave, a.mar[chave])
+        # os fiapos de neblina sobre a água respiram junto com a névoa do ar
+        _mar.set_shader_parameter("nevoa", float(a.mar.nevoa) * (0.85 + 0.15 * sin(_tempo * 0.17)))
     var e_noite := noite() > 0.5
     if e_noite != _era_noite:
         _era_noite = e_noite

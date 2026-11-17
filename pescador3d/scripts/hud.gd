@@ -129,6 +129,8 @@ func _draw() -> void:
 
 ## Mancha de tinta: retângulo com as pontas rasgadas, como uma pincelada larga e seca.
 func _pincelada(r: Rect2, semente: int, cor: Color = TINTA) -> void:
+    if noite > 0.0:                                    # à noite a placa clareia um pouco e ganha fio: senão some no mar escuro
+        cor = Color(cor.lerp(Color(0.13, 0.21, 0.31), 0.75 * noite), lerpf(cor.a, maxf(cor.a, 0.94), noite))
     var rng := RandomNumberGenerator.new()
     rng.seed = semente
     var faixas := maxi(3, int(r.size.y / 13.0))
@@ -140,6 +142,9 @@ func _pincelada(r: Rect2, semente: int, cor: Color = TINTA) -> void:
         dir.append(Vector2(r.end.x + rng.randf_range(0.0, 24.0), y))
     for i in faixas:                                   # cada faixa é um trapézio (sempre desenhável)
         draw_colored_polygon(PackedVector2Array([esq[i], dir[i], dir[i + 1], esq[i + 1]]), cor)
+    if noite > 0.0:
+        draw_line(esq[0], dir[0], Color(CREME, 0.30 * noite), 1.5)
+        draw_line(esq[faixas], dir[faixas], Color(CREME, 0.30 * noite), 1.5)
     for i in 3:                                        # fios soltos nas pontas
         var y := r.position.y + rng.randf_range(4.0, r.size.y - 4.0)
         draw_line(Vector2(r.end.x + 6.0, y), Vector2(r.end.x + rng.randf_range(26.0, 44.0), y), Color(cor, cor.a * 0.55), 2.0)

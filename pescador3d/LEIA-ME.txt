@@ -326,3 +326,12 @@ MISSÕES (painel no alto à direita; cada uma paga um prêmio)
 SALVAMENTO
 - A viagem salva passou a ficar numa pasta fixa (%APPDATA%\Pescador no Windows), que não muda mais
   quando o número da versão muda. Uma viagem salva na 0.3.3 não é encontrada: comece uma nova.
+
+
+VERSÃO 0.3.5 - 16/11/2026 — CORREÇÕES DEPOIS DO VÍDEO DE TESTE
+- Neblina: além da névoa do ar, agora há um véu baixo sobre a água, com fiapos que andam devagar.
+  Aparece também com a câmera olhando de cima. A lanterna do barco abre um claro em volta dele.
+  (uniformes "nevoa" e "cor_nevoa" em shaders/oceano_pintado.gdshader; força na tabela NOITE de scripts/clima.gd)
+- Espuma do casco e do rastro: virou espuma batida, em manchas cheias, em vez de fios de renda.
+- Mar à noite: relevo das ondas mais suave e menos brilho (não parece mais pedra molhada).
+- Interface à noite: as placas clareiam um pouco e ganham um fio claro em cima e embaixo.
