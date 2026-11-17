@@ -1,3 +1,16 @@
+PESCADOR — Versão 0.5.1 (Godot 4.7)
+================================================
+NOVO NA 0.5.1 — ARQUITETURA DA VILA (detalhes em docs/PESCADOR_v0.5.1_NOVIDADES.txt):
+- CASAS COM ARQUITETURA DE VERDADE: paredes com reboco irregular e rodapé, telhado de telha-canal com relevo e beiral, janelas com moldura, vidro, verga, peitoril e venezianas,
+  portas com painéis e degrau, e quatro variações (lisa, com varanda, com chaminé e floreira, varanda + chaminé).
+- CAPELA com torre sineira, telhado em pirâmide, cruz e óculo; ARMAZÉM com portão grande; MERCADO com toldo listrado e banca.
+- FAROL listrado com galeria, grade, lanterna e cúpula (luz, feixe e brilho ficaram onde estavam).
+- CAIS com tábuas soltas, borda, grade e estacas; CANOAS com casco aberto e travessa; BARRIS com aros; POSTES com lampião de vidro.
+- TERRENO mais fino (270 divisões, antes 180): colinas e encostas mais suaves.
+- Menos draw calls (as peças de mesmo material se juntam), mais triângulos (casas: 5 mil -> 109 mil).
+- Para comparar com o visual antigo: abra o jogo com a variável de ambiente PESCADOR_CASA_SIMPLES=1.
+- O Modo Construtor continua funcionando com as casas novas (colocar, mover, girar, trocar variação, apagar, desfazer).
+
 PESCADOR — Versão 0.5.0 (Godot 4.7)
 ================================================
 NOVO NA 0.5.0 (detalhes em docs/PESCADOR_v0.5.0_NOVIDADES.txt):

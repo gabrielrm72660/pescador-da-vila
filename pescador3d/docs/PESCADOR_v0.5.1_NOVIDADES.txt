@@ -1,0 +1,41 @@
+PESCADOR 0.5.1 — ARQUITETURA DA VILA (MALHAS NOVAS)
+===================================================
+
+PEDIDO (17/11/2026, 18:30): "vamos refinar as malhas até o máximo possível" (preparando o salto de qualidade para o visual de Life is Strange, com as texturas novas do ChatGPT).
+Esta versão NÃO troca texturas (o ZIP novo chegou cortado). Só geometria.
+
+1) ARQUIVO NOVO: scripts/arquitetura_malhas.gd (construtores estáticos de malha, sem cena)
+   - casas: parede com ruído de reboco + empena + rodapé; telhado de telha-canal em onda com beiral grosso, caibros e cumeeira; janela (moldura, vidro, verga, peitoril, venezianas);
+     porta (folha, painéis, moldura, cornija, degrau); varanda; floreira em 65% das casas; chaminé.
+     Variações por semente (semente % 4): 0 lisa, 1 varanda, 2 chaminé + flores, 3 varanda + chaminé.
+   - capela: torre sineira, telhado em pirâmide, cruz, óculo, porta. armazém: portão grande lateral. mercado: toldo listrado azul/branco + banca com frutas.
+   - farol: embasamento de pedra, torre listrada, galeria com grade, lanterna de vidro, cúpula. y=0 no topo; o vidro da lanterna fica entre 13,15 e 14,75 (luz, feixe e brilho não mudaram).
+   - cais: tábuas soltas, fáscia de borda, grade. canoa (casco aberto, travessa, filete colorido), barril (aros de ferro) e poste (haste + lampião de vidro em y=4,3).
+   - Malha.tri conserta o sentido das faces pela normal dos vértices (frentes do Godot são horárias), então os construtores não dependem da ordem dos pontos.
+
+2) ILHA (scripts/ilha.gd)
+   - DIVISOES 180 -> 270 (terreno: ~49 mil -> ~109 mil triângulos).
+   - _casa agora monta via Arq.edificio: uma MeshInstance3D por parte não vazia (parede, telhado, acabamento, madeira, vidro). Materiais em cache (_materiais_arq): reboco triplanar com cor de vértice, telhas com normal, cor de vértice lisa para acabamento/madeira.
+   - _construir_edificio passa tipo e semente (armazém, mercado, capela). A variação da casa fica gravada em c["var"] (o Modo Construtor continua trocando a variação).
+   - _criar_farol_no_cume, _criar_cais, _construir_props, _construir_postes usam as malhas novas.
+   - PESCADOR_CASA_SIMPLES=1 volta ao visual antigo (casa simples, farol de cilindros, cais e props antigos) — serve para comparar.
+
+3) NÚMEROS (contagem por software)
+   - casas: 5.208 triângulos em 90 malhas -> 108.954 triângulos em 45 malhas (28 casas, com o Mesclador).
+   - farol 2.328 triângulos; cais 2.088 (antes 312).
+   - bateria de regressão (Média): draw calls 755 -> 674 (início) e 416 -> 313 (com cardumes); triângulos renderizados (incluindo sombras) 2,4 mi -> 3,0 mi.
+   - total de triângulos das ilhas: ~815 mil (pinheiros 217 mil, terreno 109 mil, árvores 77 mil).
+
+4) VALIDAÇÃO (honesta)
+   Fotos de perto antes e depois: casas (4 variações, frente e fundos), capela, armazém, mercado (4 ângulos), farol (dia, noite, topo, base), cais (lado, ponta, início),
+   canoas, barris, poste (dia e noite), vila vista de cima. Bateria de regressão sem nenhum erro de script (trilha, cais, farol, sonda, sonda2, save, radar, construtor, vila, triângulos);
+   o Modo Construtor colocou/moveu/girou/apagou casa, desfez e refez 10 vezes com as casas novas.
+   NÃO testado: FPS em GPU de verdade (só contei triângulos e draw calls por software); renderizador Forward+ (sombras, SSAO); o Mesclador foi exercitado só no carregamento normal; as texturas das casas ainda são as antigas (reboco, telha, madeira) e vão ser trocadas quando as novas chegarem.
+
+ARQUIVOS NOVOS: scripts/arquitetura_malhas.gd
+ALTERADOS: scripts/ilha.gd, scripts/jogo.gd (versão), project.godot (nome), LEIA-ME.txt
+
+PRÓXIMOS PASSOS
+   - integrar as texturas novas do ChatGPT (ZIP completo, em partes menores), religar o barco e reajustar o brilho (copa x1,42, rocha x1,30);
+   - pacote de estilo Life is Strange (SDFGI, luz de fim de tarde, névoa volumétrica, profundidade de campo, brilho, SSAO/SSIL, reflexo de tela, filtro pintado, painel de estilo com F-tecla que salva JSON) — só dá para testar no seu PC, com Forward+;
+   - mais refino de malhas (props, mirante, redes, bancos); depois 0.6.0 ilhas procedurais.

@@ -4,6 +4,7 @@ const MundoDados = preload("res://scripts/mundo_dados.gd")
 const Vento = preload("res://scripts/vento.gd")
 const VegetacaoMalhas = preload("res://scripts/vegetacao_malhas.gd")   # pinheiro, árvore, pedra e moita em níveis de detalhe 1 e 2
 const LayoutPrincipal = preload("res://scripts/layout_principal.gd")   # ruas, casas e pinheiros da Vila do Porto (desenho do Gabriel)
+const Arq = preload("res://scripts/arquitetura_malhas.gd")             # casas, capela, armazém, mercado, farol e cais detalhados (v0.5.1)
 ## Ilha procedural: praia, encostas, dorsais, paredoes e costa com rochedos.
 ## Coqueiros, moitas, pedras, vila e cais. O farol e opcional em cada ilha. Responde onde há terra (para o barco não atravessar) e onde é o cais.
 
@@ -25,7 +26,7 @@ const TEX_PALMEIRA := "res://assets/texturas/ilha/palmeira.png"       # folha em
 const SHADER_COPA := "res://shaders/folhagem_vento.gdshader"          # folhagem que balança com o vento (Alta e Ultra)
 const SHADER_PALMA := "res://shaders/palmeira_vento.gdshader"
 const LADO := 300.0                            # lado da malha do terreno (m)
-const DIVISOES := 180
+const DIVISOES := 270                          # v0.5.1: 180 -> 270 (células de 1,1 m): costa, rochedos e encostas mais nítidos
 const CALADO := 0.9                            # o barco encalha onde a água tem menos que isso (m)
 const COMPRIMENTO_CAIS := 34.0
 const LARGURA_CAIS := 3.4
@@ -417,10 +418,25 @@ func _criar_cais() -> void:
     var cabeca_c: float = 4.4
     var cabeca_l: float = 7.6
     var corpo: float = COMPRIMENTO_CAIS - cabeca_c
-    var p1: Vector2 = inicio + dir_cais * (corpo * 0.5)
-    _caixa(cais, Vector3(corpo, 0.22, LARGURA_CAIS), Vector3(p1.x, 1.15, p1.y), madeira, giro)
-    var p2: Vector2 = inicio + dir_cais * (COMPRIMENTO_CAIS - cabeca_c * 0.5)
-    _caixa(cais, Vector3(cabeca_c, 0.22, cabeca_l), Vector3(p2.x, 1.15, p2.y), madeira, giro)
+    var cais_novo: bool = OS.get_environment("PESCADOR_CASA_SIMPLES") != "1"
+    if cais_novo:
+        # piso de tábuas soltas, faixa de borda e guarda-corpo (scripts/arquitetura_malhas.gd)
+        var deck := Node3D.new()
+        deck.name = "Piso"
+        deck.position = Vector3(inicio.x, 0.0, inicio.y)
+        deck.rotation.y = giro
+        cais.add_child(deck)
+        var pecas_cais: Dictionary = Arq.cais(COMPRIMENTO_CAIS, LARGURA_CAIS, cabeca_c, cabeca_l)
+        if not _mats_arq.has("tabua"):
+            var mt: StandardMaterial3D = _material(Color(1.0, 0.95, 0.88), "res://assets/texturas/ilha/madeira.png")
+            mt.vertex_color_use_as_albedo = true
+            _mats_arq["tabua"] = mt
+        _instancia(deck, pecas_cais["tabuas"], _mats_arq["tabua"], "Tabuas")
+    else:
+        var p1: Vector2 = inicio + dir_cais * (corpo * 0.5)
+        _caixa(cais, Vector3(corpo, 0.22, LARGURA_CAIS), Vector3(p1.x, 1.15, p1.y), madeira, giro)
+        var p2: Vector2 = inicio + dir_cais * (COMPRIMENTO_CAIS - cabeca_c * 0.5)
+        _caixa(cais, Vector3(cabeca_c, 0.22, cabeca_l), Vector3(p2.x, 1.15, p2.y), madeira, giro)
     # Vigas por baixo (transversais e longitudinais).
     var n_vigas: int = int(COMPRIMENTO_CAIS / 2.0)
     for i in n_vigas + 1:
@@ -452,15 +468,16 @@ func _criar_cais() -> void:
             var q: Vector2 = inicio + dir_cais * float(a) + lateral * float(s) * (cabeca_l * 0.5 + 0.12)
             _cilindro(cais, 0.2, 0.2, 0.5, Vector3(q.x, 0.55, q.y), borracha)
     # Guarda-corpo no passadiço e escada na ponta.
-    var a_corrimao: float = 2.0
-    while a_corrimao < corpo - 1.0:
+    if not cais_novo:              # no cais novo o guarda-corpo já faz parte da malha do piso
+        var a_corrimao: float = 2.0
+        while a_corrimao < corpo - 1.0:
+            for s in [-1.0, 1.0]:
+                var q: Vector2 = inicio + dir_cais * a_corrimao + lateral * float(s) * (LARGURA_CAIS * 0.5 - 0.1)
+                _caixa(cais, Vector3(0.1, 0.95, 0.1), Vector3(q.x, 1.7, q.y), escura, giro)
+            a_corrimao += 3.0
         for s in [-1.0, 1.0]:
-            var q: Vector2 = inicio + dir_cais * a_corrimao + lateral * float(s) * (LARGURA_CAIS * 0.5 - 0.1)
-            _caixa(cais, Vector3(0.1, 0.95, 0.1), Vector3(q.x, 1.7, q.y), escura, giro)
-        a_corrimao += 3.0
-    for s in [-1.0, 1.0]:
-        var q: Vector2 = inicio + dir_cais * (corpo * 0.5 + 1.0) + lateral * float(s) * (LARGURA_CAIS * 0.5 - 0.1)
-        _caixa(cais, Vector3(corpo - 3.0, 0.08, 0.1), Vector3(q.x, 2.12, q.y), escura, giro)
+            var q: Vector2 = inicio + dir_cais * (corpo * 0.5 + 1.0) + lateral * float(s) * (LARGURA_CAIS * 0.5 - 0.1)
+            _caixa(cais, Vector3(corpo - 3.0, 0.08, 0.1), Vector3(q.x, 2.12, q.y), escura, giro)
     var esc: Vector2 = inicio + dir_cais * (COMPRIMENTO_CAIS + 0.06) + lateral * 1.6
     for s in [-0.3, 0.3]:
         var r: Vector2 = esc + lateral * float(s)
@@ -509,7 +526,71 @@ func _criar_dique_portuario(pai: Node3D, frente: Vector2, lado: Vector2) -> void
 
 ## Uma casa: paredes caiadas (tingidas), rodapé, porta e janelas de madeira pintada e telhado de barro de
 ## duas águas. A frente (porta) fica em +X local; "giro" vira a casa para o mar.
-func _casa(pai: Node3D, pos: Vector3, giro: float, tam: Vector3, cor: Color, cor_madeira: Color) -> Node3D:
+## v0.5.1: as peças vêm de scripts/arquitetura_malhas.gd (telhado em relevo, janelas com venezianas, porta com batente,
+## varanda, chaminé...). PESCADOR_CASA_SIMPLES=1 volta ao desenho antigo, só para comparar.
+func _casa(pai: Node3D, pos: Vector3, giro: float, tam: Vector3, cor: Color, cor_madeira: Color, tipo: String = "casa", semente_casa: int = 0) -> Node3D:
+    if OS.get_environment("PESCADOR_CASA_SIMPLES") == "1":
+        return _casa_simples(pai, pos, giro, tam, cor, cor_madeira)
+    var casa := Node3D.new()
+    casa.position = pos + Vector3(0, -0.4, 0)
+    casa.rotation.y = giro
+    pai.add_child(casa)
+    if _vidro == null:
+        _vidro = _material(Color(0.10, 0.14, 0.18))
+        _vidro.roughness = 0.25
+        _vidro.emission_enabled = true
+        _vidro.emission = Color(1.0, 0.72, 0.36)
+        _vidro.emission_energy_multiplier = 0.0
+    var pecas: Dictionary = Arq.edificio(tipo, tam, cor, cor_madeira, semente_casa)
+    var mats: Dictionary = _materiais_arq(cor)
+    for chave in ["parede", "telhado", "acab", "mad", "vidro"]:
+        var malha: ArrayMesh = pecas[chave]
+        if malha.get_surface_count() == 0:
+            continue
+        var mi := MeshInstance3D.new()
+        mi.name = chave
+        mi.mesh = malha
+        mi.material_override = _vidro if chave == "vidro" else mats[chave]
+        casa.add_child(mi)
+    return casa
+
+var _mats_arq: Dictionary = {}          # materiais da arquitetura (um por cor de parede; os demais são comuns a todos)
+
+func _instancia(pai: Node3D, malha: Mesh, mat: Material, nome: String = "") -> MeshInstance3D:
+    var mi := MeshInstance3D.new()
+    mi.mesh = malha
+    mi.material_override = mat
+    if nome != "":
+        mi.name = nome
+    pai.add_child(mi)
+    return mi
+
+func _materiais_arq(cor: Color) -> Dictionary:
+    var k: String = "parede|" + cor.to_html(false)
+    if not _mats_arq.has(k):
+        var p: StandardMaterial3D = _material(cor, "res://assets/texturas/ilha/reboco.png", 0.22, "res://assets/texturas/ilha/reboco_normal.png")
+        p.vertex_color_use_as_albedo = true
+        _mats_arq[k] = p
+    if not _mats_arq.has("telhado"):
+        var t := StandardMaterial3D.new()
+        t.albedo_texture = load("res://assets/texturas/ilha/telhas.png")
+        t.normal_enabled = true
+        t.normal_texture = load("res://assets/texturas/ilha/telhas_normal.png")
+        t.roughness = 1.0
+        t.metallic_specular = 0.08
+        t.normal_scale = 0.5
+        t.cull_mode = BaseMaterial3D.CULL_DISABLED
+        _mats_arq["telhado"] = t
+    if not _mats_arq.has("flat"):
+        var f := StandardMaterial3D.new()
+        f.vertex_color_use_as_albedo = true
+        f.roughness = 1.0
+        f.metallic_specular = 0.08
+        _mats_arq["flat"] = f
+    return {"parede": _mats_arq[k], "telhado": _mats_arq["telhado"], "acab": _mats_arq["flat"], "mad": _mats_arq["flat"]}
+
+## O desenho antigo (caixas e dois planos de telhado), mantido só para comparação.
+func _casa_simples(pai: Node3D, pos: Vector3, giro: float, tam: Vector3, cor: Color, cor_madeira: Color) -> Node3D:
     var casa := Node3D.new()
     casa.position = pos + Vector3(0, -0.4, 0)                        # um pouco enterrada: assenta em chão torto
     casa.rotation.y = giro
@@ -851,15 +932,20 @@ func _construir_ruas() -> void:
 ## Casas (amarelo do desenho, de frente para a rua), armazém, mercado e capela.
 func _construir_casas() -> void:
     var no := _novo_no("Casas")
+    var idx: int = 0
     for c in mundo["casas"]:
+        if not c.has("var"):
+            c["var"] = idx                      # variante da casa (varanda, chaminé...): fica gravada e não muda ao mover a casa
         _construir_edificio(no, c)
+        idx += 1
 
 func _construir_edificio(no: Node3D, c: Dictionary) -> void:
     var p := Vector2(float(c["x"]), float(c["z"]))
     var giro: float = float(c["giro"])
     var tipo: String = str(c.get("tipo", "casa"))
+    var sem: int = int(c.get("var", 0))
     if tipo == "armazem":
-        _casa_no_terreno(no, p, giro, Vector3(9.0, 3.5, 8.0), Color(0.80, 0.78, 0.66), Color(0.33, 0.29, 0.22))
+        _casa_no_terreno(no, p, giro, Vector3(9.0, 3.5, 8.0), Color(0.80, 0.78, 0.66), Color(0.33, 0.29, 0.22), "armazem", sem)
         _reservar(p.x, p.y, 7.0)
         var frente_a := Vector2(cos(giro), -sin(giro))
         var lado_a := Vector2(-frente_a.y, frente_a.x)
@@ -868,15 +954,18 @@ func _construir_edificio(no: Node3D, c: Dictionary) -> void:
             var base_y: float = _altura_local(cx.x, cx.y) + 0.45 + (0.8 if k == 2 else 0.0)
             _caixa(no, Vector3(1.2, 0.8, 1.0), Vector3(cx.x, base_y, cx.y), _material(Color(0.45, 0.34, 0.23)), giro + 0.1 * float(k))
     elif tipo == "mercado":
-        _casa_no_terreno(no, p, giro, Vector3(9.0, 3.5, 7.2), Color(0.83, 0.88, 0.85), CORES_PORTA[0])
+        _casa_no_terreno(no, p, giro, Vector3(9.0, 3.5, 7.2), Color(0.83, 0.88, 0.85), CORES_PORTA[0], "mercado", sem)
         _reservar(p.x, p.y, 7.0)
     elif tipo == "capela":
-        # Capela com a torre na fachada.
-        var nave := _casa_no_terreno(no, p, giro, Vector3(9.0, 4.2, 6.0), Color(0.98, 0.97, 0.92), Color(0.18, 0.35, 0.42))
-        var branca := _material(Color(0.98, 0.97, 0.92), "res://assets/texturas/ilha/reboco.png", 0.24)
-        _caixa(nave, Vector3(2.0, 8.0, 2.0), Vector3(4.5, 4.0, 3.3), branca)
-        _caixa(nave, Vector3(0.16, 1.45, 0.16), Vector3(4.5, 9.15, 3.3), _material(Color(0.30, 0.22, 0.17)))
-        _caixa(nave, Vector3(0.16, 0.16, 1.0), Vector3(4.5, 9.5, 3.3), _material(Color(0.30, 0.22, 0.17)))
+        # Capela com a torre sineira na fachada (a torre agora faz parte da malha da capela).
+        if OS.get_environment("PESCADOR_CASA_SIMPLES") == "1":
+            var nave := _casa_no_terreno(no, p, giro, Vector3(9.0, 4.2, 6.0), Color(0.98, 0.97, 0.92), Color(0.18, 0.35, 0.42))
+            var branca := _material(Color(0.98, 0.97, 0.92), "res://assets/texturas/ilha/reboco.png", 0.24)
+            _caixa(nave, Vector3(2.0, 8.0, 2.0), Vector3(4.5, 4.0, 3.3), branca)
+            _caixa(nave, Vector3(0.16, 1.45, 0.16), Vector3(4.5, 9.15, 3.3), _material(Color(0.30, 0.22, 0.17)))
+            _caixa(nave, Vector3(0.16, 0.16, 1.0), Vector3(4.5, 9.5, 3.3), _material(Color(0.30, 0.22, 0.17)))
+        else:
+            _casa_no_terreno(no, p, giro, Vector3(9.0, 4.2, 6.0), Color(0.98, 0.97, 0.92), Color(0.18, 0.35, 0.42), "capela", sem)
         _reservar(p.x, p.y, 8.0)
     else:
         var tam := Vector3(float(c.get("w", 5.2)), float(c.get("h", 3.3)), float(c.get("d", 6.2)))
@@ -884,12 +973,12 @@ func _construir_edificio(no: Node3D, c: Dictionary) -> void:
         var porta_i: int = int(c.get("porta", 0)) % CORES_PORTA.size()
         var cor: Color = CORES_CASA[cor_i]
         var porta: Color = CORES_PORTA[porta_i]
-        _casa_no_terreno(no, p, giro, tam, cor, porta)
+        _casa_no_terreno(no, p, giro, tam, cor, porta, "casa", sem)
         _reservar(p.x, p.y, 4.6)
 
 ## Casa em terreno torto: o piso fica na altura média dos quatro cantos e um alicerce de pedra
 ## cobre o vão no lado que desce. "giro" é o da _casa (a porta, em +X, aponta para a rua).
-func _casa_no_terreno(pai: Node3D, p: Vector2, giro: float, tam: Vector3, cor: Color, cor_madeira: Color) -> Node3D:
+func _casa_no_terreno(pai: Node3D, p: Vector2, giro: float, tam: Vector3, cor: Color, cor_madeira: Color, tipo: String = "casa", semente_casa: int = 0) -> Node3D:
     var frente := Vector2(cos(giro), -sin(giro))
     var lateral := Vector2(-frente.y, frente.x)
     var soma := 0.0
@@ -901,7 +990,7 @@ func _casa_no_terreno(pai: Node3D, p: Vector2, giro: float, tam: Vector3, cor: C
             soma += hq
             menor = minf(menor, hq)
     var piso: float = soma / 4.0
-    var casa: Node3D = _casa(pai, Vector3(p.x, piso, p.y), giro, tam, cor, cor_madeira)
+    var casa: Node3D = _casa(pai, Vector3(p.x, piso, p.y), giro, tam, cor, cor_madeira, tipo, semente_casa)
     var fundo: float = (piso - 0.4) - menor + 0.35          # a casa nasce 0,4 m abaixo de "piso"
     if fundo > 0.2:
         var alicerce := _material(cor.darkened(0.38), "res://assets/texturas/ilha/reboco.png", 0.22)     # caiado escuro, como o rodapé
@@ -1227,18 +1316,38 @@ func _criar_farol_no_cume(vila: Node3D) -> void:
     var branco: StandardMaterial3D = _material(Color(0.96, 0.95, 0.90), "res://assets/texturas/ilha/reboco.png", 0.25)
     var vermelho: StandardMaterial3D = _material(Color(0.74, 0.18, 0.14))
     var escuro: StandardMaterial3D = _material(Color(0.20, 0.18, 0.17))
-    _cilindro(vila, 3.1, 2.7, 1.4, Vector3(cume.x, altura_cume - 0.65, cume.y), pedra)
-    _cilindro(vila, 1.75, 1.20, 13.0, Vector3(cume.x, altura_cume - 0.35, cume.y), branco)
-    _cilindro(vila, 1.65, 1.50, 2.0, Vector3(cume.x, altura_cume + 2.65, cume.y), vermelho)
-    _cilindro(vila, 1.43, 1.30, 2.0, Vector3(cume.x, altura_cume + 7.15, cume.y), vermelho)
-    _cilindro(vila, 1.80, 1.80, 0.42, Vector3(cume.x, altura_cume + 12.7, cume.y), escuro)
+    var farol_novo: bool = OS.get_environment("PESCADOR_CASA_SIMPLES") != "1"     # =1 volta ao farol de cilindros (comparação)
+    var pecas_farol: Dictionary = {}
+    var no_farol: Node3D = null
+    if farol_novo:
+        pecas_farol = Arq.farol()
+        no_farol = Node3D.new()
+        no_farol.name = "TorreFarol"
+        no_farol.position = Vector3(cume.x, altura_cume, cume.y)
+        vila.add_child(no_farol)
+        var mat_pedra: StandardMaterial3D = pedra.duplicate()
+        mat_pedra.vertex_color_use_as_albedo = true
+        var mat_torre: StandardMaterial3D = branco.duplicate()
+        mat_torre.vertex_color_use_as_albedo = true
+        _instancia(no_farol, pecas_farol["pedra"], mat_pedra, "Embasamento")
+        _instancia(no_farol, pecas_farol["torre"], mat_torre, "Torre")
+        _instancia(no_farol, pecas_farol["acab"], _materiais_arq(Color.WHITE)["acab"], "Galeria")
+    else:
+        _cilindro(vila, 3.1, 2.7, 1.4, Vector3(cume.x, altura_cume - 0.65, cume.y), pedra)
+        _cilindro(vila, 1.75, 1.20, 13.0, Vector3(cume.x, altura_cume - 0.35, cume.y), branco)
+        _cilindro(vila, 1.65, 1.50, 2.0, Vector3(cume.x, altura_cume + 2.65, cume.y), vermelho)
+        _cilindro(vila, 1.43, 1.30, 2.0, Vector3(cume.x, altura_cume + 7.15, cume.y), vermelho)
+        _cilindro(vila, 1.80, 1.80, 0.42, Vector3(cume.x, altura_cume + 12.7, cume.y), escuro)
 
     _farol_material = _material(Color(1.0, 0.96, 0.75))
     _farol_material.emission_enabled = true
     _farol_material.emission = Color(1.0, 0.86, 0.55)
     _farol_material.emission_energy_multiplier = 0.0
-    _cilindro(vila, 1.12, 1.12, 1.6, Vector3(cume.x, altura_cume + 13.15, cume.y), _farol_material)
-    _cilindro(vila, 1.65, 0.18, 1.2, Vector3(cume.x, altura_cume + 14.8, cume.y), vermelho)
+    if farol_novo:
+        _instancia(no_farol, pecas_farol["vidro"], _farol_material, "Lanterna")      # o vidro acende junto com o feixe
+    else:
+        _cilindro(vila, 1.12, 1.12, 1.6, Vector3(cume.x, altura_cume + 13.15, cume.y), _farol_material)
+        _cilindro(vila, 1.65, 0.18, 1.2, Vector3(cume.x, altura_cume + 14.8, cume.y), vermelho)
 
     var ponto_luminoso: Vector3 = Vector3(cume.x, altura_cume + 14.0, cume.y)
     _luz(vila, ponto_luminoso, 8.5, 150.0)
@@ -1448,17 +1557,39 @@ func _construir_postes() -> void:
     for q in mundo["postes"]:
         var p := Vector2(float(q[0]), float(q[1]))
         var h: float = _altura_local(p.x, p.y)
-        _cilindro(no, 0.12, 0.11, 4.2, Vector3(p.x, h, p.y), madeira)
         var vidro: StandardMaterial3D = _material(Color(0.98, 0.81, 0.51))
         vidro.emission_enabled = true
         vidro.emission = Color(1.0, 0.76, 0.40)
         vidro.emission_energy_multiplier = 1.15
-        _caixa(no, Vector3(0.50, 0.50, 0.50), Vector3(p.x, h + 4.3, p.y), vidro)
+        if OS.get_environment("PESCADOR_CASA_SIMPLES") != "1":
+            if not _mats_arq.has("m_poste"):
+                _mats_arq["m_poste"] = Arq.poste()
+            var pecas_poste: Dictionary = _mats_arq["m_poste"]
+            var mi_p: MeshInstance3D = _instancia(no, pecas_poste["acab"], _materiais_arq(Color.WHITE)["acab"], "Poste")
+            mi_p.position = Vector3(p.x, h, p.y)
+            var mi_v: MeshInstance3D = _instancia(no, pecas_poste["vidro"], vidro, "Lampiao")
+            mi_v.position = Vector3(p.x, h, p.y)
+        else:
+            _cilindro(no, 0.12, 0.11, 4.2, Vector3(p.x, h, p.y), madeira)
+            _caixa(no, Vector3(0.50, 0.50, 0.50), Vector3(p.x, h + 4.3, p.y), vidro)
         _luz(no, Vector3(p.x, h + 4.3, p.y), 1.0, 13.0)
     acender(_farol_noite)      # as luzes novas já nascem no brilho da hora atual
 
 ## Redes, canoas, caixotes, barris e bancos.
+func _malha_arq(chave: String) -> Mesh:
+    var k: String = "m_" + chave
+    if not _mats_arq.has(k):
+        match chave:
+            "canoa0":
+                _mats_arq[k] = Arq.canoa(Color(0.70, 0.21, 0.16))
+            "canoa1":
+                _mats_arq[k] = Arq.canoa(Color(0.23, 0.45, 0.55))
+            _:
+                _mats_arq[k] = Arq.barril(Color(0.50, 0.36, 0.22))
+    return _mats_arq[k]
+
 func _construir_props() -> void:
+    var props_novos: bool = OS.get_environment("PESCADOR_CASA_SIMPLES") != "1"
     var no := _novo_no("Props")
     var madeira: Material = _material(Color(0.51, 0.35, 0.21), "res://assets/texturas/ilha/madeira.png", 0.35)
     var corda: Material = _material(Color(0.77, 0.68, 0.45))
@@ -1495,6 +1626,9 @@ func _construir_props() -> void:
                 canoa.position = Vector3(p.x, h + 0.35, p.y)
                 canoa.rotation.y = giro
                 no.add_child(canoa)
+                if props_novos:
+                    _instancia(canoa, _malha_arq("canoa%d" % (0 if variante == 0 else 1)), _materiais_arq(Color.WHITE)["acab"], "Casco")
+                    continue
                 var casco := SurfaceTool.new()
                 casco.begin(Mesh.PRIMITIVE_TRIANGLES)
                 var pontos := PackedVector3Array([
@@ -1513,9 +1647,14 @@ func _construir_props() -> void:
                 if variante == 1:
                     _caixa(no, Vector3(1.0, 0.7, 0.9), Vector3(p.x, h + 1.15, p.y), caixote, giro + 0.35)
             "barril":
-                _cilindro(no, 0.36, 0.33, 0.95, Vector3(p.x, h - 0.05, p.y), barril)
-                _cilindro(no, 0.375, 0.375, 0.07, Vector3(p.x, h + 0.2, p.y), aro)
-                _cilindro(no, 0.355, 0.355, 0.07, Vector3(p.x, h + 0.66, p.y), aro)
+                if props_novos:
+                    var mi_b: MeshInstance3D = _instancia(no, _malha_arq("barril"), _materiais_arq(Color.WHITE)["acab"], "Barril")
+                    mi_b.position = Vector3(p.x, h - 0.05, p.y)
+                    mi_b.rotation.y = giro
+                else:
+                    _cilindro(no, 0.36, 0.33, 0.95, Vector3(p.x, h - 0.05, p.y), barril)
+                    _cilindro(no, 0.375, 0.375, 0.07, Vector3(p.x, h + 0.2, p.y), aro)
+                    _cilindro(no, 0.355, 0.355, 0.07, Vector3(p.x, h + 0.66, p.y), aro)
             "banco":
                 _caixa(no, Vector3(2.4, 0.18, 0.62), Vector3(p.x, h + 0.55, p.y), madeira, giro)
                 for s in [-1.0, 1.0]:
