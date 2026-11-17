@@ -32,6 +32,7 @@ var porto_abastecer: Button
 var porto_rotulo_loja: Label
 var porto_loja: Dictionary = {}           # id da melhoria -> botão
 var diario: Array = []          # histórico das mensagens (botão do livro)
+var esconder_hud: bool = false   # para tirar fotos do jogo sem a interface
 var porao: Node = null          # scripts/porao.gd
 var capturas: Array:            # os peixes a bordo: {especie, peso, x, y, rot}
     get:
@@ -382,6 +383,6 @@ func atualizar(nos: float, rumo: int, distancia: float, peixes: int, peso: float
     hud.fracao_motor = fracao_motor
     hud.estado_pesca = pesca_status
     hud.pesca_ativa = pesca_ativa
-    hud.visible = not menu.visible
+    hud.visible = not menu.visible and not esconder_hud
     if hud.painel_aberto != "":
         _preencher_painel()

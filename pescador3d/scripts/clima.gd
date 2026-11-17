@@ -10,8 +10,8 @@ const DURACAO_DIA := 960.0           # segundos de jogo para 24 horas (16 min; 4
 const HORA_INICIAL := 8.0
 
 const DIA := {
-    "sol_cor": Color(1.0, 0.86, 0.69), "sol_energia": 1.3,
-    "ambiente_cor": Color(0.66, 0.74, 0.84), "ambiente_energia": 0.85,
+    "sol_cor": Color(1.0, 0.88, 0.70), "sol_energia": 1.25,
+    "ambiente_cor": Color(0.60, 0.64, 0.88), "ambiente_energia": 0.95,      # sombras azul-arroxeadas, nunca cinza
     "nevoa_cor": Color(0.74, 0.72, 0.68), "nevoa_densidade": 0.0016, "nevoa_no_ceu": 0.0,
     "ceu": {"cor_topo": Color(0.20, 0.37, 0.56), "cor_meio": Color(0.46, 0.61, 0.74), "cor_horizonte": Color(0.80, 0.76, 0.68),
             "cor_sol": Color(1.0, 0.95, 0.80), "cor_nuvem_luz": Color(1.0, 1.0, 0.97), "cor_nuvem_sombra": Color(0.62, 0.68, 0.76), "estrelas": 0.0},

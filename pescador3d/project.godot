@@ -3,7 +3,7 @@
 config_version=5
 
 [application]
-config/name="Pescador - Protótipo 0.3.5"
+config/name="Pescador - Protótipo 0.3.6"
 run/main_scene="res://cenas/Jogo.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Pescador"

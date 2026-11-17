@@ -56,8 +56,9 @@ func _refinar_materiais(no: Node) -> void:
             continue
         var mat: BaseMaterial3D = original.duplicate()
         mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-        mat.roughness = 0.82
-        mat.metallic_specular = 0.35
+        mat.roughness = 0.96                       # tinta fosca, como pintura
+        mat.metallic_specular = 0.12
+        mat.normal_scale = 0.6
         mat.rim_enabled = true
         mat.rim = 0.12
         mat.rim_tint = 0.55

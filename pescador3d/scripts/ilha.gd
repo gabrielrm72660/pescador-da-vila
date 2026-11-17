@@ -112,7 +112,8 @@ func _criar_terreno() -> void:
 func _material(cor: Color, textura: String = "", repeticao: float = 0.5, relevo: String = "") -> StandardMaterial3D:
     var m := StandardMaterial3D.new()
     m.albedo_color = cor
-    m.roughness = 0.9
+    m.roughness = 1.0                                  # fosco, como pintura: a forma vem da cor, não do brilho
+    m.metallic_specular = 0.08
     if textura != "" and ResourceLoader.exists(textura):
         m.albedo_texture = load(textura)
         m.uv1_triplanar = true
@@ -159,8 +160,8 @@ func _criar_cais() -> void:
     var cais := Node3D.new()
     cais.name = "Cais"
     add_child(cais)
-    var madeira := _material(Color(0.86, 0.78, 0.66), "res://assets/texturas/ilha/madeira.png")
-    var escura := _material(Color(0.42, 0.33, 0.26), "res://assets/texturas/ilha/madeira.png")
+    var madeira := _material(Color(1.0, 0.95, 0.88), "res://assets/texturas/ilha/madeira.png")
+    var escura := _material(Color(0.55, 0.45, 0.38), "res://assets/texturas/ilha/madeira.png")
     var giro := -atan2(dir.y, dir.x)
     var meio := (inicio + ponta) / 2.0
     _caixa(cais, Vector3(COMPRIMENTO_CAIS, 0.22, LARGURA_CAIS), Vector3(meio.x, 1.15, meio.y), madeira, giro)
@@ -235,7 +236,9 @@ func _telhado(casa: Node3D, tam: Vector3, subida: float, parede: Material) -> vo
     telhas.albedo_texture = load("res://assets/texturas/ilha/telhas.png")
     telhas.normal_enabled = true
     telhas.normal_texture = load("res://assets/texturas/ilha/telhas_normal.png")
-    telhas.roughness = 0.85
+    telhas.roughness = 1.0
+    telhas.metallic_specular = 0.08
+    telhas.normal_scale = 0.5
     telhas.cull_mode = BaseMaterial3D.CULL_DISABLED
     var m := MeshInstance3D.new()
     m.mesh = st.commit()

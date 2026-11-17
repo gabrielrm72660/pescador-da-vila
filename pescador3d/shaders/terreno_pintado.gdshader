@@ -24,8 +24,8 @@ void fragment() {
     float larga = texture(tex_manchas, pos_mundo.xz * 0.021).r;
     float fina = texture(tex_manchas, pos_mundo.xz * 0.17 + vec2(0.3, 0.7)).r;
 
-    vec3 areia = texture(tex_areia, pos_mundo.xz * 0.16).rgb;
-    vec3 grama = texture(tex_grama, pos_mundo.xz * 0.11).rgb * mix(0.70, 1.02, larga) * vec3(0.94, 0.96, 1.0);
+    vec3 areia = texture(tex_areia, pos_mundo.xz * 0.11).rgb * vec3(1.0, 0.97, 0.93);
+    vec3 grama = texture(tex_grama, pos_mundo.xz * 0.085).rgb * mix(0.80, 1.04, larga) * vec3(0.76, 0.90, 0.84);   // menos amarelo
     // rocha: de cima no chao, de lado nos paredoes
     vec3 peso = pow(abs(n), vec3(4.0));
     peso /= (peso.x + peso.y + peso.z);
@@ -34,7 +34,7 @@ void fragment() {
                + texture(tex_rocha, pos_mundo.xy * 0.045).rgb * peso.z;
     // camadas deitadas, como rocha vulcanica: faixas mais claras e mais escuras conforme a altura
     float camada = texture(tex_manchas, vec2(h * 0.045 + larga * 0.25, (pos_mundo.x + pos_mundo.z) * 0.004)).r;
-    rocha *= mix(0.72, 1.22, camada);
+    rocha *= mix(0.86, 1.30, camada);
     rocha *= mix(0.85, 1.25, smoothstep(30.0, 66.0, h));                 // o alto do pico e mais claro
 
     float borda = (larga - 0.5) * 1.6 + (fina - 0.5) * 0.5;             // a fronteira entre as tintas e irregular
@@ -49,7 +49,7 @@ void fragment() {
     cor = mix(cor, cor * vec3(0.62, 0.60, 0.56), molhado);
     cor = mix(cor, vec3(0.50, 0.66, 0.60), smoothstep(-0.2, -2.5, h) * 0.7);
 
-    ALBEDO = cor * (0.86 + 0.20 * larga + 0.10 * fina);
-    ROUGHNESS = mix(0.94, 0.55, molhado);
-    SPECULAR = mix(0.15, 0.40, molhado);
+    ALBEDO = cor * (0.90 + 0.16 * larga);                     // sem granulado fino: a pintura ja traz a pincelada
+    ROUGHNESS = mix(1.0, 0.62, molhado);                      // pintura fosca: nada brilha, so a areia molhada
+    SPECULAR = mix(0.04, 0.32, molhado);
 }
