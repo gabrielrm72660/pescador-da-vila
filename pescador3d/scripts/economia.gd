@@ -8,6 +8,11 @@ const CONTRATOS := [
     {"especie": "Garoupa", "quantidade": 1, "premio": 130},
     {"especie": "Cavala", "quantidade": 2, "premio": 120},
     {"especie": "Atum", "quantidade": 1, "premio": 200},
+    {"especie": "Robalo", "quantidade": 2, "premio": 90},
+    {"especie": "Budião", "quantidade": 2, "premio": 70},
+    {"especie": "Arabaiana", "quantidade": 1, "premio": 140},
+    {"especie": "Peixe-anjo", "quantidade": 2, "premio": 90},
+    {"especie": "Namorado", "quantidade": 1, "premio": 140},
 ]
 var indice: int = 0
 var contratos_concluidos: int = 0

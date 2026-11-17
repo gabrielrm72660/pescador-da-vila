@@ -1,0 +1,39 @@
+PESCADOR 0.3.19 — NOVAS ESPÉCIES E TEXTURAS DE PEIXES (SpriteCook)
+==================================================================
+
+TEXTURAS
+- Todos os peixes agora usam ilustrações feitas no SpriteCook (pintura à gouache), no lugar das antigas.
+  * De lado (porão e anel de pesca): assets/texturas/peixes/porao/<especie>.png
+  * De cima, cabeça para cima (cardumes na água): assets/texturas/peixes/cima/<especie>.png
+- Sardinha, Tainha, Xaréu e Cavala usam as 4 imagens avulsas (maiores); as outras 14 vêm das folhas A e B.
+- Originais em arte_original/spritecook/. A ferramenta ferramentas/fatiar_peixes.py refaz tudo a partir deles.
+- O porão desenha o peixe sem esticar (mantém a proporção do desenho dentro das casas).
+- O anel de pesca mostra o peixe de verdade crescendo conforme a barra enche (antes era um ícone genérico).
+- Os cardumes de cima usam o contorno do próprio desenho (peixe-voador de asas abertas, moreia em S, agulhão com bico).
+  Continuam silhuetas escuras de dia e claras à noite, como na 0.3.18.
+- Saíram: assets/texturas/peixes/cardumes/ (silhuetas desenhadas em código) e os ícones 256x160, que nada usava.
+
+ESPÉCIES NOVAS (9; total 18)
+Espécie        R$/kg  peso (kg)   onde e quando                         dificuldade (acertos) casas no porão
+Baiacu            6   0,3–1,4     perto da costa, dia e noite           fácil (2)             1
+Peixe-voador     15   0,2–0,7     mar de fora, só de dia                fácil (2)             3 (L)
+Budião           14   0,8–4,5     recifes, só de dia                    média (3)             3 (L)
+Robalo           13   1–7         costa e bancos                        média (4)             3
+Peixe-anjo       55   0,2–0,9     recifes, só de dia (raro)             média-alta (4)        1
+Moreia           18   1,5–7       recifes, só de NOITE                  alta (5)              4 (2x2)
+Arabaiana        12   4–22        bancos e mar de fora                  alta (5)              5
+Namorado         16   3–16        recifes (raro)                        alta (5)              5
+Agulhão-vela     11   18–48       só alto-mar, só de dia (muito raro)   muito alta (7)        6
+
+- Cada uma tem isca/profundidade preferidas (pesca.gd PERFIL), estilo de nado, cardume e valor por casa próprios.
+- Valor médio por casa do porão: Agulhão 53, Arabaiana 26, Namorado 25, Peixe-anjo 25 (Atum 35, Dourado 24).
+- Economia conferida com a sonda ganho.gd (R$ médio por cardume, só antigas -> com novas): costa +18%, banco +13%,
+  recife à noite +10%, mar de fora de dia +3%, recife de dia +1%, alto-mar de noite 0%, alto-mar de dia -3%.
+
+MISSÕES E ENCOMENDAS
+- Missão nova (a 12ª): "Pescar um agulhão-vela" (R$ 350). Quem já tinha terminado as 11 antigas recebe ela ao carregar o save.
+- 5 encomendas novas no fim da fila: Robalo, Budião, Arabaiana, Peixe-anjo e Namorado.
+
+NÃO TESTADO
+- Jogo por uma pessoa; FPS em placa de vídeo de verdade; se o peixe-anjo "de cima" (a IA desenhou um peixe esguio, não um disco)
+  incomoda; equilíbrio fino da economia com as espécies novas.

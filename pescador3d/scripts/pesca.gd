@@ -45,6 +45,11 @@ const PERFIL := {
     "Barracuda": {"prof": 0, "isca": 2}, "Dourado": {"prof": 0, "isca": 2},
     "Atum": {"prof": 1, "isca": 2}, "Olho-de-cão": {"prof": 2, "isca": 1},
     "Garoupa": {"prof": 2, "isca": 1},
+    "Baiacu": {"prof": 1, "isca": 1}, "Peixe-voador": {"prof": 0, "isca": 1},
+    "Budião": {"prof": 1, "isca": 1}, "Robalo": {"prof": 0, "isca": 1},
+    "Peixe-anjo": {"prof": 1, "isca": 1}, "Moreia": {"prof": 2, "isca": 2},
+    "Arabaiana": {"prof": 1, "isca": 2}, "Namorado": {"prof": 2, "isca": 2},
+    "Agulhão-vela": {"prof": 0, "isca": 2},
 }
 var tipo_isca: int = 0
 var profundidade: int = 1

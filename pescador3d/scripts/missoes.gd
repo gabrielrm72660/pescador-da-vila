@@ -29,6 +29,8 @@ const LISTA := [
             "dica": "Há um pequeno porto a leste da Vila do Porto."},
     {"texto": "Explorar o Canal das Sardinhas", "tipo": "explorar", "alvo": "Canal das Sardinhas", "quantos": 1, "premio": 95,
             "dica": "Marque o destino na carta náutica e navegue até o novo banco."},
+    {"texto": "Pescar um agulhão-vela", "tipo": "pescar", "alvo": "Agulhão-vela", "quantos": 1, "premio": 350,
+            "dica": "Só de dia e bem longe das ilhas. É rápido e forte; precisa de 6 casas livres."},
 ]
 
 var indice: int = 0

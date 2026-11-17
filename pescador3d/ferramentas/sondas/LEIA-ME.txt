@@ -21,3 +21,11 @@ bat.gd                batimetria / profundidade perto das ilhas
 fino.gd               acha objetos altos e finos na cena
 perf2.gd, tris.gd     quem custa quantas chamadas de desenho e triângulos
 modelo.gd             lista as peças e os materiais do modelo do barco
+peixes.gd             porão com as 18 espécies, anel de pesca com o desenho do peixe e cardumes vistos de cima (dia e noite)
+chance.gd             sorteio de espécie por cenário (dia/noite, costa, recife, banco, alto-mar) e R$ por casa do porão
+ganho.gd              ganho médio por cardume com e sem as espécies novas (para conferir a economia)
+
+FERRAMENTA (não é sonda): ferramentas/fatiar_peixes.py
+Fatia as folhas de peixes do SpriteCook (arte_original/spritecook/) em um PNG por espécie com fundo transparente:
+  python3 ferramentas/fatiar_peixes.py      (precisa de: pip install pillow numpy opencv-python scipy)
+Gera assets/texturas/peixes/porao/ (de lado) e assets/texturas/peixes/cima/ (de cima, para os cardumes).

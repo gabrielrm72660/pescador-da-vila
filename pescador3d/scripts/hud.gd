@@ -6,6 +6,7 @@ extends Control
 signal botao(nome: String)
 signal devolveu(item: Dictionary)      # o jogador jogou um peixe do porão de volta ao mar
 
+const Cardumes = preload("res://scripts/cardumes.gd")
 const TINTA := Color(0.075, 0.125, 0.19, 0.90)        # azul-marinho das pinceladas
 const CREME := Color(0.96, 0.93, 0.84)
 const DOURADO := Color(0.98, 0.76, 0.33)
@@ -68,12 +69,10 @@ func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_PASS
     _fonte = ThemeDB.fallback_font
     var dir_sprites := "res://assets/texturas/peixes/porao/"
-    for par in [["Sardinha", "sardinha"], ["Tainha", "tainha"], ["Xaréu", "xareu"],
-            ["Cavala", "cavala"], ["Barracuda", "barracuda"], ["Dourado", "dourado"],
-            ["Atum", "atum"], ["Olho-de-cão", "olho_de_cao"], ["Garoupa", "garoupa"]]:
-        var arquivo: String = dir_sprites + par[1] + ".png"
+    for especie in Cardumes.ESPECIES:
+        var arquivo: String = dir_sprites + Cardumes.slug(especie) + ".png"
         if ResourceLoader.exists(arquivo):
-            _sprites_peixes[par[0]] = load(arquivo)
+            _sprites_peixes[especie] = load(arquivo)
     _textura_madeira = load("res://assets/texturas/inventario/forro_madeira.png")
     _textura_casa = load("res://assets/texturas/inventario/casa_porao.png")
 
@@ -462,7 +461,14 @@ func _anel_de_pesca() -> void:
     for i in 3:
         draw_arc(c + Vector2(0, 30), 18.0 + i * 15.0, PI * 1.15, PI * 1.85, 10, Color(CREME, 0.10 + 0.05 * i), 1.5, true)
     var treme := Vector2(sin(Time.get_ticks_msec() * 0.012) * 2.0, 0.0)
-    _icone_peixe(c + Vector2(-4.0, lerpf(26.0, -8.0, p)) + treme, lerpf(2.6, 4.2, p), Color(0.80, 0.94, 0.95) if pesca.trava <= 0.0 else Color(0.80, 0.94, 0.95, 0.5))
+    var pos_peixe := c + Vector2(-4.0, lerpf(26.0, -8.0, p)) + treme
+    var desenho: Texture2D = _sprites_peixes.get(especie)
+    if desenho != null:                                        # o peixe de verdade (SpriteCook), crescendo com a barra
+        var larg := lerpf(2.6, 4.2, p) * 26.0
+        var alt := larg * float(desenho.get_height()) / float(desenho.get_width())
+        draw_texture_rect(desenho, Rect2(pos_peixe - Vector2(larg, alt) * 0.5, Vector2(larg, alt)), false, Color(1, 1, 1, 1.0 if pesca.trava <= 0.0 else 0.5))
+    else:
+        _icone_peixe(pos_peixe, lerpf(2.6, 4.2, p), Color(0.80, 0.94, 0.95) if pesca.trava <= 0.0 else Color(0.80, 0.94, 0.95, 0.5))
     # o ponteiro
     var d := Vector2.from_angle(pesca.angulo - PI / 2.0)
     var cor_ponteiro := CREME
@@ -588,8 +594,10 @@ func _peixe_na_grade(especie: String, casas: Array, origem: Vector2, cor: Color,
     var girado: bool = maior.y - menor.y > maior.x - menor.x
     var textura: Texture2D = _sprites_peixes.get(especie)
     if textura != null:
-        var largura_img := minf(comprimento, espessura * 2.7)
-        var altura_img := minf(espessura, largura_img / 2.12)
+        var tam_img := textura.get_size()
+        var ajuste := minf(comprimento / tam_img.x, espessura / tam_img.y)     # cabe nas casas sem esticar o desenho
+        var largura_img := tam_img.x * ajuste
+        var altura_img := tam_img.y * ajuste
         var fator := minf(1.0, escala + 0.2)
         var ponto_tela := size * 0.5 * (1.0 - fator) + centro * fator
         draw_set_transform(ponto_tela, PI * 0.5 if girado else 0.0, Vector2(fator, fator))

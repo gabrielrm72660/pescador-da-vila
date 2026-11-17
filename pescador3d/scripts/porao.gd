@@ -17,11 +17,23 @@ const FORMAS := {
     "Atum": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1), Vector2i(2, 1)],
     "Olho-de-cão": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)],
     "Garoupa": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)],
+    "Baiacu": [Vector2i(0, 0)],
+    "Peixe-voador": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)],
+    "Budião": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1)],
+    "Robalo": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)],
+    "Peixe-anjo": [Vector2i(0, 0)],
+    "Moreia": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)],
+    "Arabaiana": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1)],
+    "Namorado": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1), Vector2i(2, 1)],
+    "Agulhão-vela": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1), Vector2i(2, 1)],
 }
 const CORES := {
     "Sardinha": Color(0.62, 0.76, 0.84), "Tainha": Color(0.74, 0.78, 0.66), "Xaréu": Color(0.90, 0.78, 0.40),
     "Cavala": Color(0.40, 0.66, 0.78), "Garoupa": Color(0.82, 0.52, 0.38), "Olho-de-cão": Color(0.90, 0.30, 0.28),
     "Barracuda": Color(0.70, 0.74, 0.80), "Dourado": Color(0.96, 0.82, 0.24), "Atum": Color(0.32, 0.46, 0.80),
+    "Baiacu": Color(0.80, 0.72, 0.52), "Peixe-voador": Color(0.46, 0.64, 0.86), "Budião": Color(0.28, 0.78, 0.70),
+    "Robalo": Color(0.66, 0.72, 0.52), "Peixe-anjo": Color(0.30, 0.56, 0.90), "Moreia": Color(0.58, 0.56, 0.30),
+    "Arabaiana": Color(0.84, 0.76, 0.34), "Namorado": Color(0.52, 0.62, 0.78), "Agulhão-vela": Color(0.20, 0.34, 0.74),
 }
 
 var colunas: int = 5

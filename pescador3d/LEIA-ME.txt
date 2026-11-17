@@ -1,6 +1,33 @@
-PESCADOR — Versão 0.3.18 (Godot 4.7)
+PESCADOR — Versão 0.3.19 (Godot 4.7)
 ================================================
-Base única: a 0.3.17 (integrada) mais as melhorias abaixo. Detalhes em docs/PESCADOR_v0.3.18_NOVIDADES.txt.
+Base: a 0.3.18 mais as melhorias abaixo. Detalhes em docs/PESCADOR_v0.3.19_NOVIDADES.txt.
+
+PEIXES (SpriteCook)
+- Texturas novas, feitas no SpriteCook, para TODOS os peixes: ilustração de lado no porão e no anel de pesca,
+  e desenho visto de cima nos cardumes dentro da água.
+- 9 espécies novas (18 no total): Baiacu, Peixe-voador, Budião, Robalo, Peixe-anjo, Moreia (só à noite),
+  Arabaiana, Namorado e Agulhão-vela (só de dia, só em alto-mar, muito raro e forte).
+- Cada espécie nova tem preço, habitat, dificuldade, isca preferida e formato no porão próprios (tabela em docs/).
+- Missão nova no fim da lista (Pescar um agulhão-vela) e 5 encomendas novas.
+- O anel de pesca mostra o peixe de verdade; o porão não estica mais o desenho.
+
+TESTE RÁPIDO V0.3.19
+1. Pesque algumas vezes e abra o porão (ícone da caixa): os peixes devem aparecer pintados, sem esticar.
+2. No anel de pesca, o peixe no meio deve ser a ilustração da espécie.
+3. Olhe os cardumes na água: silhuetas com o formato de cada peixe (a moreia é uma cobrinha em S).
+4. De noite, pesque perto de recife: Olho-de-cão, Garoupa e Moreia. De dia: Budião e Peixe-anjo.
+5. Longe das ilhas, de dia: com sorte, um Agulhão-vela (precisa de 6 casas livres no porão).
+
+VALIDAÇÃO (honesta)
+Testado com sondas automáticas (Godot 4.7, renderizador por software, sem GPU, sem áudio): sem erros de script, fluxo
+pescar/vender/comprar/salvar, capturas de tela do porão com as 18 espécies, do anel de pesca e dos cardumes de cima.
+Desempenho igual ao da 0.3.18 (mesmas chamadas de desenho). NÃO testado: jogo por uma pessoa, FPS em placa de vídeo
+de verdade, Forward+ (brilho/SSAO), som, carregar o save depois de fechar e abrir o jogo.
+
+------------------------------------------------------------------------------------------------
+ANTERIOR — 0.3.18
+------------------------------------------------------------------------------------------------
+Base: a 0.3.17 (integrada) mais as melhorias abaixo. Detalhes em docs/PESCADOR_v0.3.18_NOVIDADES.txt.
 
 DESEMPENHO (PC sem placa de vídeo dedicada)
 - Qualidade padrão agora é MÉDIA e há ajuste automático: se o jogo ficar abaixo de ~33 FPS por alguns segundos,

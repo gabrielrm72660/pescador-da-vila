@@ -19,6 +19,16 @@ const ESPECIES := {
     "Atum": {"preco": 13, "peso": [8.0, 30.0], "peixes": 4, "tam": 1.4, "chance": 9, "capturas": [1, 2], "espera": [6.0, 9.0], "ponteiro": 0.90, "faixas": 2, "largura": 24, "acertos": 6, "alto_mar": true},
     "Olho-de-cão": {"preco": 20, "peso": [0.4, 1.6], "peixes": 9, "tam": 0.5, "chance": 34, "capturas": [3, 5], "espera": [3.0, 6.0], "ponteiro": 0.62, "faixas": 3, "largura": 32, "acertos": 3, "so_noite": true},
     "Garoupa": {"preco": 14, "peso": [3.0, 14.0], "peixes": 3, "tam": 1.25, "chance": 9, "capturas": [2, 3], "espera": [5.0, 8.0], "ponteiro": 0.78, "faixas": 2, "largura": 27, "acertos": 5, "vezes_noite": 2},
+    # --- espécies da 0.3.19 ---
+    "Baiacu": {"preco": 6, "peso": [0.3, 1.4], "peixes": 8, "tam": 0.40, "chance": 12, "capturas": [3, 5], "espera": [2.5, 4.5], "ponteiro": 0.44, "faixas": 3, "largura": 44, "acertos": 2},
+    "Peixe-voador": {"preco": 15, "peso": [0.2, 0.7], "peixes": 16, "tam": 0.42, "chance": 16, "capturas": [4, 6], "espera": [2.5, 4.5], "ponteiro": 0.52, "faixas": 3, "largura": 42, "acertos": 2, "so_dia": true},
+    "Budião": {"preco": 14, "peso": [0.8, 4.5], "peixes": 7, "tam": 0.60, "chance": 12, "capturas": [3, 4], "espera": [3.5, 6.0], "ponteiro": 0.60, "faixas": 3, "largura": 32, "acertos": 3, "so_dia": true},
+    "Robalo": {"preco": 13, "peso": [1.0, 7.0], "peixes": 6, "tam": 0.80, "chance": 12, "capturas": [3, 4], "espera": [3.5, 6.5], "ponteiro": 0.66, "faixas": 3, "largura": 30, "acertos": 4},
+    "Peixe-anjo": {"preco": 55, "peso": [0.2, 0.9], "peixes": 5, "tam": 0.38, "chance": 6, "capturas": [2, 3], "espera": [4.0, 6.5], "ponteiro": 0.76, "faixas": 2, "largura": 28, "acertos": 4, "so_dia": true},
+    "Moreia": {"preco": 18, "peso": [1.5, 7.0], "peixes": 3, "tam": 1.00, "chance": 14, "capturas": [2, 3], "espera": [5.0, 8.0], "ponteiro": 0.82, "faixas": 2, "largura": 26, "acertos": 5, "so_noite": true},
+    "Arabaiana": {"preco": 12, "peso": [4.0, 22.0], "peixes": 4, "tam": 1.20, "chance": 7, "capturas": [2, 3], "espera": [4.5, 7.5], "ponteiro": 0.84, "faixas": 2, "largura": 26, "acertos": 5},
+    "Namorado": {"preco": 16, "peso": [3.0, 16.0], "peixes": 3, "tam": 1.15, "chance": 4, "capturas": [2, 3], "espera": [5.0, 8.5], "ponteiro": 0.80, "faixas": 2, "largura": 27, "acertos": 5},
+    "Agulhão-vela": {"preco": 11, "peso": [18.0, 48.0], "peixes": 3, "tam": 1.65, "chance": 4, "capturas": [1, 1], "espera": [7.0, 10.0], "ponteiro": 1.00, "faixas": 2, "largura": 20, "acertos": 7, "alto_mar": true, "so_dia": true},
 }
 const MAXIMO := 7
 const NASCE_MIN := 58.0        # m do barco
@@ -43,6 +53,15 @@ const NADO := {
     "Atum": {"vel": 2.65, "grupo": 1.20, "separa": 1.9, "muda": 0.10},
     "Olho-de-cão": {"vel": 0.85, "grupo": 1.25, "separa": 0.9, "muda": 0.24},
     "Garoupa": {"vel": 0.65, "grupo": 0.45, "separa": 2.2, "muda": 0.10},
+    "Baiacu": {"vel": 0.70, "grupo": 0.80, "separa": 1.30, "muda": 0.20},
+    "Peixe-voador": {"vel": 1.80, "grupo": 1.30, "separa": 0.85, "muda": 0.30},
+    "Budião": {"vel": 0.85, "grupo": 0.95, "separa": 1.40, "muda": 0.18},
+    "Robalo": {"vel": 1.20, "grupo": 0.75, "separa": 1.60, "muda": 0.15},
+    "Peixe-anjo": {"vel": 0.60, "grupo": 0.70, "separa": 1.50, "muda": 0.16},
+    "Moreia": {"vel": 0.55, "grupo": 0.35, "separa": 2.50, "muda": 0.09},
+    "Arabaiana": {"vel": 1.90, "grupo": 0.70, "separa": 1.80, "muda": 0.12},
+    "Namorado": {"vel": 0.75, "grupo": 0.50, "separa": 2.10, "muda": 0.10},
+    "Agulhão-vela": {"vel": 2.80, "grupo": 0.60, "separa": 2.60, "muda": 0.08},
 }
 
 var lista: Array = []
@@ -58,7 +77,8 @@ var noite: bool = false:         # quem avisa é scripts/jogo.gd; algumas espéc
                 _colorir(c)
 var _barco: Node3D
 var _oceano: Node
-var _malha: ArrayMesh
+var _malha: ArrayMesh           # contorno genérico, para quem ainda não tem a textura nova
+var _malha_quadro: ArrayMesh    # quadrado de 1 m: o desenho do peixe (com alfa) define a forma; escalado pela proporção da textura
 var _material_base: StandardMaterial3D
 var _materiais: Dictionary = {}
 var _relogio: float = 0.0
@@ -69,6 +89,7 @@ func _ready() -> void:
     _barco = get_node_or_null("../Barco")
     _oceano = get_node_or_null("../Oceano")
     _malha = _criar_malha_peixe()
+    _malha_quadro = _criar_malha_quadro()
     _material_base = StandardMaterial3D.new()
     _material_base.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
     _material_base.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -91,17 +112,41 @@ func _criar_malha_peixe() -> ArrayMesh:
         st.add_vertex(Vector3(p2.x, 0.0, p2.y))
     return st.commit()
 
-func _arquivo_textura(especie: String) -> String:
-    var nome := especie.to_lower().replace("-", "_").replace("ã", "a").replace("á", "a").replace("â", "a").replace("é", "e").replace("ê", "e").replace("í", "i").replace("ó", "o").replace("ô", "o").replace("õ", "o").replace("ú", "u").replace("ç", "c")
-    return "res://assets/texturas/peixes/cardumes/%s.png" % nome
+## Nome de arquivo de uma espécie: "Olho-de-cão" vira "olho_de_cao".
+static func slug(especie: String) -> String:
+    return especie.to_lower().replace("-", "_").replace("ã", "a").replace("á", "a").replace("â", "a").replace("é", "e").replace("ê", "e").replace("í", "i").replace("ó", "o").replace("ô", "o").replace("õ", "o").replace("ú", "u").replace("ç", "c")
+
+## Peixe visto de cima (SpriteCook), cabeça para cima, recortado rente ao desenho. A forma na água é a do próprio desenho.
+func _arquivo_cima(especie: String) -> String:
+    return "res://assets/texturas/peixes/cima/%s.png" % slug(especie)
+
+func _tem_textura_cima(especie: String) -> bool:
+    return ResourceLoader.exists(_arquivo_cima(especie))
+
+## Largura / comprimento do desenho de cima (peixe-voador de asas abertas é largo; barracuda é fina). 1 se não houver textura.
+func _aspecto_cima(especie: String) -> float:
+    if not _tem_textura_cima(especie):
+        return 1.0
+    var t := load(_arquivo_cima(especie)) as Texture2D
+    return float(t.get_width()) / maxf(1.0, float(t.get_height())) if t != null else 1.0
+
+func _criar_malha_quadro() -> ArrayMesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var cantos := [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(0.5, 0.5), Vector2(-0.5, 0.5)]
+    for i in [0, 1, 2, 0, 2, 3]:
+        var p: Vector2 = cantos[i]
+        st.set_normal(Vector3.UP)
+        st.set_uv(p + Vector2(0.5, 0.5))
+        st.add_vertex(Vector3(p.x, 0.0, p.y))
+    return st.commit()
 
 func _material_da_especie(especie: String) -> Material:
     if _materiais.has(especie):
         return _materiais[especie]
     var m: StandardMaterial3D = _material_base.duplicate()
-    var arquivo := _arquivo_textura(especie)
-    if ResourceLoader.exists(arquivo):
-        m.albedo_texture = load(arquivo)
+    if _tem_textura_cima(especie):
+        m.albedo_texture = load(_arquivo_cima(especie))
         m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
         m.albedo_color = COR_NOITE
     else:
@@ -128,16 +173,16 @@ func _chance(nome: String) -> int:
     if d.get("alto_mar", false):
         return int(d.chance) * 3 if _alto_mar else 0
     var peso: float = float(d.chance)
-    if nome in ["Sardinha", "Tainha"]:
+    if nome in ["Sardinha", "Tainha", "Robalo", "Baiacu"]:
         peso *= 1.8 if _distancia_costeira < 180.0 else 0.65
-    elif nome in ["Garoupa", "Olho-de-cão"]:
+    elif nome in ["Garoupa", "Olho-de-cão", "Budião", "Peixe-anjo", "Moreia", "Namorado"]:
         peso *= 1.6 if _distancia_costeira < 150.0 else 0.4
-    elif nome in ["Cavala", "Barracuda", "Xaréu"]:
+    elif nome in ["Cavala", "Barracuda", "Xaréu", "Arabaiana", "Peixe-voador"]:
         peso *= 1.5 if _distancia_costeira > 110.0 else 0.7
     if _zona_local == "recife":
-        peso *= 3.0 if nome in ["Garoupa", "Xaréu", "Olho-de-cão"] else 0.65
+        peso *= 3.0 if nome in ["Garoupa", "Xaréu", "Olho-de-cão", "Budião", "Peixe-anjo", "Moreia", "Namorado"] else 0.65
     elif _zona_local == "banco":
-        peso *= 2.6 if nome in ["Cavala", "Xaréu", "Tainha"] else 0.75
+        peso *= 2.6 if nome in ["Cavala", "Xaréu", "Tainha", "Arabaiana", "Robalo"] else 0.75
     return maxi(1, roundi(peso) * (int(d.get("vezes_noite", 1)) if noite else 1))
 
 func criar(centro: Vector3, especie: String = "") -> Dictionary:
@@ -147,7 +192,7 @@ func criar(centro: Vector3, especie: String = "") -> Dictionary:
     var n := int(dados.peixes)
     var mm := MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = _malha
+    mm.mesh = _malha_quadro if _tem_textura_cima(especie) else _malha
     mm.instance_count = n
     var inst := MultiMeshInstance3D.new()
     inst.multimesh = mm
@@ -173,6 +218,7 @@ func criar(centro: Vector3, especie: String = "") -> Dictionary:
     var c := {"especie": especie, "centro": Vector3(centro.x, 0.0, centro.z), "raio": raio_grupo,
             "restantes": randi_range(int(dados.capturas[0]), int(dados.capturas[1])), "no": inst, "fases": fases,
             "rumo": angulo, "sentido": 1.0, "some": -1.0, "posicoes": posicoes, "velocidades": velocidades,
+            "asp": _aspecto_cima(especie),
             "idade": 0.0, "vida_max": randf_range(150.0, 240.0), "fuga": 0.0, "rumo_alvo": angulo,
             "perigo_ultimo": 0.0, "profundidades": [], "tempo_migracao": randf_range(11.0, 29.0)}
     for i in n:
@@ -405,7 +451,7 @@ func _nadar_cardume(c: Dictionary, delta: float) -> void:
         pos_mundo.y = (_oceano.altura_em(pos_mundo) if _oceano != null else 0.0) - profundidade_visual + 0.16
         var yaw: float = atan2(-nova_v.x, -nova_v.y)
         var tamanho: float = float(dados.tam) * VISUAL * (0.86 + 0.16 * fase)
-        var base_peixe := Basis(Vector3.UP, yaw).scaled(Vector3(tamanho, 1.0, tamanho))
+        var base_peixe := Basis(Vector3.UP, yaw).scaled(Vector3(tamanho * float(c.asp), 1.0, tamanho))
         mm.set_instance_transform(i, Transform3D(base_peixe, pos_mundo))
     c.posicoes = novas_pos
     c.velocidades = novas_vel
