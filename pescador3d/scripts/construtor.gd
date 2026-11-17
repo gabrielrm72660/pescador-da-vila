@@ -1,12 +1,12 @@
 extends Node
-## Modo Construtor (F9): edita a ilha principal dentro do jogo.
+## Modo Construtor (Tab): edita a ilha principal dentro do jogo.
 ## Casas e prédios, ruas, postes, props do porto e vegetação (pinheiros, coqueiros, árvores, moitas, pedras).
 ## O que o jogador monta vive em ilha.mundo (scripts/mundo_dados.gd) e é salvo em user://mundo_ilha_principal.json.
 ## O jogo fica pausado enquanto o construtor está aberto; ao sair, o mundo editado vale para a viagem.
 ##
 ## Câmera:  WASD move · setas giram · roda aproxima · botão do meio (ou Alt + esquerdo) gira · Shift acelera
 ## Ações:   B colocar · V mover · X apagar · 1..9 e 0 trocam de categoria · Q/E giram · C varia · Delete apaga
-##          Ctrl+Z desfaz · Ctrl+Y refaz · Ctrl+S salva · F9 sai
+##          Ctrl+Z desfaz · Ctrl+Y refaz · Ctrl+S salva · Tab sai
 
 signal fechado
 
@@ -123,7 +123,7 @@ func _input(event: InputEvent) -> void:
     if ativo and event is InputEventMouse:
         _n_raw += 1
         _ultimo_mouse = event.position
-    if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F9:
+    if event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_TAB or event.physical_keycode == KEY_F9):
         get_viewport().set_input_as_handled()
         if ativo:
             fechar()
@@ -166,7 +166,7 @@ func abrir() -> void:
     _escolher_ferramenta(ferramenta)
     _atualizar_camera()
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-    _mostrar_aviso("Modo Construtor aberto. Clique na ilha para colocar. F9 sai e guarda.")
+    _mostrar_aviso("Modo Construtor aberto. Clique na ilha para colocar. Tab sai e guarda.")
     _registrar_diagnostico("abriu")
     get_tree().paused = true                      # por último: se algo acima falhar, o jogo não fica congelado
 
@@ -1441,7 +1441,7 @@ func _construir_interface() -> void:
     titulo.text = "MODO CONSTRUTOR"
     titulo.add_theme_font_size_override("font_size", 19)
     coluna.add_child(titulo)
-    coluna.add_child(_rotulo_pequeno("F9 sai e guarda · Ctrl+S salva"))
+    coluna.add_child(_rotulo_pequeno("Tab sai e guarda · Ctrl+S salva"))
     coluna.add_child(HSeparator.new())
 
     coluna.add_child(_rotulo_pequeno("O QUE CONSTRUIR"))
@@ -1527,7 +1527,7 @@ func _construir_interface() -> void:
     linha_barra.add_child(_botao("Gravar na pasta do jogo", _exportar))
     linha_barra.add_child(_botao("Mundo do jogo", func(): _restaurar_padrao(true)))
     linha_barra.add_child(_botao("Ilha original", func(): _restaurar_padrao(false)))
-    linha_barra.add_child(_botao("Sair (F9)", fechar))
+    linha_barra.add_child(_botao("Sair (Tab)", fechar))
 
     _info = Label.new()
     _info.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))

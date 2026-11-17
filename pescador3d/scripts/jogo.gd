@@ -34,7 +34,7 @@ const VidaPortuaria = preload("res://scripts/vida_portuaria.gd")
 const Boias = preload("res://scripts/boias.gd")
 const OpcoesGraficas = preload("res://scripts/opcoes_graficas.gd")
 const Construtor = preload("res://scripts/construtor.gd")
-var construtor: Node                  # Modo Construtor (F9): edita a ilha principal
+var construtor: Node                  # Modo Construtor (Tab; F9 também, fora do editor do Godot): edita a ilha principal
 var fauna_costeira: Node3D
 var vida_portuaria: Node3D
 var boias: Node3D
@@ -184,6 +184,7 @@ func _ready() -> void:
     pesca.ativo = false
     interface.iniciar_pressed.connect(iniciar_ou_retomar)
     interface.reiniciar_pressed.connect(reiniciar)
+    interface.construtor_pressed.connect(func(): if construtor != null: construtor.abrir())
     interface.pescar_pressed.connect(func(): if iniciado and not em_pausa: pesca.acao())
     interface.pausa_pressed.connect(func(): if iniciado: alternar_pausa())
     pesca.mensagem.connect(interface.aviso)
@@ -334,7 +335,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.4.0b] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.4.0c] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:

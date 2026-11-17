@@ -4,6 +4,7 @@ extends CanvasLayer
 
 signal iniciar_pressed
 signal reiniciar_pressed
+signal construtor_pressed
 signal pescar_pressed
 signal pausa_pressed
 signal vender_pressed
@@ -183,7 +184,7 @@ func _construir_menu() -> void:
     menu.add_child(central)
 
     var cartao := PanelContainer.new()
-    cartao.custom_minimum_size = Vector2(530, 398)
+    cartao.custom_minimum_size = Vector2(530, 450)
     cartao.add_theme_stylebox_override("panel", _estilo_painel())
     central.add_child(cartao)
 
@@ -226,9 +227,18 @@ func _construir_menu() -> void:
     botao_reiniciar.pressed.connect(_clicar_reiniciar)
     col.add_child(botao_reiniciar)
 
+    var botao_construtor := Button.new()
+    botao_construtor.text = "MODO CONSTRUTOR  (Tab)"
+    botao_construtor.custom_minimum_size = Vector2(395, 43)
+    botao_construtor.add_theme_font_size_override("font_size", 16)
+    botao_construtor.add_theme_stylebox_override("normal", _estilo_botao(Color(0.36, 0.28, 0.12, 1.0)))
+    botao_construtor.add_theme_stylebox_override("hover", _estilo_botao(Color(0.50, 0.39, 0.17, 1.0)))
+    botao_construtor.pressed.connect(func(): construtor_pressed.emit())
+    col.add_child(botao_construtor)
+
     _construir_volume(col)
 
-    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nMouse direito: câmera  •  Roda: aproxima  •  V: recentra\nB isca  •  N profundidade  •  J técnica  •  M mapa\nK clima  •  L luz  •  F3 FPS  •  F4 diagnóstico  •  F10 gráficos  •  F9 construtor", 14, Color(0.77, 0.87, 0.84, 1.0), true)
+    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nMouse direito: câmera  •  Roda: aproxima  •  V: recentra\nB isca  •  N profundidade  •  J técnica  •  M mapa\nK clima  •  L luz  •  F3 FPS  •  F4 diagnóstico  •  F10 gráficos  •  TAB construtor", 14, Color(0.77, 0.87, 0.84, 1.0), true)
     dica.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(dica)
 

@@ -12,13 +12,13 @@ COMO FUNCIONA
 - scripts/ilha.gd foi separado em "gerar" (padrão) e "construir" (nós 3D) por categoria. reconstruir("casas") apaga e refaz só aquele nó
   (Ruas, Casas, Props, Postes ou o MultiMesh da vegetação) e junta as peças de novo com o Mesclador. Reconstruir leva de 1 a 25 ms (software).
   restaurar_padrao() volta ao desenho original.
-- scripts/construtor.gd: o editor (F9). Pausa a árvore do jogo, usa uma câmera própria, interface em código, picking por raio contra a altura do terreno.
+- scripts/construtor.gd: o editor (TAB). Pausa a árvore do jogo, usa uma câmera própria, interface em código, picking por raio contra a altura do terreno.
   Desfazer/refazer guardam fotos do mundo (até 60). Fechar salva sozinho se houve mudança.
 - scripts/opcoes_graficas.gd: com o editor aberto a vegetação não é desbastada (na qualidade Baixa quem edita precisa ver tudo); ao sair volta ao normal.
 
 ARQUIVOS NOVOS
 scripts/mundo_dados.gd, scripts/construtor.gd, docs/PESCADOR_v0.4.0_NOVIDADES.txt
-ALTERADOS: scripts/ilha.gd, scripts/jogo.gd, scripts/opcoes_graficas.gd, scripts/interface.gd (dica F9), project.godot, LEIA-ME.txt
+ALTERADOS: scripts/ilha.gd, scripts/jogo.gd, scripts/opcoes_graficas.gd, scripts/interface.gd (dica TAB), project.godot, LEIA-ME.txt
 
 DETALHES DE USO
 - Ímã: a casa colocada a menos de 15 m de uma rua encosta a 3,7 m do eixo e vira a porta para ela (mesma regra do desenho original).
@@ -39,11 +39,14 @@ Sondas automáticas (_construtor.gd, _construtor2.gd) com cliques/teclas simulad
 NÃO testado: uso real com mouse, FPS do editor em GPU de verdade.
 
 CORREÇÃO 0.4.0a
-Relato: "fica congelado e não faz nada no modo editor". Não reproduzido nos testes (F9 pelo menu inicial, janela 1920x1080 com stretch,
+Relato: "fica congelado e não faz nada no modo editor". Não reproduzido nos testes (TAB pelo menu inicial, janela 1920x1080 com stretch,
 custo do mouse). Mudanças de segurança: pausa só no fim do abrir(); mar anima durante a edição; aviso quando o clique cai fora da ilha;
 raio do mouse limitado a 900 m; linha de diagnóstico no painel; log em %APPDATA%\Pescador\construtor_diag.txt.
 
 0.4.0b — MUNDO DO GABRIEL
 O arquivo mundo_ilha_principal.json que o Gabriel salvou no Modo Construtor foi publicado em dados/ e é o mundo padrão do jogo.
 Botões do editor: "Mundo do jogo" (o publicado) e "Ilha original" (o desenho e a vegetação da 0.3.22).
+
+0.4.0c — ATALHO
+O "congelado" era o F9 do Godot (pausa o jogo quando se roda pelo editor). O Modo Construtor abre com TAB e pelo botão no menu. F9 continua como extra fora do editor.
 

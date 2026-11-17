@@ -1,3 +1,9 @@
+PESCADOR — Versão 0.4.0c (Godot 4.7)
+================================================
+CORREÇÃO 0.4.0c: o atalho do Modo Construtor agora é TAB (e há um botão MODO CONSTRUTOR no menu inicial e de pausa).
+Motivo: rodando pelo editor do Godot, o F9 é atalho do próprio Godot (pausa o jogo em execução) e a tecla nunca chegava ao jogo certo.
+Fora do editor o F9 ainda funciona como atalho extra.
+
 PESCADOR — Versão 0.4.0b (Godot 4.7)
 ================================================
 NOVO NA 0.4.0b: o mundo que o Gabriel montou no Modo Construtor virou o MUNDO DO JOGO (dados/mundo_ilha_principal.json):
@@ -20,11 +26,11 @@ PESCADOR — Versão 0.4.0 (Godot 4.7)
 Base: a 0.3.22 mais o MODO CONSTRUTOR (editor de mundo dentro do jogo). Detalhes em docs/PESCADOR_v0.4.0_NOVIDADES.txt.
 
 NOVIDADES
-- Aperte F9 (em qualquer tela do jogo) para abrir o Modo Construtor. O jogo pausa e você vê a ilha principal de cima.
+- Aperte TAB (em qualquer tela do jogo) ou o botão MODO CONSTRUTOR do menu para abrir o Modo Construtor. O jogo pausa e você vê a ilha principal de cima.
 - Dá para construir e editar: casas e prédios (casa, armazém, mercado, capela), ruas (calçada de pedra ou areia), postes de luz,
   props do porto (rede, canoas, caixotes, barril, banco) e vegetação (pinheiros, coqueiros, árvores nativas, moitas, pedras).
 - A casa vira sozinha para a rua mais próxima (Ímã) e as árvores que estavam no caminho somem.
-- Desfazer/refazer (Ctrl+Z / Ctrl+Y), salvar (Ctrl+S) e voltar ao mundo padrão. F9 de novo sai e guarda automaticamente.
+- Desfazer/refazer (Ctrl+Z / Ctrl+Y), salvar (Ctrl+S) e voltar ao mundo padrão. TAB de novo sai e guarda automaticamente.
 - O mundo salvo fica em %APPDATA%\Pescador\mundo_ilha_principal.json. Sem arquivo, a ilha é igual à da 0.3.22.
 - Esculpir o terreno e mexer no cais em si ficam para a 0.4.1.
 
@@ -36,11 +42,11 @@ COMO USAR (resumo)
 - Mover: clique num objeto e arraste (nas ruas, arraste as bolinhas laranja; "Rua macia" puxa os pontos vizinhos).
 
 TESTE RÁPIDO V0.4.0
-1. Abra o jogo, aperte F9 e coloque uma casa perto de uma rua: ela encosta na rua e vira a porta para ela.
+1. Abra o jogo, aperte TAB e coloque uma casa perto de uma rua: ela encosta na rua e vira a porta para ela.
 2. Pinte alguns pinheiros, apague com o botão direito, desfaça (Ctrl+Z) e refaça (Ctrl+Y).
 3. Desenhe uma rua nova (clique, clique, duplo clique) e arraste um ponto dela.
-4. Aperte F9 para sair, depois feche o jogo e abra de novo: o que você construiu continua lá.
-5. F9 > "Mundo padrão" volta ao desenho original.
+4. Aperte TAB para sair, depois feche o jogo e abra de novo: o que você construiu continua lá.
+5. TAB > "Mundo do jogo" volta ao seu mundo; "Ilha original" volta ao desenho da 0.3.22.
 
 VALIDAÇÃO (honesta)
 Sondas automáticas (Godot 4.7, software, sem GPU): o editor foi comandado por cliques e teclas simulados (colocar, mover, girar, apagar,
