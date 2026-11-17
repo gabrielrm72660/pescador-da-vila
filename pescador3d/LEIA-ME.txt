@@ -1,3 +1,28 @@
+PESCADOR — Versão 0.3.21 (Godot 4.7)
+================================================
+Base: a 0.3.20 mais a vila nova abaixo. Detalhes em docs/PESCADOR_v0.3.21_NOVIDADES.txt.
+
+NOVIDADES
+- A vila da ilha principal segue o desenho do Gabriel: ruas sinuosas (vermelho), 22 casas viradas para a rua (amarelo),
+  armazém, mercado e capela de frente para a rua, e 75 pinheiros (azul-escuro) na serra e nas encostas.
+- A rua que sobe do cais é de pedra; as outras são de areia batida. A trilha do mirante sai do fim da rua principal.
+- Casas em terreno inclinado ganham alicerce caiado. Pinheiros não são desbastados na qualidade Baixa.
+- Saíram a praça com fonte e os bancos (não havia espaço no desenho).
+
+TESTE RÁPIDO V0.3.21
+1. Olhe a ilha principal de cima ou do mar: ruas curvas e casas alinhadas com a porta para a rua; pinheiros na serra.
+2. Ande de barco até o cais e olhe a vila: rua de pedra subindo, postes de luz, farol ao fundo.
+3. Espere anoitecer: janelas acesas nas casas novas e luz nos postes.
+4. Na qualidade Baixa (F10) os pinheiros continuam todos lá.
+
+VALIDAÇÃO (honesta)
+Sondas automáticas (Godot 4.7, renderizador por software, sem GPU, sem áudio): sem erros de script; capturas aéreas e de
+perto comparadas ao desenho; cais, farol, trilha, pescaria, venda/compras e save rodados de novo, todos OK.
+Custo olhando a vila de cima: Baixa 183 -> 185 chamadas (+3% de triângulos, mesmo tempo); Alta 255 -> 287 chamadas (+7% de tempo).
+NÃO testado: jogo por uma pessoa, FPS em placa de vídeo de verdade, Forward+, os sons ao vivo.
+
+------------------------------------------------------------------------------------------------
+ANTERIOR — 0.3.20
 PESCADOR — Versão 0.3.20 (Godot 4.7)
 ================================================
 Base: a 0.3.19 mais as melhorias abaixo. Detalhes em docs/PESCADOR_v0.3.20_NOVIDADES.txt.

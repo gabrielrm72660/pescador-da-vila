@@ -1,0 +1,28 @@
+PESCADOR 0.3.21 — NOVA VILA NA ILHA PRINCIPAL (RUAS, CASAS DE FRENTE PRA RUA E PINHEIROS)
+==========================================================================================
+
+O QUE MUDOU
+A vila da Vila do Porto deixou de ser uma grade de quarteirões retos e passou a seguir o desenho que o Gabriel
+marcou sobre a vista aérea da ilha:
+- Vermelho = ruas. São 12 trechos (cerca de 320 m) que se cruzam: a rua que sobe do cais é calçada de pedra
+  e as outras são de areia batida; uma volta a leste, um arco a oeste e as ruas do sul.
+- Amarelo = casas. 22 casas, cada uma girada para ficar com a porta voltada para a rua mais próxima
+  (a porta fica de 3 a 6 m do eixo da rua). Em terreno inclinado o piso fica na altura média dos cantos e um
+  alicerce caiado cobre o vão do lado que desce.
+- Armazém, mercado e capela ao longo do arco oeste, também de frente para a rua. A capela mantém a torre com a cruz.
+- Azul-escuro = pinheiros. 75 pinheiros novos (copa em 5 camadas, cerca de 65 triângulos cada) na serra e nas
+  encostas. Na qualidade Baixa eles NÃO são desbastados (as outras árvores continuam em 35%): são poucos e baratos.
+- A trilha do mirante agora sai do fim da rua principal. Os 4 postes de luz acompanham a rua que sobe do cais.
+- Saíram a praça com fonte e os bancos (não havia espaço no desenho).
+
+ONDE MEXER
+- scripts/layout_principal.gd: todas as posições (ruas, casas, prédios, postes, pinheiros), em metros locais da ilha.
+- scripts/ilha.gd: _vila_por_layout, _casa_no_terreno, _malha_pinheiro, _criar_pinheiros.
+- Teste: PESCADOR_VILA_ANTIGA=1 volta à vila antiga (para comparar). Só vale para a ilha principal.
+
+VALIDAÇÃO (honesta)
+Sondas automáticas (Godot 4.7, renderizador por software, sem GPU): sem erros de script; capturas aéreas e de perto
+sobrepostas ao desenho; testes antigos (cais, farol, trilha, pescaria, save) rodados de novo.
+Custo (olhando a vila de cima, CPU): Baixa 183 -> 185 chamadas, +3% de triângulos, mesmo tempo por quadro;
+Alta 255 -> 287 chamadas, +7% de tempo.
+NÃO testado: jogo por uma pessoa, FPS em placa de vídeo de verdade, noite com as janelas acesas na vila nova.

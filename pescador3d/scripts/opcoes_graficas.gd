@@ -182,6 +182,9 @@ func aplicar() -> void:
             var grupo: MultiMeshInstance3D = no as MultiMeshInstance3D
             if grupo != null and grupo.multimesh != null:
                 var conta: int = grupo.multimesh.instance_count
+                if grupo.has_meta("sem_reducao"):      # pinheiros da serra: poucos e baratos, ficam sempre inteiros
+                    grupo.multimesh.visible_instance_count = -1
+                    continue
                 grupo.multimesh.visible_instance_count = -1 if q == 2 else maxi(1, roundi(conta * (0.35 if q == 0 else 0.68)))
     for no in get_tree().root.find_children("*", "CPUParticles3D", true, false):
         var efeito: CPUParticles3D = no as CPUParticles3D

@@ -1,5 +1,6 @@
 extends Node3D
 const Mesclador = preload("res://scripts/mesclador.gd")
+const LayoutPrincipal = preload("res://scripts/layout_principal.gd")   # ruas, casas e pinheiros da Vila do Porto (desenho do Gabriel)
 ## Ilha procedural: praia, encostas, dorsais, paredoes e costa com rochedos.
 ## Coqueiros, moitas, pedras, vila e cais. O farol e opcional em cada ilha. Responde onde há terra (para o barco não atravessar) e onde é o cais.
 
@@ -50,6 +51,7 @@ func _ready() -> void:
         _criar_detalhes_porto()
         _criar_mirante()
         _registrar_pontos_interesse()
+    _criar_pinheiros()
     _criar_coqueiros()
     _criar_arvores_nativas()
     _criar_pedras_e_moitas()
@@ -584,6 +586,13 @@ func _criar_vila() -> void:
             _ocupado.append(Vector3(barracao.x, barracao.y, 8.0))
         return
 
+    if _usa_layout():
+        # Vila desenhada à mão: ruas, casas viradas para a rua, armazém, mercado e capela.
+        _vila_por_layout(vila, rng, cores, portas, areia_batida, calcada)
+        if tem_farol:
+            _criar_farol_no_cume(vila)
+        return
+
     # Hierarquia urbana: cais -> rua de chegada -> praça -> rua do mercado e das moradias.
     var chegada := pe_do_cais - dir * 14.0
     var praca := pe_do_cais - dir * 49.0 + lado * 3.0
@@ -654,7 +663,160 @@ func _criar_vila() -> void:
     if tem_farol and com_vila:
         _criar_farol_no_cume(vila)
 
+## A vila desenhada à mão (scripts/layout_principal.gd) vale só para a ilha principal.
+## PESCADOR_VILA_ANTIGA=1 (teste) volta à grade antiga, para comparar.
+func _usa_layout() -> bool:
+    return com_vila and OS.get_environment("PESCADOR_VILA_ANTIGA") != "1"
 
+## Ruas (vermelho do desenho), casas com a porta para a rua (amarelo), armazém, mercado e capela.
+func _vila_por_layout(vila: Node3D, rng: RandomNumberGenerator, cores: Array, portas: Array, areia_batida: Material, calcada: Material) -> void:
+    # Rua que sai do cais e sobe até o começo da trilha: calçada. As outras são de areia batida.
+    var eixo := [11, 8, 1, 3, 2]
+    for k in LayoutPrincipal.RUAS.size():
+        var pontos: Array = []
+        for p in LayoutPrincipal.RUAS[k]:
+            pontos.append(Vector2(p[0], p[1]))
+        _caminho(vila, pontos, 3.9 if k in eixo else 3.6, calcada if k in eixo else areia_batida)
+        # Árvores, pedras e redes ficam fora da rua: um ponto reservado a cada ~3 m.
+        for i in range(pontos.size() - 1):
+            var a: Vector2 = pontos[i]
+            var b: Vector2 = pontos[i + 1]
+            var n: int = maxi(1, ceili(a.distance_to(b) / 3.0))
+            for j in n:
+                var m: Vector2 = a.lerp(b, float(j) / float(n))
+                _ocupado.append(Vector3(m.x, m.y, 2.0))
+        var fim: Vector2 = pontos[pontos.size() - 1]
+        _ocupado.append(Vector3(fim.x, fim.y, 2.0))
+
+    var n_casa := 0
+    for c in LayoutPrincipal.CASAS:
+        var tam := Vector3(rng.randf_range(5.0, 5.5), rng.randf_range(3.0, 3.6), rng.randf_range(5.8, 6.6))
+        _casa_no_terreno(vila, Vector2(c[0], c[1]), float(c[2]), tam, cores[n_casa % cores.size()], portas[n_casa % portas.size()])
+        _ocupado.append(Vector3(c[0], c[1], 4.6))
+        n_casa += 1
+
+    # Armazém e mercado do porto, de frente para a rua.
+    var arm: Array = LayoutPrincipal.ARMAZEM
+    var pa := Vector2(arm[0], arm[1])
+    _casa_no_terreno(vila, pa, float(arm[2]), Vector3(9.0, 3.5, 8.0), Color(0.80, 0.78, 0.66), Color(0.33, 0.29, 0.22))
+    _ocupado.append(Vector3(pa.x, pa.y, 7.0))
+    var frente_a := Vector2(cos(float(arm[2])), -sin(float(arm[2])))
+    var lado_a := Vector2(-frente_a.y, frente_a.x)
+    for k in 3:
+        var cx: Vector2 = pa + frente_a * 5.3 + lado_a * (1.7 + 1.1 * float(k % 2))
+        var base_y: float = _altura_local(cx.x, cx.y) + 0.45 + (0.8 if k == 2 else 0.0)
+        _caixa(vila, Vector3(1.2, 0.8, 1.0), Vector3(cx.x, base_y, cx.y), _material(Color(0.45, 0.34, 0.23)), float(arm[2]) + 0.1 * float(k))
+    var mer: Array = LayoutPrincipal.MERCADO
+    var pm := Vector2(mer[0], mer[1])
+    _casa_no_terreno(vila, pm, float(mer[2]), Vector3(9.0, 3.5, 7.2), Color(0.83, 0.88, 0.85), portas[0])
+    _ocupado.append(Vector3(pm.x, pm.y, 7.0))
+
+    # Capela com a torre na fachada, no fim da rua do oeste.
+    var cap: Array = LayoutPrincipal.CAPELA
+    var pc := Vector2(cap[0], cap[1])
+    var nave := _casa_no_terreno(vila, pc, float(cap[2]), Vector3(9.0, 4.2, 6.0), Color(0.98, 0.97, 0.92), Color(0.18, 0.35, 0.42))
+    var branca := _material(Color(0.98, 0.97, 0.92), "res://assets/texturas/ilha/reboco.png", 0.24)
+    _caixa(nave, Vector3(2.0, 8.0, 2.0), Vector3(4.5, 4.0, 3.3), branca)
+    _caixa(nave, Vector3(0.16, 1.45, 0.16), Vector3(4.5, 9.15, 3.3), _material(Color(0.30, 0.22, 0.17)))
+    _caixa(nave, Vector3(0.16, 0.16, 1.0), Vector3(4.5, 9.5, 3.3), _material(Color(0.30, 0.22, 0.17)))
+    _ocupado.append(Vector3(pc.x, pc.y, 8.0))
+
+## Casa em terreno torto: o piso fica na altura média dos quatro cantos e um alicerce de pedra
+## cobre o vão no lado que desce. "giro" é o da _casa (a porta, em +X, aponta para a rua).
+func _casa_no_terreno(pai: Node3D, p: Vector2, giro: float, tam: Vector3, cor: Color, cor_madeira: Color) -> Node3D:
+    var frente := Vector2(cos(giro), -sin(giro))
+    var lateral := Vector2(-frente.y, frente.x)
+    var soma := 0.0
+    var menor := INF
+    for sx in [-1.0, 1.0]:
+        for sz in [-1.0, 1.0]:
+            var q: Vector2 = p + frente * (tam.x * 0.5 + 0.2) * sx + lateral * (tam.z * 0.5 + 0.2) * sz
+            var hq: float = _altura_local(q.x, q.y)
+            soma += hq
+            menor = minf(menor, hq)
+    var piso: float = soma / 4.0
+    var casa: Node3D = _casa(pai, Vector3(p.x, piso, p.y), giro, tam, cor, cor_madeira)
+    var fundo: float = (piso - 0.4) - menor + 0.35          # a casa nasce 0,4 m abaixo de "piso"
+    if fundo > 0.2:
+        var alicerce := _material(cor.darkened(0.38), "res://assets/texturas/ilha/reboco.png", 0.22)     # caiado escuro, como o rodapé
+        _caixa(casa, Vector3(tam.x + 0.30, fundo + 0.10, tam.z + 0.30), Vector3(0, -fundo * 0.5 + 0.05, 0), alicerce)
+    return casa
+
+## Pinheiro: tronco reto e copa em camadas de cones recortados (borda em dentes), verde bem escuro.
+func _malha_pinheiro() -> ArrayMesh:
+    var st := SurfaceTool.new()
+    st.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var lados := 7
+    for k in lados:
+        var a := TAU * float(k) / float(lados)
+        var b := TAU * float(k + 1) / float(lados)
+        var p0 := Vector3(cos(a) * 0.36, 0.0, sin(a) * 0.36)
+        var p1 := Vector3(cos(b) * 0.36, 0.0, sin(b) * 0.36)
+        var p2 := Vector3(cos(a) * 0.20, 5.0, sin(a) * 0.20)
+        var p3 := Vector3(cos(b) * 0.20, 5.0, sin(b) * 0.20)
+        for v in [p0, p2, p1, p1, p2, p3]:
+            st.set_color(Color(0.30, 0.22, 0.15))
+            st.add_vertex(v)
+    var dentes := 10
+    for camada in 5:
+        var y0: float = 1.8 + 1.85 * float(camada)
+        var raio_c: float = 2.7 - 0.48 * float(camada)
+        var ponta := Vector3(0.0, y0 + 3.1, 0.0)
+        var escuro := Color(0.08, 0.22, 0.14).lerp(Color(0.10, 0.26, 0.16), float(camada) / 4.0)
+        var claro := Color(0.15, 0.34, 0.20).lerp(Color(0.19, 0.39, 0.23), float(camada) / 4.0)
+        for k in dentes:
+            var a := TAU * float(k) / float(dentes)
+            var b := TAU * float(k + 1) / float(dentes)
+            var ra: float = raio_c * (1.0 if k % 2 == 0 else 0.80)
+            var rb: float = raio_c * (1.0 if (k + 1) % 2 == 0 else 0.80)
+            var ya: float = y0 - (0.0 if k % 2 == 0 else 0.30)
+            var yb: float = y0 - (0.0 if (k + 1) % 2 == 0 else 0.30)
+            var va := Vector3(cos(a) * ra, ya, sin(a) * ra)
+            var vb := Vector3(cos(b) * rb, yb, sin(b) * rb)
+            st.set_color(escuro)
+            st.add_vertex(va)
+            st.set_color(escuro.lerp(claro, 0.25))
+            st.add_vertex(vb)
+            st.set_color(claro)
+            st.add_vertex(ponta)
+    st.generate_normals()
+    return st.commit()
+
+## Os pinheiros do desenho (azul-escuro). Ficam fora do desbaste da qualidade Baixa: são poucos,
+## baratos (cerca de 60 triângulos) e são a cara da serra.
+func _criar_pinheiros() -> void:
+    if not _usa_layout():
+        return
+    var rng := RandomNumberGenerator.new()
+    rng.seed = semente + 4242
+    var lugares: Array = []
+    for p in LayoutPrincipal.PINHEIROS:
+        var q := Vector2(p[0], p[1])
+        var h: float = _altura_local(q.x, q.y)
+        if h < 1.6 or not _livre(q, 0.4):
+            continue
+        lugares.append(Vector3(q.x, h - 0.25, q.y))
+    for l in lugares:
+        _ocupado.append(Vector3(l.x, l.z, 2.4))
+    var mm := MultiMesh.new()
+    mm.transform_format = MultiMesh.TRANSFORM_3D
+    mm.mesh = _malha_pinheiro()
+    mm.instance_count = lugares.size()
+    for i in mm.instance_count:
+        var sc: float = rng.randf_range(0.78, 1.22)
+        var inclina := Basis.from_euler(Vector3(rng.randf_range(-0.04, 0.04), rng.randf_range(0.0, TAU), rng.randf_range(-0.04, 0.04)))
+        mm.set_instance_transform(i, Transform3D(inclina.scaled(Vector3(sc * rng.randf_range(0.9, 1.1), sc * rng.randf_range(0.95, 1.2), sc * rng.randf_range(0.9, 1.1))), lugares[i]))
+    var mat := StandardMaterial3D.new()
+    mat.vertex_color_use_as_albedo = true
+    mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+    mat.roughness = 0.96
+    _aplicar_detalhe_de_folhagem(mat, 0.34)
+    var inst := MultiMeshInstance3D.new()
+    inst.name = "Pinheiros"
+    inst.multimesh = mm
+    inst.material_override = mat
+    inst.set_meta("sem_reducao", true)
+    add_child(inst)
 
 ## Busca o ponto de maior altitude no interior da ilha principal, afastado da praia e dos rochedos.
 ## O cume é calculado a partir da mesma função usada na malha 3D e na colisão.
@@ -923,11 +1085,18 @@ func _criar_detalhes_porto() -> void:
         _caixa(canoa, Vector3(3.0, 0.15, 0.13), Vector3(0, 0.08, 0), madeira)
         _ocupado.append(Vector3(p.x, p.y, 4.0))
 
-    # Postes com iluminação quente ao longo do eixo praça-cais.
-    for k in 3:
-        var p: Vector2 = origem - dir * (13.0 + float(k) * 13.0) - lado * 5.8
+    # Postes com iluminação quente ao longo da rua que sobe do cais (na vila desenhada, os pontos vêm do layout).
+    var lugares_postes: Array = []
+    if _usa_layout():
+        for q in LayoutPrincipal.POSTES:
+            lugares_postes.append(Vector2(q[0], q[1]))
+    else:
+        for k in 3:
+            lugares_postes.append(origem - dir * (13.0 + float(k) * 13.0) - lado * 5.8)
+    for p in lugares_postes:
         var h: float = _altura_local(p.x, p.y)
-        if h <= 0.7 or not _livre(p, 1.5):
+        # Na vila desenhada o poste fica à beira da rua, que já está reservada: a folga é negativa de propósito.
+        if h <= 0.7 or not _livre(p, -1.4 if _usa_layout() else 1.5):
             continue
         _cilindro(detalhes, 0.12, 0.11, 4.2, Vector3(p.x, h, p.y), madeira)
         var vidro: StandardMaterial3D = _material(Color(0.98, 0.81, 0.51))
@@ -964,6 +1133,8 @@ func _criar_mirante() -> void:
     var origem: Vector2 = Vector2(cais_inicio.x - centro.x, cais_inicio.z - centro.z)
     var praca: Vector2 = origem - dir * 49.0 + lado * 3.0
     var fim_trilha: Vector2 = praca - dir * 17.0
+    if _usa_layout():
+        fim_trilha = Vector2(LayoutPrincipal.TRILHA_INICIO[0], LayoutPrincipal.TRILHA_INICIO[1])
     var curva: Vector2 = (fim_trilha + local) * 0.5 - lado * 10.0
     var trilha: StandardMaterial3D = _material_trilha("res://assets/texturas/ilha/trilha.png", Color(1.0, 0.92, 0.80), 0.34)
     _caminho(ponto, [fim_trilha, curva, local], 2.3, trilha)
