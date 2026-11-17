@@ -24,8 +24,13 @@ modelo.gd             lista as peças e os materiais do modelo do barco
 peixes.gd             porão com as 18 espécies, anel de pesca com o desenho do peixe e cardumes vistos de cima (dia e noite)
 chance.gd             sorteio de espécie por cenário (dia/noite, costa, recife, banco, alto-mar) e R$ por casa do porão
 ganho.gd              ganho médio por cardume com e sem as espécies novas (para conferir a economia)
+pesca_feedback.gd     anel de pesca: acerto perfeito, erro, tensão alta e linha rompida (confere os sinais e tira capturas)
+save_reiniciar.gd     salva num processo do Godot e carrega em outro (FASE=1 depois FASE=2) e compara tudo
+folhagem.gd           capturas de palmeiras, árvores e arbustos com as texturas de folhagem
 
 FERRAMENTA (não é sonda): ferramentas/fatiar_peixes.py
 Fatia as folhas de peixes do SpriteCook (arte_original/spritecook/) em um PNG por espécie com fundo transparente:
   python3 ferramentas/fatiar_peixes.py      (precisa de: pip install pillow numpy opencv-python scipy)
 Gera assets/texturas/peixes/porao/ (de lado) e assets/texturas/peixes/cima/ (de cima, para os cardumes).
+Outras ferramentas: ferramentas/gerar_sons_pesca.py (sintetiza os 5 sons da pescaria em assets/sons) e
+ferramentas/gerar_folhagem.py (pinta copa.png e palmeira.png em assets/texturas/ilha).

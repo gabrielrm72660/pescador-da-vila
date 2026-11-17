@@ -10,6 +10,8 @@ signal peixe_capturado(especie: String, peso: float)
 signal linha_lancada
 signal acertou(perfeito: bool)
 signal errou
+signal linha_rompida
+signal tensao_alta        # a tensão passou de ~72% do limite: aviso sonoro
 
 const VELOCIDADE_MAXIMA_PESCA: float = 1.03  # m/s = 2 nós
 const PERDA_NO_ERRO: float = 0.10            # quanto da barra volta num aperto fora da faixa
@@ -56,6 +58,7 @@ var profundidade: int = 1
 var iscas_camarao: int = 6
 var iscas_lula: int = 4
 var tensao: float = 0.0
+var _alerta_tensao: bool = false
 var limite_linha: float = 1.0
 var bonus_iscagem: float = 1.0
 # J alterna a técnica. A qualidade depende da técnica, da isca e do esforço da linha.
@@ -106,7 +109,9 @@ func comprar_iscas() -> void:
 func _romper_linha(motivo: String) -> void:
     estado = Estado.PRONTO
     tensao = 0.0
+    _alerta_tensao = false
     mensagem.emit(motivo)
+    linha_rompida.emit()
 
 @onready var barco = get_node("../Barco")
 @onready var cardumes = get_node_or_null("../Cardumes")
@@ -138,6 +143,12 @@ func _process(delta: float) -> void:
     if tensao >= limite_linha:
         _romper_linha("Linha rompida pelo excesso de tensão. Espere entre as puxadas!")
         return
+    var relativa: float = tensao / maxf(0.1, limite_linha)
+    if relativa > 0.72 and not _alerta_tensao:
+        _alerta_tensao = true
+        tensao_alta.emit()
+    elif relativa < 0.55:
+        _alerta_tensao = false
     progresso += _sozinho * bonus_iscagem * delta * (1.0 - 0.45 * tensao)
     if progresso >= 1.0:
         _capturar()
@@ -161,6 +172,7 @@ func _lancar() -> void:
     elif tipo_isca == 2:
         iscas_lula -= 1
     tensao = 0.0
+    _alerta_tensao = false
     voltas_por_s = float(dados.get("ponteiro", 0.5))
     var n: int = int(dados.get("faixas", 3))
     var largura: float = deg_to_rad(float(dados.get("largura", 38))) * fator_vara * bonus_iscagem

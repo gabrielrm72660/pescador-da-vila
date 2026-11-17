@@ -1,0 +1,35 @@
+PESCADOR 0.3.20 — CARDUMES À NOITE, PESCARIA COM MAIS RESPOSTA, FOLHAGEM E MISSÕES
+==================================================================================
+
+1. CARDUMES À NOITE
+- Cada cardume deixa na água um brilho suave (azul-claro, como plâncton), que pulsa devagar e some quando ele se dispersa.
+  Dá para achar os cardumes de longe no escuro. De dia o brilho não aparece.
+- As silhuetas dos peixes à noite ficaram mais claras (cor e opacidade maiores).
+- O brilho fica 0,85 m acima da água, para a crista das ondas não cortar o disco (scripts/cardumes.gd, _atualizar_brilho).
+- O peixe-anjo visto de cima é fino porque o peixe real é achatado dos lados: deixei como está.
+
+2. PESCARIA (estilo DREDGE)
+- Sons novos, feitos por código (ferramentas/gerar_sons_pesca.py): acerto, acerto perfeito, estalo da linha, rangido de
+  tensão alta e captura (respingo + três notas). Os antigos continuam para lançar a linha, errar e vender.
+- O anel mostra "PERFEITO!", "BOM!" ou "ERROU" ao lado, subindo e sumindo.
+- Passou de ~72% de tensão: o anel treme, a barra de tensão pisca e toca o rangido (uma vez por subida).
+- A linha que arrebenta agora faz barulho (sinal linha_rompida em scripts/pesca.gd).
+
+3. FOLHAGEM (ferramentas/gerar_folhagem.py)
+- Coqueiros: folhas em "pena" com transparência (folíolos de verdade) e casca no tronco, num atlas só (palmeira.png).
+- Copa das árvores e arbustos: mapa de detalhe de cachos de folhas (copa.png) por cima da cor de cada vértice.
+- Sem custo de chamadas de desenho a mais. Se os arquivos faltarem, o jogo volta à cor lisa de antes.
+- Ainda não é SpriteCook: gerei uma folha de texturas de folhagem lá (sobram 2 créditos) e ela espera você baixar e anexar;
+  quando chegar, a copa e os arbustos passam a usar a pintura dela.
+
+4. MISSÕES (agora 16)
+- 13: Pescar uma moreia à noite (R$ 160). 14: Pescar um peixe-anjo no recife (R$ 220).
+- 15: Entregar 3 encomendas (R$ 300). 16: Juntar R$ 3000 (R$ 200).
+
+5. SAVE
+- Conferido entre duas execuções do jogo (sonda save_reiniciar.gd): dinheiro, hora, missão, encomenda, melhorias, linha,
+  descobertas, posição do barco e porão com as 3 espécies novas voltam iguais.
+
+NÃO TESTADO
+- Jogo por uma pessoa; FPS em placa de vídeo de verdade; se os sons agradam (só conferi que tocam e os sinais disparam);
+  como a transparência das folhas se comporta em placas diferentes; brilho/sombras do Forward+.

@@ -183,8 +183,10 @@ func _ready() -> void:
     barco.combustivel_baixo.connect(func(): som.tocar("aviso", -6.0); interface.aviso("Combustível baixo: menos de 20% no tanque."))
     barco.combustivel_acabou.connect(func(): som.tocar("aviso", -4.0); interface.aviso("Acabou o combustível! O barco só se arrasta a 2 nós. (R reinicia a viagem.)"))
     pesca.linha_lancada.connect(func(): som.tocar("pesca_lancar", -6.0))
-    pesca.acertou.connect(func(perfeito): som.tocar("pesca_lancar", -9.0, 1.7 if perfeito else 1.35))
+    pesca.acertou.connect(func(perfeito): som.tocar("perfeito" if perfeito else "acerto", -7.0 if perfeito else -9.0, randf_range(0.97, 1.05)))
     pesca.errou.connect(func(): som.tocar("aviso", -14.0, 0.6))
+    pesca.linha_rompida.connect(func(): som.tocar("estalo", -4.0))
+    pesca.tensao_alta.connect(func(): som.tocar("tensao", -8.0, randf_range(0.95, 1.08)))
     interface.hud.pesca = pesca
     interface.porao = porao
     interface.hud.porao = porao
@@ -324,7 +326,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.3.19] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.3.20] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:
@@ -609,6 +611,7 @@ func _ao_pescar(especie: String, peso: float) -> void:
         interface.aviso("Porão cheio: o peixe voltou ao mar. Venda a pescaria no cais.")
         return
     som.tocar("peixe", -5.0)
+    som.tocar("captura", -7.0)
     interface.aviso("%s capturado — qualidade: %s." % [especie, pesca.ultima_qualidade])
     missoes.evento("pescar", especie)
 

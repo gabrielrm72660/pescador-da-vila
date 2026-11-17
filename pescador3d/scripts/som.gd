@@ -50,7 +50,7 @@ func _ready() -> void:
     _proximo_trovao = randf_range(18.0, 36.0)
     for nome in ["onda", "trovao"]:
         _guardar_avulso(nome, "ambiente")
-    for nome in ["pesca_lancar", "aviso", "peixe"]:
+    for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura"]:
         _guardar_avulso(nome, "efeitos")
 
 func _guardar_avulso(nome: String, grupo: String) -> void:

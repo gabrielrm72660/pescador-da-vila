@@ -60,6 +60,11 @@ var pesca: Node = null           # scripts/pesca.gd: o anel do minijogo é lido 
 
 var _fonte: Font
 var _sprites_peixes: Dictionary = {}
+var _pop_texto: String = ""       # "PERFEITO!", "BOM!", "ERROU": sobe e some acima do anel
+var _pop_tempo: float = 0.0
+var _pop_cor: Color = Color.WHITE
+var _brilho_antes: float = 0.0
+var _trava_antes: float = 0.0
 var _textura_madeira: Texture2D = null
 var _textura_casa: Texture2D = null
 var _sobre := ""                # botão sob o mouse
@@ -78,6 +83,18 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     aviso_tempo = maxf(0.0, aviso_tempo - delta)
+    _pop_tempo = maxf(0.0, _pop_tempo - delta)
+    if pesca != null:
+        if pesca.brilho > _brilho_antes + 0.2:                 # acabou de acertar
+            _pop_texto = "PERFEITO!" if pesca.ultimo_perfeito else "BOM!"
+            _pop_cor = DOURADO if pesca.ultimo_perfeito else VERDE.lightened(0.35)
+            _pop_tempo = 0.9
+        elif pesca.trava > _trava_antes + 0.2:                 # acabou de errar
+            _pop_texto = "ERROU"
+            _pop_cor = Color(0.95, 0.40, 0.32)
+            _pop_tempo = 0.7
+        _brilho_antes = pesca.brilho
+        _trava_antes = pesca.trava
     queue_redraw()
 
 # ------------------------------------------------------------------ botões
@@ -434,6 +451,9 @@ func _anel_de_pesca() -> void:
     if pesca == null or pesca.estado == pesca.Estado.PRONTO or painel_aberto != "":
         return
     var c := Vector2(196.0, size.y / 2.0 - 6.0)
+    var tensao_anel: float = clampf(float(pesca.tensao) / maxf(0.1, float(pesca.limite_linha)), 0.0, 1.0)
+    if tensao_anel > 0.72:                                     # linha esticada: o anel treme
+        c += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * (tensao_anel - 0.72) * 16.0
     var raio := 92.0
     var grossura := 20.0
     _pincelada(Rect2(c.x - 138.0, c.y - 176.0, 276.0, 50.0), 81)
@@ -481,15 +501,19 @@ func _anel_de_pesca() -> void:
     var lat := Vector2(-d.y, d.x)
     var ponta := c + d * (raio - grossura / 2.0 - 16.0)
     draw_colored_polygon(PackedVector2Array([ponta, ponta + d * 12.0 + lat * 7.0, ponta + d * 12.0 - lat * 7.0]), cor_ponteiro)
+    if _pop_tempo > 0.0:                                       # PERFEITO! / BOM! / ERROU sobem e somem
+        var vida: float = _pop_tempo / 0.9
+        _texto(Vector2(c.x + raio + grossura / 2.0 + 22.0, c.y - 4.0 - (1.0 - vida) * 26.0), _pop_texto, 26, Color(_pop_cor, clampf(vida * 1.8, 0.0, 1.0)))
     if pesca.brilho > 0.0:                                     # clarão do acerto
         draw_arc(c, raio, 0.0, TAU, 96, Color(DOURADO if pesca.ultimo_perfeito else VERDE, pesca.brilho * 1.6), 3.0 + (0.35 - pesca.brilho) * 40.0, true)
     # embaixo: barra do peixe, cardume e a tecla
     _barra(Rect2(c.x - 106.0, c.y + 132.0, 212.0, 18.0), p, DOURADO if p > 0.8 else VERDE)
     _texto(Vector2(c.x - 106.0, c.y + 174.0), "Cardume: %s" % pesca.estoque(), 16, CREME)
     # Indicador de tensão: vermelho próximo do limite da linha.
-    var tensao_atual: float = clampf(float(pesca.tensao) / maxf(0.1, float(pesca.limite_linha)), 0.0, 1.0)
+    var tensao_atual: float = tensao_anel
+    var alerta_piscando: bool = tensao_atual > 0.72 and int(Time.get_ticks_msec() / 140.0) % 2 == 0
     _barra(Rect2(c.x - 106.0, c.y + 183.0, 212.0, 8.0), tensao_atual,
-        Color(0.94, 0.28, 0.20) if tensao_atual > 0.72 else Color(0.90, 0.66, 0.28))
+        (Color(1.0, 0.55, 0.45) if alerta_piscando else Color(0.94, 0.28, 0.20)) if tensao_atual > 0.72 else Color(0.90, 0.66, 0.28))
     var tecla := Rect2(c.x + 30.0, c.y + 157.0, 24.0, 24.0)
     _caixa_arredondada(tecla, CREME if pesca.trava <= 0.0 else Color(CREME, 0.4))
     draw_string(_fonte, Vector2(tecla.position.x, tecla.position.y + 18.0), "F", HORIZONTAL_ALIGNMENT_CENTER, 24.0, 16, Color(0.06, 0.10, 0.15))

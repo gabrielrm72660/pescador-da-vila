@@ -16,6 +16,8 @@ var preco_diesel := 4                          # R$ por litro
 var tem_loja := true                           # vende melhorias do barco?
 var tem_farol := true                          # cada ilha decide se tem farol; Ilha Rata = false
 var relevo_detalhado := true                    # espigoes e vales: apenas a ilha principal
+const TEX_COPA := "res://assets/texturas/ilha/copa.png"             # detalhe de folhagem (ferramentas/gerar_folhagem.py)
+const TEX_PALMEIRA := "res://assets/texturas/ilha/palmeira.png"       # folha em pena + casca
 const LADO := 300.0                            # lado da malha do terreno (m)
 const DIVISOES := 180
 const CALADO := 0.9                            # o barco encalha onde a água tem menos que isso (m)
@@ -1016,9 +1018,13 @@ func _malha_coqueiro(tipo: int = 0) -> ArrayMesh:
         for k in lados:
             var a0 := j * lados + k
             var a1 := j * lados + (k + 1) % lados
-            for idx in [a0, a0 + lados, a1, a1, a0 + lados, a1 + lados]:
-                st.set_color(pontos[idx][1])
-                st.add_vertex(pontos[idx][0])
+            var indices := [a0, a0 + lados, a1, a1, a0 + lados, a1 + lados]
+            var colunas_uv := [k, k, k + 1, k + 1, k, k + 1]
+            var aneis_uv := [j, j + 1, j, j, j + 1, j + 1]
+            for n in 6:                                   # u em volta do tronco; v na faixa de casca do atlas (parte de baixo)
+                st.set_color(pontos[indices[n]][1])
+                st.set_uv(Vector2(float(colunas_uv[n]) / float(lados), lerpf(0.99, 0.89, float(aneis_uv[n]) / float(aneis))))
+                st.add_vertex(pontos[indices[n]][0])
     var topo := Vector3(curva, altura - 0.04, curva * 0.25)
     var rng := RandomNumberGenerator.new()
     rng.seed = 99 + tipo * 71
@@ -1043,12 +1049,27 @@ func _malha_coqueiro(tipo: int = 0) -> ArrayMesh:
                 var e1: Vector3 = espinha[j + 1]
                 var b0: Vector3 = e0 + lat * lado_folha * float(largura[j]) - Vector3.UP * float(largura[j]) * 0.36
                 var b1: Vector3 = e1 + lat * lado_folha * float(largura[j + 1]) - Vector3.UP * float(largura[j + 1]) * 0.36
-                for par in [[e0, verde.darkened(0.22)], [e1, verde.darkened(0.25)], [b0, verde],
-                        [b0, verde], [e1, verde.darkened(0.20)], [b1, verde.lightened(0.11)]]:
+                var v0: float = lerpf(0.862, 0.012, float(j) / float(seg))
+                var v1: float = lerpf(0.862, 0.012, float(j + 1) / float(seg))
+                var ub: float = 0.0 if lado_folha < 0.0 else 1.0
+                for par in [[e0, verde.darkened(0.22), Vector2(0.5, v0)], [e1, verde.darkened(0.25), Vector2(0.5, v1)], [b0, verde, Vector2(ub, v0)],
+                        [b0, verde, Vector2(ub, v0)], [e1, verde.darkened(0.20), Vector2(0.5, v1)], [b1, verde.lightened(0.11), Vector2(ub, v1)]]:
                     st.set_color(par[1])
+                    st.set_uv(par[2])
                     st.add_vertex(par[0])
     st.generate_normals()
     return st.commit()
+
+## Mapa de detalhe de folhagem (cachos de folhas, em tons de cinza) por cima da cor de cada vértice. Em coordenadas do
+## próprio objeto (triplanar), então não precisa de UV nas malhas. Sem o arquivo, fica só a cor.
+func _aplicar_detalhe_de_folhagem(mat: StandardMaterial3D, escala: float) -> void:
+    if not ResourceLoader.exists(TEX_COPA):
+        return
+    mat.albedo_texture = load(TEX_COPA)
+    mat.albedo_color = Color(1.42, 1.42, 1.42)               # compensa o escurecimento do mapa (média ~0,7)
+    mat.uv1_triplanar = true
+    mat.uv1_scale = Vector3(escala, escala, escala)
+    mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 func _criar_coqueiros() -> void:
     var rng := RandomNumberGenerator.new()
@@ -1074,6 +1095,12 @@ func _criar_coqueiros() -> void:
     mat.vertex_color_use_as_albedo = true
     mat.cull_mode = BaseMaterial3D.CULL_DISABLED
     mat.roughness = 0.93
+    if ResourceLoader.exists(TEX_PALMEIRA):                    # folhas em "pena" (transparência) + casca no mesmo atlas
+        mat.albedo_texture = load(TEX_PALMEIRA)
+        mat.albedo_color = Color(1.40, 1.40, 1.40)
+        mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+        mat.alpha_scissor_threshold = 0.38
+        mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
     for tipo in 3:
         var mm := MultiMesh.new()
         mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -1159,6 +1186,7 @@ func _criar_arvores_nativas() -> void:
     mat.vertex_color_use_as_albedo = true
     mat.cull_mode = BaseMaterial3D.CULL_DISABLED
     mat.roughness = 0.96
+    _aplicar_detalhe_de_folhagem(mat, 0.30)
     var inst := MultiMeshInstance3D.new()
     inst.name = "ArvoresNativas"
     inst.multimesh = mm
@@ -1225,6 +1253,7 @@ func _criar_pedras_e_moitas() -> void:
     var verde := StandardMaterial3D.new()
     verde.vertex_color_use_as_albedo = true
     verde.roughness = 0.95
+    _aplicar_detalhe_de_folhagem(verde, 0.75)
     var moitas := MultiMeshInstance3D.new()
     moitas.name = "Moitas"
     moitas.multimesh = mb

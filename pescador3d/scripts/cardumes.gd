@@ -38,7 +38,9 @@ const ALTO_MAR := 300.0         # m da costa mais próxima a partir de onde apar
 const ALCANCE := 17.0          # m do centro do cardume até onde a linha alcança
 const VISUAL := 2.05           # legíveis do barco, sem virar círculos gigantes sobre a água
 const COR_DIA := Color(0.03, 0.15, 0.21, 0.88)       # de dia: silhueta escura sobre a água clara
-const COR_NOITE := Color(0.54, 0.72, 0.78, 0.64)     # à noite: silhueta clara sobre a água escura
+const COR_NOITE := Color(0.70, 0.88, 0.94, 0.86)     # à noite: silhueta clara sobre a água escura
+const BRILHO_ALFA := 0.30                             # à noite cada cardume deixa um brilho suave na água (plâncton), para achá-lo de longe
+const COR_BRILHO := Color(0.42, 0.86, 0.96)
 const INTERVALO := 4.5         # s entre nascimentos
 const DIST_FUGA_BARCO: float = 27.0
 const RECUPERACAO_FUGA: float = 8.0
@@ -80,6 +82,8 @@ var _oceano: Node
 var _malha: ArrayMesh           # contorno genérico, para quem ainda não tem a textura nova
 var _malha_quadro: ArrayMesh    # quadrado de 1 m: o desenho do peixe (com alfa) define a forma; escalado pela proporção da textura
 var _material_base: StandardMaterial3D
+var _malha_brilho: PlaneMesh
+var _material_brilho: StandardMaterial3D
 var _materiais: Dictionary = {}
 var _relogio: float = 0.0
 var _tempo: float = 0.0
@@ -97,6 +101,30 @@ func _ready() -> void:
     _material_base.cull_mode = BaseMaterial3D.CULL_DISABLED
     _material_base.vertex_color_use_as_albedo = false
     _material_base.billboard_mode = BaseMaterial3D.BILLBOARD_DISABLED
+    _preparar_brilho()
+
+## Disco de luz macio (radial, aditivo) que aparece sob cada cardume à noite.
+func _preparar_brilho() -> void:
+    var grad := Gradient.new()
+    grad.offsets = PackedFloat32Array([0.0, 0.45, 1.0])
+    grad.colors = PackedColorArray([Color(1, 1, 1, 0.95), Color(1, 1, 1, 0.34), Color(1, 1, 1, 0.0)])
+    var tex := GradientTexture2D.new()
+    tex.gradient = grad
+    tex.fill = GradientTexture2D.FILL_RADIAL
+    tex.fill_from = Vector2(0.5, 0.5)
+    tex.fill_to = Vector2(1.0, 0.5)
+    tex.width = 128
+    tex.height = 128
+    _material_brilho = StandardMaterial3D.new()
+    _material_brilho.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    _material_brilho.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    _material_brilho.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+    _material_brilho.cull_mode = BaseMaterial3D.CULL_DISABLED
+    _material_brilho.albedo_texture = tex
+    _material_brilho.albedo_color = Color(COR_BRILHO.r, COR_BRILHO.g, COR_BRILHO.b, BRILHO_ALFA)
+    _material_brilho.render_priority = -1
+    _malha_brilho = PlaneMesh.new()
+    _malha_brilho.size = Vector2(1.0, 1.0)
 
 ## Silhueta de peixe vista de cima, deitada no plano da água, com a cabeça em -Z e 1 m de comprimento.
 func _criar_malha_peixe() -> ArrayMesh:
@@ -200,6 +228,13 @@ func criar(centro: Vector3, especie: String = "") -> Dictionary:
     inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     inst.extra_cull_margin = 30.0
     add_child(inst)
+    var brilho := MeshInstance3D.new()
+    brilho.mesh = _malha_brilho
+    brilho.material_override = _material_brilho
+    brilho.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    brilho.extra_cull_margin = 30.0
+    brilho.visible = false
+    add_child(brilho)
     var fases := PackedFloat32Array()
     for i in n:
         fases.append(randf())
@@ -216,7 +251,7 @@ func criar(centro: Vector3, especie: String = "") -> Dictionary:
         posicoes.append(Vector2(centro.x, centro.z) + offset)
         velocidades.append(direcao.rotated(randf_range(-0.23, 0.23)) * float(estilo["vel"]))
     var c := {"especie": especie, "centro": Vector3(centro.x, 0.0, centro.z), "raio": raio_grupo,
-            "restantes": randi_range(int(dados.capturas[0]), int(dados.capturas[1])), "no": inst, "fases": fases,
+            "restantes": randi_range(int(dados.capturas[0]), int(dados.capturas[1])), "no": inst, "brilho": brilho, "fases": fases,
             "rumo": angulo, "sentido": 1.0, "some": -1.0, "posicoes": posicoes, "velocidades": velocidades,
             "asp": _aspecto_cima(especie),
             "idade": 0.0, "vida_max": randf_range(150.0, 240.0), "fuga": 0.0, "rumo_alvo": angulo,
@@ -226,6 +261,7 @@ func criar(centro: Vector3, especie: String = "") -> Dictionary:
     lista.append(c)
     _colorir(c)
     _nadar_cardume(c, 0.016)
+    _atualizar_brilho(c)
     return c
 
 func _colorir(c: Dictionary) -> void:
@@ -234,10 +270,32 @@ func _colorir(c: Dictionary) -> void:
     var mat := c.no.material_override as StandardMaterial3D
     if mat != null and mat.albedo_texture != null:
         mat.albedo_color = COR_NOITE if noite else COR_DIA
+    if is_instance_valid(c.brilho):
+        c.brilho.visible = noite
+
+## O brilho acompanha o centro do cardume, pulsa devagar e some junto com ele.
+func _atualizar_brilho(c: Dictionary) -> void:
+    var b: MeshInstance3D = c.brilho
+    if not is_instance_valid(b):
+        return
+    b.visible = noite
+    if not noite:
+        return
+    var p: Vector3 = c.centro
+    p.y = (_oceano.altura_em(p) if _oceano != null else 0.0) + 0.85    # acima das ondas, senão a crista corta o disco
+    b.position = p
+    var d: float = minf(float(c.raio) * 2.2 + 3.0, 26.0)
+    b.scale = Vector3(d, 1.0, d)
+    var pulso: float = 0.82 + 0.18 * sin(_tempo * 1.2 + float(c.fases[0]) * TAU)
+    if float(c.some) >= 0.0:
+        pulso *= clampf(float(c.some) / 1.5, 0.0, 1.0)
+    b.transparency = clampf(1.0 - pulso, 0.0, 1.0)
 
 func _liberar(c: Dictionary) -> void:
     if is_instance_valid(c.no):
         c.no.queue_free()
+    if is_instance_valid(c.brilho):
+        c.brilho.queue_free()
 
 func limpar() -> void:
     for c in lista:
@@ -375,6 +433,7 @@ func _process(delta: float) -> void:
             velocidade_grupo *= 1.35
         c.centro += Vector3(direcao_grupo.x, 0.0, direcao_grupo.y) * velocidade_grupo * dt
         _nadar_cardume(c, dt)
+        _atualizar_brilho(c)
     _relogio += delta
     if _relogio >= INTERVALO:
         _relogio = 0.0

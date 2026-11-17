@@ -31,6 +31,14 @@ const LISTA := [
             "dica": "Marque o destino na carta náutica e navegue até o novo banco."},
     {"texto": "Pescar um agulhão-vela", "tipo": "pescar", "alvo": "Agulhão-vela", "quantos": 1, "premio": 350,
             "dica": "Só de dia e bem longe das ilhas. É rápido e forte; precisa de 6 casas livres."},
+    {"texto": "Pescar uma moreia à noite", "tipo": "pescar", "alvo": "Moreia", "quantos": 1, "premio": 160,
+            "dica": "Só nos recifes e só depois que escurece. Lula no fundo (B e N) ajuda."},
+    {"texto": "Pescar um peixe-anjo no recife", "tipo": "pescar", "alvo": "Peixe-anjo", "quantos": 1, "premio": 220,
+            "dica": "É raro e só aparece de dia, nos recifes. Camarão, na meia-água."},
+    {"texto": "Entregar 3 encomendas", "tipo": "contrato", "alvo": "", "quantos": 3, "premio": 300,
+            "dica": "Veja a encomenda atual no cais e venda a quantidade pedida."},
+    {"texto": "Juntar R$ 3000", "tipo": "dinheiro", "alvo": "", "quantos": 3000, "premio": 200,
+            "dica": "Peixes raros e encomendas pagam melhor; a Ilha Rata paga mais pelo peixe."},
 ]
 
 var indice: int = 0

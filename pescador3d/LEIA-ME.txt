@@ -1,5 +1,29 @@
-PESCADOR — Versão 0.3.19 (Godot 4.7)
+PESCADOR — Versão 0.3.20 (Godot 4.7)
 ================================================
+Base: a 0.3.19 mais as melhorias abaixo. Detalhes em docs/PESCADOR_v0.3.20_NOVIDADES.txt.
+
+NOVIDADES
+- Cardumes à noite têm um brilho suave na água: dá para achá-los de longe no escuro.
+- Pescaria com mais resposta: sons novos (acerto, perfeito, estalo, tensão, captura), "PERFEITO!/BOM!/ERROU" ao lado do
+  anel, anel que treme e barra de tensão que pisca com a linha esticada.
+- Coqueiros com folhas em pena (transparência), copa das árvores e arbustos com textura de folhas.
+- 4 missões novas (total 16): moreia à noite, peixe-anjo, 3 encomendas, R$ 3000.
+
+TESTE RÁPIDO V0.3.20
+1. Espere anoitecer (ou deixe passar o dia) e olhe o mar: manchas claras onde há cardume.
+2. Pesque: acerte a faixa dourada (PERFEITO!), erre de propósito (ERROU) e deixe a tensão subir (anel treme + rangido).
+3. Olhe os coqueiros da vila: folhas finas e recortadas, tronco com casca.
+4. Feche o jogo no meio da viagem e abra de novo: deve continuar de onde parou.
+
+VALIDAÇÃO (honesta)
+Sondas automáticas (Godot 4.7, renderizador por software, sem GPU, sem áudio): sem erros de script; fluxo completo;
+pescaria (sinais e capturas de tela); save entre duas execuções; capturas das árvores e do brilho noturno.
+Desempenho igual ao da 0.3.19 (Alta 424 chamadas, Média 281, Baixa 120 no teste por software).
+NÃO testado: jogo por uma pessoa, FPS em placa de vídeo de verdade, os sons ao vivo, Forward+ (brilho/SSAO).
+
+------------------------------------------------------------------------------------------------
+ANTERIOR — 0.3.19
+------------------------------------------------------------------------------------------------
 Base: a 0.3.18 mais as melhorias abaixo. Detalhes em docs/PESCADOR_v0.3.19_NOVIDADES.txt.
 
 PEIXES (SpriteCook)
