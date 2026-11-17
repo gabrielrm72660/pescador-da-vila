@@ -306,3 +306,20 @@ VERSÃO 0.3.3 - 16/11/2026 — A VIAGEM FICA SALVA
   (ou R duas vezes no jogo) apaga a salva e começa do zero.
 - O arquivo é user://pescador_viagem.json (no Windows: %APPDATA%\Godot\app_userdata\<nome do projeto>).
   Código em scripts/salvamento.gd.
+
+
+VERSÃO 0.3.4 - 16/11/2026 — MAIS MUNDO: ILHA RATA, PEIXES DE ALTO-MAR E 7 MISSÕES
+SEGUNDA ILHA
+- Ilha Rata, a noroeste da Vila do Porto (uns 550 m): pequena e deserta, com farol, um posto de pesca e
+  um cais. O posto paga 30% a mais pelo peixe, mas o diesel é mais caro (R$ 6 o litro) e não há loja.
+- A âncora do radar aponta sempre para o cais mais próximo. As ilhas são criadas em scripts/jogo.gd
+  (_enter_tree): posição, tamanho, relevo, preços. Dá para acrescentar outras do mesmo jeito
+  (a água rasa e a espuma da praia funcionam para duas ilhas).
+PEIXES NOVOS
+- Barracuda (só de dia; 4 casas em linha; R$ 18 o quilo).
+- Dourado e atum: só em alto-mar, a mais de 300 m de qualquer ilha. Dourado ocupa 2 x 2 casas (R$ 26);
+  atum ocupa 6 casas (R$ 34) e é o mais difícil no anel.
+MISSÕES (painel no alto à direita; cada uma paga um prêmio)
+  1. Pescar 3 peixes  2. Vender no cais  3. Comprar uma melhoria  4. Pescar 2 olhos-de-cão à noite
+  5. Atracar na Ilha Rata  6. Pescar um atum em alto-mar  7. Juntar R$ 1000. Depois: viagem livre.
+- A lista está em scripts/missoes.gd (LISTA). As missões ficam salvas com a viagem.

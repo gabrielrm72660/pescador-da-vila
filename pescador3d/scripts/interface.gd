@@ -29,6 +29,7 @@ var porto_titulo: Label
 var porto_texto: Label
 var porto_vender: Button
 var porto_abastecer: Button
+var porto_rotulo_loja: Label
 var porto_loja: Dictionary = {}           # id da melhoria -> botão
 var diario: Array = []          # histórico das mensagens (botão do livro)
 var porao: Node = null          # scripts/porao.gd
@@ -232,7 +233,8 @@ func _construir_porto() -> void:
     porto_abastecer = _botao_porto("Abastecer", Color(0.96, 0.62, 0.24, 1.0), Color(0.15, 0.07, 0.02, 1.0))
     porto_abastecer.pressed.connect(func(): abastecer_pressed.emit())
     col.add_child(porto_abastecer)
-    col.add_child(_nova_label("MELHORIAS DO BARCO", 14, COR_TURQUESA))
+    porto_rotulo_loja = _nova_label("MELHORIAS DO BARCO", 14, COR_TURQUESA)
+    col.add_child(porto_rotulo_loja)
     for id in ["motor", "tanque", "porao", "vara"]:
         var b := _botao_porto(id, Color(0.16, 0.30, 0.42, 1.0), COR_TEXTO)
         b.custom_minimum_size = Vector2(470, 36)
@@ -262,8 +264,11 @@ func _botao_porto(texto: String, cor: Color, cor_texto: Color) -> Button:
 func mostrar_porto(d: Dictionary) -> void:
     porto.visible = true
     porto_titulo.text = "Cais de %s" % d.nome
-    porto_texto.text = "Carteira: R$ %d\nPorão: %d peixe(s), %s kg\nTanque: %d de %d L" % [d.dinheiro, d.peixes,
-            ("%.1f" % d.peso).replace(".", ","), roundi(d.litros), roundi(d.tanque)]
+    porto_rotulo_loja.visible = not d.get("loja", []).is_empty()
+    for id in porto_loja:
+        porto_loja[id].visible = porto_rotulo_loja.visible
+    porto_texto.text = "Carteira: R$ %d\nPorão: %d peixe(s), %s kg\nTanque: %d de %d L%s" % [d.dinheiro, d.peixes,
+            ("%.1f" % d.peso).replace(".", ","), roundi(d.litros), roundi(d.tanque), d.get("nota", "")]
     porto_vender.text = "Vender os peixes por R$ %d   [1]" % d.valor if d.peixes > 0 else "Nada para vender"
     porto_vender.disabled = d.peixes == 0
     if d.falta_litros < 1.0:
@@ -375,15 +380,6 @@ func atualizar(nos: float, rumo: int, distancia: float, peixes: int, peso: float
     hud.rumo = float(rumo)
     hud.distancia = distancia
     hud.fracao_motor = fracao_motor
-    if hud.missao_titulo == "Segunda Missão":
-        hud.missao_texto = "Vender os peixes no cais"
-        hud.missao_feita = false
-    elif hud.missao_titulo == "Viagem livre":
-        hud.missao_texto = "Pescar, vender e abastecer"
-        hud.missao_feita = true
-    else:
-        hud.missao_texto = "Pescaria inaugural (%d/3)" % mini(peixes, 3)
-        hud.missao_feita = venceu
     hud.estado_pesca = pesca_status
     hud.pesca_ativa = pesca_ativa
     hud.visible = not menu.visible

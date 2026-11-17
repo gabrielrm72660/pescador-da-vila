@@ -12,12 +12,16 @@ const FORMAS := {
     "Tainha": [Vector2i(0, 0), Vector2i(1, 0)],
     "Xaréu": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)],
     "Cavala": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1)],
+    "Barracuda": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)],
+    "Dourado": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)],
+    "Atum": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1), Vector2i(2, 1)],
     "Olho-de-cão": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)],
     "Garoupa": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)],
 }
 const CORES := {
     "Sardinha": Color(0.62, 0.76, 0.84), "Tainha": Color(0.74, 0.78, 0.66), "Xaréu": Color(0.90, 0.78, 0.40),
     "Cavala": Color(0.40, 0.66, 0.78), "Garoupa": Color(0.82, 0.52, 0.38), "Olho-de-cão": Color(0.90, 0.30, 0.28),
+    "Barracuda": Color(0.70, 0.74, 0.80), "Dourado": Color(0.96, 0.82, 0.24), "Atum": Color(0.32, 0.46, 0.80),
 }
 
 var colunas: int = 5
@@ -64,7 +68,7 @@ func cabe_em(especie: String, x: int, y: int, rot: int, ignorar: Dictionary = {}
 
 ## O primeiro lugar livre para a espécie ({x, y, rot}), ou {}.
 func achar_lugar(especie: String) -> Dictionary:
-    for rot in [0, 1]:
+    for rot in [0, 1, 2, 3]:
         for y in linhas:
             for x in colunas:
                 if cabe_em(especie, x, y, rot):
@@ -150,10 +154,10 @@ func casas_ocupadas() -> int:
 func valor(item: Dictionary) -> int:
     return roundi(float(Cardumes.ESPECIES.get(item.especie, {}).get("preco", 5)) * float(item.peso))
 
-func valor_total() -> int:
+func valor_total(bonus: float = 1.0) -> int:
     var total := 0
     for item in itens:
-        total += valor(item)
+        total += roundi(valor(item) * bonus)
     return total
 
 func aumentar(novas_colunas: int, novas_linhas: int) -> void:

@@ -1,0 +1,64 @@
+extends Node
+## As missões, uma de cada vez, em ordem. Cada uma pede um tipo de acontecimento (pescar, vender,
+## comprar, atracar, juntar dinheiro) e paga um prêmio. scripts/jogo.gd avisa o que aconteceu com evento().
+
+signal cumprida(missao: Dictionary)
+
+## tipo: "pescar" (alvo = espécie, ou "" para qualquer), "vender", "comprar", "atracar" (alvo = nome da ilha),
+## "dinheiro" (quantos = quanto ter na carteira)
+const LISTA := [
+    {"texto": "Pescaria inaugural", "tipo": "pescar", "alvo": "", "quantos": 3, "premio": 20,
+            "dica": "Pare perto de um cardume e aperte F."},
+    {"texto": "Vender os peixes no cais", "tipo": "vender", "alvo": "", "quantos": 1, "premio": 30,
+            "dica": "Siga a âncora do radar e aperte E na ponta do cais."},
+    {"texto": "Comprar uma melhoria", "tipo": "comprar", "alvo": "", "quantos": 1, "premio": 40,
+            "dica": "No cais da Vila do Porto, teclas 3 a 6."},
+    {"texto": "Pescar olho-de-cão à noite", "tipo": "pescar", "alvo": "Olho-de-cão", "quantos": 2, "premio": 80,
+            "dica": "Ele só aparece depois que escurece."},
+    {"texto": "Atracar na Ilha Rata", "tipo": "atracar", "alvo": "Ilha Rata", "quantos": 1, "premio": 100,
+            "dica": "Fica a noroeste da vila. Leve diesel."},
+    {"texto": "Pescar um atum em alto-mar", "tipo": "pescar", "alvo": "Atum", "quantos": 1, "premio": 150,
+            "dica": "Só longe das ilhas. Precisa de 6 casas livres."},
+    {"texto": "Juntar R$ 1000", "tipo": "dinheiro", "alvo": "", "quantos": 1000, "premio": 0,
+            "dica": "A Ilha Rata paga mais pelo peixe."},
+]
+
+var indice: int = 0
+var progresso: int = 0
+
+func terminou() -> bool:
+    return indice >= LISTA.size()
+
+func atual() -> Dictionary:
+    return {} if terminou() else LISTA[indice]
+
+func titulo() -> String:
+    return "Viagem livre" if terminou() else "Missão %d de %d" % [indice + 1, LISTA.size()]
+
+func texto() -> String:
+    if terminou():
+        return "Pescar, vender e melhorar o barco"
+    var m: Dictionary = LISTA[indice]
+    if m.tipo == "dinheiro" or int(m.quantos) <= 1:
+        return m.texto
+    return "%s (%d/%d)" % [m.texto, progresso, m.quantos]
+
+func dica() -> String:
+    return "" if terminou() else str(LISTA[indice].dica)
+
+## Algo aconteceu no jogo. "quantidade" é o dinheiro na carteira quando o tipo é "dinheiro".
+func evento(tipo: String, alvo: String = "", quantidade: int = 1) -> void:
+    if terminou():
+        return
+    var m: Dictionary = LISTA[indice]
+    if m.tipo != tipo or (m.alvo != "" and m.alvo != alvo):
+        return
+    progresso = quantidade if tipo == "dinheiro" else progresso + quantidade
+    if progresso >= int(m.quantos):
+        indice += 1
+        progresso = 0
+        cumprida.emit(m)
+
+func zerar() -> void:
+    indice = 0
+    progresso = 0

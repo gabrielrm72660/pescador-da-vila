@@ -19,6 +19,7 @@ static func salvar(jogo: Node) -> bool:
     var dados := {
         "versao": VERSAO, "dinheiro": jogo.dinheiro, "hora": jogo.clima.hora,
         "objetivo_cumprido": jogo.objetivo_cumprido, "ja_vendeu": jogo.ja_vendeu, "num_peixes": jogo.pesca.num_peixes,
+        "missao": jogo.missoes.indice, "missao_progresso": jogo.missoes.progresso,
         "melhorias": jogo.melhorias.nivel.duplicate(),
         "barco": {"x": jogo.barco.global_position.x, "z": jogo.barco.global_position.z, "giro": jogo.barco.rotation.y,
                 "combustivel": jogo.barco.combustivel, "distancia": jogo.barco.distancia_percorrida},
@@ -43,6 +44,12 @@ static func carregar(jogo: Node) -> bool:
     jogo.objetivo_cumprido = bool(d.get("objetivo_cumprido", false))
     jogo.ja_vendeu = bool(d.get("ja_vendeu", false))
     jogo.pesca.num_peixes = maxi(0, int(d.get("num_peixes", 0)))
+    if d.has("missao"):
+        jogo.missoes.indice = clampi(int(d.missao), 0, jogo.missoes.LISTA.size())
+        jogo.missoes.progresso = maxi(0, int(d.get("missao_progresso", 0)))
+    else:                                                    # viagem salva antes de existirem as missões novas
+        jogo.missoes.indice = 2 if jogo.ja_vendeu else (1 if jogo.objetivo_cumprido else 0)
+        jogo.missoes.progresso = 0 if jogo.missoes.indice > 0 else mini(jogo.pesca.num_peixes, 2)
     var niveis = d.get("melhorias", {})
     if typeof(niveis) == TYPE_DICTIONARY:
         for id in jogo.melhorias.ORDEM:
@@ -51,7 +58,7 @@ static func carregar(jogo: Node) -> bool:
     var b = d.get("barco", {})
     if typeof(b) == TYPE_DICTIONARY:
         var pos := Vector3(float(b.get("x", 0.0)), 0.0, float(b.get("z", 0.0)))
-        if jogo.ilha.bloqueado(pos) and not jogo.ilha.pode_atracar(pos):
+        if jogo.bloqueado(pos):
             pos = Vector3.ZERO                                   # arquivo mexido: não deixa o barco em terra
         jogo.barco.global_position = pos
         jogo.barco.rotation = Vector3(0.0, float(b.get("giro", 0.0)), 0.0)

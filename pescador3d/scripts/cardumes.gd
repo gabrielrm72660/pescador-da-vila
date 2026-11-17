@@ -14,6 +14,9 @@ const ESPECIES := {
     "Tainha": {"preco": 9, "peso": [0.6, 2.6], "peixes": 11, "tam": 0.55, "chance": 26, "capturas": [3, 5], "espera": [3.0, 6.0], "ponteiro": 0.50, "faixas": 3, "largura": 40, "acertos": 3},
     "Xaréu": {"preco": 12, "peso": [1.5, 6.0], "peixes": 8, "tam": 0.75, "chance": 20, "capturas": [3, 4], "espera": [3.5, 6.5], "ponteiro": 0.58, "faixas": 3, "largura": 34, "acertos": 3},
     "Cavala": {"preco": 15, "peso": [2.0, 9.0], "peixes": 6, "tam": 0.95, "chance": 15, "capturas": [2, 4], "espera": [4.0, 7.0], "ponteiro": 0.68, "faixas": 2, "largura": 32, "acertos": 4},
+    "Barracuda": {"preco": 18, "peso": [1.5, 7.0], "peixes": 5, "tam": 1.05, "chance": 12, "capturas": [2, 4], "espera": [4.0, 7.0], "ponteiro": 0.72, "faixas": 3, "largura": 28, "acertos": 4, "so_dia": true},
+    "Dourado": {"preco": 26, "peso": [3.0, 12.0], "peixes": 4, "tam": 1.1, "chance": 10, "capturas": [2, 3], "espera": [4.5, 7.5], "ponteiro": 0.80, "faixas": 2, "largura": 30, "acertos": 4, "alto_mar": true},
+    "Atum": {"preco": 34, "peso": [8.0, 30.0], "peixes": 4, "tam": 1.4, "chance": 9, "capturas": [1, 2], "espera": [6.0, 9.0], "ponteiro": 0.90, "faixas": 2, "largura": 24, "acertos": 6, "alto_mar": true},
     "Olho-de-cão": {"preco": 22, "peso": [0.4, 1.6], "peixes": 9, "tam": 0.5, "chance": 34, "capturas": [3, 5], "espera": [3.0, 6.0], "ponteiro": 0.62, "faixas": 3, "largura": 32, "acertos": 3, "so_noite": true},
     "Garoupa": {"preco": 24, "peso": [3.0, 14.0], "peixes": 3, "tam": 1.25, "chance": 9, "capturas": [2, 3], "espera": [5.0, 8.0], "ponteiro": 0.78, "faixas": 2, "largura": 27, "acertos": 5, "vezes_noite": 2},
 }
@@ -21,11 +24,13 @@ const MAXIMO := 5
 const NASCE_MIN := 70.0        # m do barco
 const NASCE_MAX := 170.0
 const SOME := 290.0            # m: além disso o cardume é esquecido
+const ALTO_MAR := 300.0         # m da costa mais próxima a partir de onde aparecem os peixes de alto-mar
 const ALCANCE := 17.0          # m do centro do cardume até onde a linha alcança
 const VISUAL := 2.2            # as sombras são desenhadas maiores que o peixe, para se verem do barco
 const INTERVALO := 2.0         # s entre nascimentos
 
 var lista: Array = []
+var _alto_mar: bool = false     # o cardume que está nascendo fica longe das ilhas?
 var noite: bool = false        # quem avisa é scripts/jogo.gd; algumas espécies só aparecem no escuro
 var _barco: Node3D
 var _oceano: Node
@@ -73,6 +78,8 @@ func _chance(nome: String) -> int:
     var d: Dictionary = ESPECIES[nome]
     if (d.get("so_noite", false) and not noite) or (d.get("so_dia", false) and noite):
         return 0
+    if d.get("alto_mar", false):
+        return int(d.chance) * 3 if _alto_mar else 0
     return int(d.chance) * (int(d.get("vezes_noite", 1)) if noite else 1)
 
 func criar(centro: Vector3, especie: String = "") -> Dictionary:
@@ -112,6 +119,7 @@ func semear() -> void:
     if _barco == null:
         return
     var frente: Vector3 = -_barco.global_transform.basis.z
+    _alto_mar = false
     criar(_barco.global_position + frente.rotated(Vector3.UP, 0.5) * 55.0)
     for i in 3:
         _nascer()
@@ -120,9 +128,12 @@ func _nascer() -> void:
     var ang := randf_range(0.0, TAU)
     var dist := randf_range(NASCE_MIN, NASCE_MAX)
     var p := _barco.global_position + Vector3(cos(ang), 0.0, sin(ang)) * dist
-    var ilha := get_node_or_null("../Ilha")
-    if ilha != null and ilha.altura_em(p) > -5.0:     # não nasce em terra nem na beira da praia
-        return
+    var mundo := get_parent()
+    _alto_mar = true
+    if mundo != null and mundo.has_method("altura_terra"):
+        if mundo.altura_terra(p) > -5.0:              # não nasce em terra nem na beira da praia
+            return
+        _alto_mar = mundo.distancia_da_costa(p) > ALTO_MAR
     for c in lista:                                   # não nasce em cima de outro
         if c.centro.distance_to(p) < 45.0:
             return

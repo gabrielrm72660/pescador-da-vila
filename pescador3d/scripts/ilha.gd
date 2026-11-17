@@ -2,8 +2,17 @@ extends Node3D
 ## A ilha: terreno gerado por código (praia, mato, rocha, um pico de pedra e dois rochedos no mar),
 ## coqueiros, moitas, pedras, uma vila com capela, farol e um cais de madeira. Responde onde há terra (para o barco não atravessar) e onde é o cais.
 
-const CENTRO := Vector3(150.0, 0.0, -290.0)    # onde a ilha fica no mundo
-const RAIO := 105.0                            # tamanho aproximado (m)
+## Tudo abaixo pode ser mudado antes de a ilha entrar na cena (scripts/jogo.gd cria as ilhas).
+var centro := Vector3(150.0, 0.0, -290.0)      # onde a ilha fica no mundo
+var raio := 105.0                              # tamanho aproximado (m)
+var semente := 3476                            # muda o desenho da costa e do relevo
+var pico := [-26.0, 14.0, 58.0, 13.0]          # o morro de pedra: x, z (locais), altura, largura
+var morro := [38.0, -30.0, 20.0, 24.0]         # um morro menor, de mato
+var com_vila := true                           # falso: só um posto de pesca ao pé do cais
+var coqueiros := 85
+var bonus_venda := 1.0                         # quanto o cais paga pelo peixe (1.3 = 30% a mais)
+var preco_diesel := 4                          # R$ por litro
+var tem_loja := true                           # vende melhorias do barco?
 const LADO := 300.0                            # lado da malha do terreno (m)
 const DIVISOES := 150
 const CALADO := 0.9                            # o barco encalha onde a água tem menos que isso (m)
@@ -12,7 +21,7 @@ const LARGURA_CAIS := 3.4
 const ALCANCE_CAIS := 15.0                     # m da ponta do cais até onde dá para atracar
 const FAIXA_COSTA := Vector2(-12.0, 4.0)       # alturas (m) que viram 0 e 1 no mapa enviado ao mar
 ## Dois rochedos altos no mar, ao lado da ilha (posição local x, z; altura; largura)
-const ROCHEDOS := [[96.0, 78.0, 26.0, 7.5], [113.0, 60.0, 19.0, 6.5]]
+var rochedos := [[96.0, 78.0, 26.0, 7.5], [113.0, 60.0, 19.0, 6.5]]
 
 var nome := "Vila do Porto"
 var cais_inicio: Vector3                       # onde o cais sai da praia
@@ -20,10 +29,10 @@ var cais_ponta: Vector3                        # a ponta no mar
 var _ruido := FastNoiseLite.new()
 
 func _ready() -> void:
-    _ruido.seed = 3476
+    _ruido.seed = semente
     _ruido.frequency = 0.012
     _ruido.fractal_octaves = 4
-    position = CENTRO
+    position = centro
     _criar_terreno()
     _criar_cais()
     _criar_vila()
@@ -32,7 +41,7 @@ func _ready() -> void:
 
 ## Altura do terreno (m) num ponto do MUNDO. Negativa = fundo do mar.
 func altura_em(pos: Vector3) -> float:
-    return _altura_local(pos.x - CENTRO.x, pos.z - CENTRO.z)
+    return _altura_local(pos.x - centro.x, pos.z - centro.z)
 
 func _altura_local(x: float, z: float) -> float:
     var d := Vector2(x, z).length()
@@ -41,16 +50,16 @@ func _altura_local(x: float, z: float) -> float:
     var ang := atan2(z, x)
     # a costa não é um círculo: enseadas e pontas
     var contorno := 1.0 + 0.20 * _ruido.get_noise_2d(cos(ang) * 90.0, sin(ang) * 90.0) + 0.10 * sin(ang * 3.0 + 0.8)
-    var r := d / (RAIO * contorno)
+    var r := d / (raio * contorno)
     var h := 15.0 * pow(maxf(0.0, 1.0 - r * r), 1.3) - 1.6 * smoothstep(0.75, 1.5, r) * 6.0 + 0.9
     h += _ruido.get_noise_2d(x * 2.2, z * 2.2) * 3.2 * clampf(1.0 - r, 0.0, 1.0)
     # o pico de pedra (o marco da ilha) e um morro menor
     var quebra := 1.0 + 0.30 * _ruido.get_noise_2d(x * 4.5 + 40.0, z * 4.5) + 0.12 * _ruido.get_noise_2d(x * 13.0, z * 13.0 + 90.0)   # paredões e ressaltos
-    h += 58.0 * exp(-Vector2((x + 26.0) * 1.15, z - 14.0).length_squared() / (2.0 * 13.0 * 13.0)) * quebra
-    h += 20.0 * exp(-Vector2(x - 38.0, z + 30.0).length_squared() / (2.0 * 24.0 * 24.0))
+    h += float(pico[2]) * exp(-Vector2((x - float(pico[0])) * 1.15, z - float(pico[1])).length_squared() / (2.0 * float(pico[3]) * float(pico[3]))) * quebra
+    h += float(morro[2]) * exp(-Vector2(x - float(morro[0]), z - float(morro[1])).length_squared() / (2.0 * float(morro[3]) * float(morro[3])))
     if r > 1.0:
         h = minf(h, lerpf(h, -9.0, smoothstep(1.0, 1.6, r)))
-    for rc in ROCHEDOS:                                              # os rochedos saem do mar, fora da praia
+    for rc in rochedos:                                              # os rochedos saem do mar, fora da praia
         var dr := Vector2((x - float(rc[0])) * 1.35, z - float(rc[1])).length()      # alongados, não redondos
         dr *= 1.0 + 0.35 * _ruido.get_noise_2d(x * 5.0 + 11.0, z * 5.0)
         var corpo := exp(-pow(dr / float(rc[3]), 2.2))
@@ -139,14 +148,14 @@ func _cilindro(pai: Node3D, raio_base: float, raio_topo: float, altura: float, p
 
 ## O cais sai da praia na direção de onde o barco começa (a origem do mundo).
 func _criar_cais() -> void:
-    var dir := Vector2(-CENTRO.x, -CENTRO.z).normalized()            # da ilha para o ponto de partida
+    var dir := Vector2(-centro.x, -centro.z).normalized()            # da ilha para o ponto de partida
     var d := 20.0
     while d < LADO * 0.5 and _altura_local(dir.x * d, dir.y * d) > 0.6:
         d += 0.5                                                     # anda até a beira da água
     var inicio := Vector2(dir.x, dir.y) * (d - 5.0)
     var ponta := inicio + dir * COMPRIMENTO_CAIS
-    cais_inicio = CENTRO + Vector3(inicio.x, 0.0, inicio.y)
-    cais_ponta = CENTRO + Vector3(ponta.x, 0.0, ponta.y)
+    cais_inicio = centro + Vector3(inicio.x, 0.0, inicio.y)
+    cais_ponta = centro + Vector3(ponta.x, 0.0, ponta.y)
     var cais := Node3D.new()
     cais.name = "Cais"
     add_child(cais)
@@ -255,9 +264,9 @@ func _criar_vila() -> void:
     var vila := Node3D.new()
     vila.name = "Vila"
     add_child(vila)
-    var dir := Vector2(-CENTRO.x, -CENTRO.z).normalized()
+    var dir := Vector2(-centro.x, -centro.z).normalized()
     var lado := Vector2(-dir.y, dir.x)
-    var pe_do_cais := Vector2(cais_inicio.x - CENTRO.x, cais_inicio.z - CENTRO.z)
+    var pe_do_cais := Vector2(cais_inicio.x - centro.x, cais_inicio.z - centro.z)
     _ocupado.append(Vector3(pe_do_cais.x, pe_do_cais.y, 9.0))
     var base := pe_do_cais - dir * 15.0
     var cores := [Color(0.97, 0.95, 0.88), Color(0.95, 0.80, 0.52), Color(0.66, 0.84, 0.90), Color(0.96, 0.90, 0.66),
@@ -274,6 +283,8 @@ func _criar_vila() -> void:
             if h < 1.6 or absf(_altura_local(p.x + 3.0, p.y) - _altura_local(p.x - 3.0, p.y)) > 2.6 \
                     or absf(_altura_local(p.x, p.y + 3.0) - _altura_local(p.x, p.y - 3.0)) > 2.6:
                 continue                                              # na água ou em barranco: sem casa
+            if not com_vila and not (fila == 0 and i == 1):
+                continue                                              # ilha deserta: só o posto de pesca
             if i == 2 and fila == 0:
                 continue                                              # o largo em frente ao cais fica livre
             var tam := Vector3(rng.randf_range(5.0, 6.2), rng.randf_range(3.0, 3.6), rng.randf_range(5.6, 7.4))
@@ -283,7 +294,7 @@ func _criar_vila() -> void:
     # a capela, no fim do largo: nave branca e uma torre com cruz
     var pc := base - dir * 30.0
     var hc := _altura_local(pc.x, pc.y)
-    if hc > 1.6:
+    if hc > 1.6 and com_vila:
         var nave := _casa(vila, Vector3(pc.x, hc, pc.y), virada, Vector3(9.0, 4.6, 5.6), Color(0.98, 0.97, 0.93), Color(0.16, 0.36, 0.50))
         var branca := _material(Color(0.98, 0.97, 0.93), "res://assets/texturas/ilha/reboco.png", 0.22)
         _caixa(nave, Vector3(2.5, 9.0, 2.5), Vector3(4.6, 4.5, 3.3), branca)
@@ -308,7 +319,7 @@ func _criar_vila() -> void:
     var mais_longe := -INF
     for k in 72:                                      # a ponta de terra mais afastada para um dos lados do cais
         var a := TAU * k / 72.0
-        var p := Vector2(cos(a), sin(a)) * RAIO * 0.86
+        var p := Vector2(cos(a), sin(a)) * raio * 0.86
         if _altura_local(p.x, p.y) > 2.0 and p.dot(lado) > mais_longe:
             mais_longe = p.dot(lado)
             melhor = p
@@ -395,11 +406,11 @@ func _criar_coqueiros() -> void:
     mm.mesh = _malha_coqueiro()
     var lugares: Array = []
     for k in 1400:
-        var p := Vector2(rng.randf_range(-RAIO, RAIO), rng.randf_range(-RAIO, RAIO))
+        var p := Vector2(rng.randf_range(-raio, raio), rng.randf_range(-raio, raio))
         var h := _altura_local(p.x, p.y)
         if h > 1.5 and h < 12.0 and _livre(p, 1.5) and absf(_altura_local(p.x + 2.0, p.y) - h) < 1.6 and rng.randf() < (1.0 if h < 4.5 else 0.45):
             lugares.append(Vector3(p.x, h - 0.2, p.y))                # mais coqueiro perto da praia
-        if lugares.size() >= 85:
+        if lugares.size() >= coqueiros:
             break
     mm.instance_count = lugares.size()
     for i in lugares.size():
@@ -434,7 +445,7 @@ func _criar_pedras_e_moitas() -> void:
         var h := _altura_local(p.x, p.y)
         var na_beira := h > -1.6 and h < 0.9
         var na_encosta := h > 6.0 and absf(_altura_local(p.x + 2.0, p.y) - h) + absf(_altura_local(p.x, p.y + 2.0) - h) > 2.4
-        if (na_beira and rng.randf() < 0.5 or na_encosta and rng.randf() < 0.25) and _livre(p, 3.0) and _dist_cais(CENTRO + Vector3(p.x, 0, p.y)) > 9.0:
+        if (na_beira and rng.randf() < 0.5 or na_encosta and rng.randf() < 0.25) and _livre(p, 3.0) and _dist_cais(centro + Vector3(p.x, 0, p.y)) > 9.0:
             lugares.append(Vector3(p.x, h, p.y))
         if lugares.size() >= 110:
             break
@@ -462,7 +473,7 @@ func _criar_pedras_e_moitas() -> void:
     mb.mesh = moita
     var pontos: Array = []
     for k in 3000:
-        var p := Vector2(rng.randf_range(-RAIO, RAIO), rng.randf_range(-RAIO, RAIO))
+        var p := Vector2(rng.randf_range(-raio, raio), rng.randf_range(-raio, raio))
         var h := _altura_local(p.x, p.y)
         if h > 2.6 and h < 26.0 and _livre(p, 1.0) and absf(_altura_local(p.x + 2.0, p.y) - h) < 1.5:
             pontos.append(Vector3(p.x, h, p.y))
@@ -499,9 +510,9 @@ func _luz(pai: Node3D, pos: Vector3, forca: float, alcance: float) -> void:
     pai.add_child(luz)
     _luzes.append(luz)
 
-## Entrega ao mar o desenho do fundo em volta da ilha: é com ele que a água fica rasa e clara perto da
-## praia e a espuma quebra na areia (shaders/oceano_pintado.gdshader).
-func ligar_ao_mar(oceano: MeshInstance3D) -> void:
+## O desenho do fundo em volta da ilha, para o mar ficar raso e claro perto da praia e a espuma quebrar
+## na areia (shaders/oceano_pintado.gdshader). "numero" é 1 ou 2: o mar aceita duas ilhas.
+func ligar_ao_mar(oceano: MeshInstance3D, numero: int = 1) -> void:
     var mat := oceano.mesh.surface_get_material(0) as ShaderMaterial
     if mat == null:
         return
@@ -512,9 +523,10 @@ func ligar_ao_mar(oceano: MeshInstance3D) -> void:
             var h := _altura_local((float(i) + 0.5) / n * LADO - LADO / 2.0, (float(j) + 0.5) / n * LADO - LADO / 2.0)
             var v := clampf(inverse_lerp(FAIXA_COSTA.x, FAIXA_COSTA.y, h), 0.0, 1.0)
             img.set_pixel(i, j, Color(v, v, v))
-    mat.set_shader_parameter("tex_costa", ImageTexture.create_from_image(img))
-    mat.set_shader_parameter("costa_centro", Vector2(CENTRO.x, CENTRO.z))
-    mat.set_shader_parameter("costa_lado", LADO)
+    var sufixo := "" if numero == 1 else "2"
+    mat.set_shader_parameter("tex_costa" + sufixo, ImageTexture.create_from_image(img))
+    mat.set_shader_parameter("costa_centro" + sufixo, Vector2(centro.x, centro.z))
+    mat.set_shader_parameter("costa_lado" + sufixo, LADO)
     mat.set_shader_parameter("costa_faixa", FAIXA_COSTA)
 
 ## O barco não pode estar aqui? (terra, água rasa demais ou o cais)

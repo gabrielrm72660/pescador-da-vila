@@ -14,7 +14,10 @@ const Clima = preload("res://scripts/clima.gd")
 var clima: Node
 var luz_barco: OmniLight3D
 const Ilha = preload("res://scripts/ilha.gd")
-var ilha: Node3D
+var ilha: Node3D                  # a ilha do cais mais próximo do barco
+var ilhas: Array = []
+const Missoes = preload("res://scripts/missoes.gd")
+var missoes: Node
 const Melhorias = preload("res://scripts/melhorias.gd")
 var melhorias: Node
 const Salvamento = preload("res://scripts/salvamento.gd")
@@ -46,13 +49,34 @@ func _enter_tree() -> void:
     porao = Porao.new()
     porao.name = "Porao"
     add_child(porao)
-    ilha = Ilha.new()
+    missoes = Missoes.new()
+    missoes.name = "Missoes"
+    add_child(missoes)
+    ilha = Ilha.new()                              # Vila do Porto: a ilha grande, com vila, loja e diesel barato
     ilha.name = "Ilha"
     add_child(ilha)
+    var rata := Ilha.new()                         # Ilha Rata: pequena e deserta, só um posto que paga mais pelo peixe
+    rata.name = "IlhaRata"
+    rata.nome = "Ilha Rata"
+    rata.centro = Vector3(-380.0, 0.0, -430.0)
+    rata.raio = 64.0
+    rata.semente = 815
+    rata.pico = [12.0, -10.0, 17.0, 17.0]
+    rata.morro = [-22.0, 14.0, 7.0, 20.0]
+    rata.rochedos = [[-78.0, -52.0, 13.0, 6.0]]
+    rata.com_vila = false
+    rata.coqueiros = 30
+    rata.bonus_venda = 1.3
+    rata.preco_diesel = 6
+    rata.tem_loja = false
+    add_child(rata)
+    ilhas = [ilha, rata]
 
 func _ready() -> void:
-    barco.obstaculo = ilha
-    ilha.ligar_ao_mar(oceano)
+    barco.obstaculo = self
+    for i in ilhas.size():
+        ilhas[i].ligar_ao_mar(oceano, i + 1)
+    missoes.cumprida.connect(_missao_cumprida)
     clima = Clima.new()
     clima.name = "Clima"
     add_child(clima)
@@ -199,6 +223,7 @@ func reiniciar() -> void:
     clima.hora = clima.HORA_INICIAL
     clima.atualizar()
     objetivo_cumprido = false
+    missoes.zerar()
     dinheiro = DINHEIRO_INICIAL
     atracado = false
     ja_vendeu = false
@@ -208,8 +233,45 @@ func reiniciar() -> void:
     barco.ativo = true
     pesca.ativo = true
     interface.esconder_menu()
-    interface.aviso("Viagem reiniciada. Objetivo: capturar três peixes.")
+    interface.aviso("Viagem reiniciada. Missão: capturar três peixes.")
     atualizar_interface()
+
+# ------------------------------------------------------------------ o mundo: as ilhas juntas
+
+## Há terra (ou raso demais) aqui? É o que o barco pergunta antes de andar.
+func bloqueado(pos: Vector3) -> bool:
+    for i in ilhas:
+        if i.bloqueado(pos):
+            return true
+    return false
+
+## Altura do chão (m) neste ponto, olhando todas as ilhas. Negativa = fundo do mar.
+func altura_terra(pos: Vector3) -> float:
+    var h := -99.0
+    for i in ilhas:
+        h = maxf(h, i.altura_em(pos))
+    return h
+
+## Distância (m) até a ilha mais próxima, medida da borda dela.
+func distancia_da_costa(pos: Vector3) -> float:
+    var d := INF
+    for i in ilhas:
+        d = minf(d, Vector2(pos.x - i.centro.x, pos.z - i.centro.z).length() - i.raio)
+    return d
+
+func _ilha_do_cais_mais_perto() -> Node3D:
+    var melhor: Node3D = ilhas[0]
+    for i in ilhas:
+        if i.distancia_do_cais(barco.global_position) < melhor.distancia_do_cais(barco.global_position):
+            melhor = i
+    return melhor
+
+func _missao_cumprida(m: Dictionary) -> void:
+    dinheiro += int(m.premio)
+    som.tocar("peixe", -4.0, 1.5)
+    var premio := " Prêmio: R$ %d." % int(m.premio) if int(m.premio) > 0 else ""
+    var proxima: String = "Você está por conta própria: boa pesca!" if missoes.terminou() else "Próxima: %s." % missoes.atual().texto
+    interface.aviso("Missão cumprida!%s %s" % [premio, proxima])
 
 # ------------------------------------------------------------------ cais: atracar, vender, abastecer
 
@@ -232,6 +294,7 @@ func atracar() -> void:
     pesca.estado = pesca.Estado.PRONTO
     som.navegando = false
     interface.fechar_painel()
+    missoes.evento("atracar", ilha.nome)
     _atualizar_porto()
     salvar()
 
@@ -246,14 +309,16 @@ func zarpar() -> void:
     interface.aviso("Bons ventos! Volte ao cais para vender e abastecer.")
 
 func _valor_do_porao() -> int:
-    return porao.valor_total()
+    return porao.valor_total(ilha.bonus_venda)
 
 func _atualizar_porto() -> void:
     var falta: float = barco.tanque - barco.combustivel
     interface.mostrar_porto({"nome": ilha.nome, "dinheiro": dinheiro, "peixes": interface.capturas.size(),
             "peso": porao.peso_total(), "valor": _valor_do_porao(), "litros": barco.combustivel, "tanque": barco.tanque,
-            "falta_litros": falta, "preco_litro": PRECO_DIESEL,
-            "litros_possiveis": minf(falta, floorf(float(dinheiro) / PRECO_DIESEL)), "loja": melhorias.vitrine(dinheiro)})
+            "falta_litros": falta, "preco_litro": ilha.preco_diesel,
+            "litros_possiveis": minf(falta, floorf(float(dinheiro) / ilha.preco_diesel)),
+            "loja": melhorias.vitrine(dinheiro) if ilha.tem_loja else [],
+            "nota": "\nEste posto paga %d%% a mais pelo peixe." % roundi((ilha.bonus_venda - 1.0) * 100.0) if ilha.bonus_venda > 1.0 else ""})
 
 func vender() -> void:
     if not atracado or interface.capturas.is_empty():
@@ -261,6 +326,7 @@ func vender() -> void:
     var ganho := _valor_do_porao()
     dinheiro += ganho
     ja_vendeu = true
+    missoes.evento("vender")
     porao.esvaziar()
     som.tocar("peixe", -6.0, 1.3)
     interface.aviso("Vendeu a pescaria por R$ %d." % ganho)
@@ -270,11 +336,11 @@ func vender() -> void:
 func abastecer() -> void:
     if not atracado:
         return
-    var litros: float = minf(barco.tanque - barco.combustivel, floorf(float(dinheiro) / PRECO_DIESEL))
+    var litros: float = minf(barco.tanque - barco.combustivel, floorf(float(dinheiro) / ilha.preco_diesel))
     if litros < 1.0:
         return
     var entrou: float = barco.abastecer(litros)
-    dinheiro -= roundi(entrou * PRECO_DIESEL)
+    dinheiro -= roundi(entrou * ilha.preco_diesel)
     som.tocar("onda", -10.0, 1.4)
     interface.aviso("Abasteceu %d L." % roundi(entrou))
     _atualizar_porto()
@@ -282,7 +348,7 @@ func abastecer() -> void:
 
 ## Compra o próximo nível de uma melhoria (motor, tanque, porao, vara).
 func comprar(id: String) -> void:
-    if not atracado:
+    if not atracado or not ilha.tem_loja:
         return
     var custo: int = melhorias.preco(id)
     if custo < 0:
@@ -293,6 +359,7 @@ func comprar(id: String) -> void:
     dinheiro -= custo
     melhorias.subir(id)
     melhorias.aplicar(barco, porao, pesca)
+    missoes.evento("comprar")
     salvar()
     som.tocar("peixe", -6.0, 0.8)
     interface.aviso("%s melhorado: %s." % [melhorias.TABELA[id].nome, melhorias.TABELA[id].descricao[melhorias.nivel[id]]])
@@ -304,9 +371,7 @@ func _ao_pescar(especie: String, peso: float) -> void:
         interface.aviso("Porão cheio: o peixe voltou ao mar. Venda a pescaria no cais.")
         return
     som.tocar("peixe", -5.0)
-    if pesca.num_peixes >= 3 and not objetivo_cumprido:
-        objetivo_cumprido = true
-        interface.aviso("Missão cumprida: 3 peixes! Agora leve a pescaria ao cais (âncora no radar).")
+    missoes.evento("pescar", especie)
 
 func atualizar_interface() -> void:
     if interface == null:
@@ -314,7 +379,10 @@ func atualizar_interface() -> void:
     clima.correndo = iniciado and not em_pausa and not atracado
     var escuro: float = clima.noite()
     luz_barco.light_energy = 2.2 * escuro
-    ilha.acender(escuro)
+    ilha = _ilha_do_cais_mais_perto()
+    for i in ilhas:
+        i.acender(escuro)
+    missoes.evento("dinheiro", "", dinheiro)
     cardumes.noite = escuro > 0.5
     interface.hud.hora = clima.texto_hora()
     interface.hud.noite = escuro
@@ -323,14 +391,10 @@ func atualizar_interface() -> void:
     interface.hud.cais_rel = Vector2(ate_cais.dot(barco.global_transform.basis.x), ate_cais.dot(-barco.global_transform.basis.z))
     interface.hud.cais_dist = ilha.distancia_do_cais(barco.global_position)
     interface.hud.dinheiro = dinheiro
-    interface.hud.dica = "E: atracar no cais" if (iniciado and not em_pausa and pode_atracar()) else ""
-    # as missões vêm em sequência: pescar, vender, e depois viagem livre
-    if objetivo_cumprido and not ja_vendeu:
-        interface.hud.missao_titulo = "Segunda Missão"
-    elif ja_vendeu:
-        interface.hud.missao_titulo = "Viagem livre"
-    else:
-        interface.hud.missao_titulo = "Primeira Missão"
+    interface.hud.dica = ("E: atracar em %s" % ilha.nome) if (iniciado and not em_pausa and pode_atracar()) else ""
+    interface.hud.missao_titulo = missoes.titulo()
+    interface.hud.missao_texto = missoes.texto()
+    interface.hud.missao_feita = missoes.terminou()
     interface.hud.combustivel = barco.combustivel / barco.tanque
     interface.hud.litros = barco.combustivel
     interface.atualizar(barco.nos(), barco.rumo(), barco.distancia_percorrida, pesca.num_peixes, porao.peso_total(), pesca.status(), objetivo_cumprido,

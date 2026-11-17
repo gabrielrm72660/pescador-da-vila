@@ -29,6 +29,9 @@ uniform float forca_relevo : hint_range(0.0, 2.0, 0.01) = 0.55;
 uniform sampler2D tex_costa : hint_default_black, repeat_disable, filter_linear;
 uniform vec2 costa_centro = vec2(0.0);
 uniform float costa_lado = 0.0;                      // lado (m) do quadrado que o mapa cobre
+uniform sampler2D tex_costa2 : hint_default_black, repeat_disable, filter_linear;   // a segunda ilha
+uniform vec2 costa_centro2 = vec2(0.0);
+uniform float costa_lado2 = 0.0;
 uniform vec2 costa_faixa = vec2(-12.0, 4.0);         // altura (m) que vale 0 e 1 no mapa
 uniform vec4 cor_raso : source_color = vec4(0.20, 0.78, 0.72, 1.0);
 uniform float luz_propria = 1.0;                     // a agua se acende um pouco sozinha de dia; a noite, nao
@@ -119,6 +122,12 @@ void fragment() {
         vec2 uv = (p - costa_centro) / costa_lado + 0.5;
         if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
             fundura = -mix(costa_faixa.x, costa_faixa.y, texture(tex_costa, uv).r);
+        }
+    }
+    if (costa_lado2 > 0.0) {
+        vec2 uv2 = (p - costa_centro2) / costa_lado2 + 0.5;
+        if (uv2.x > 0.0 && uv2.x < 1.0 && uv2.y > 0.0 && uv2.y < 1.0) {
+            fundura = -mix(costa_faixa.x, costa_faixa.y, texture(tex_costa2, uv2).r);
         }
     }
     float raso = smoothstep(9.0, 0.4, fundura);
