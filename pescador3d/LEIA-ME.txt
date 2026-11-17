@@ -304,7 +304,7 @@ VERSÃO 0.3.3 - 16/11/2026 — A VIAGEM FICA SALVA
   do porão, cada um na sua casa.
 - Ao abrir o jogo com uma viagem salva, o botão principal vira "CONTINUAR A VIAGEM". "NOVA VIAGEM"
   (ou R duas vezes no jogo) apaga a salva e começa do zero.
-- O arquivo é user://pescador_viagem.json (no Windows: %APPDATA%\Godot\app_userdata\<nome do projeto>).
+- O arquivo é user://pescador_viagem.json.
   Código em scripts/salvamento.gd.
 
 
@@ -323,3 +323,6 @@ MISSÕES (painel no alto à direita; cada uma paga um prêmio)
   1. Pescar 3 peixes  2. Vender no cais  3. Comprar uma melhoria  4. Pescar 2 olhos-de-cão à noite
   5. Atracar na Ilha Rata  6. Pescar um atum em alto-mar  7. Juntar R$ 1000. Depois: viagem livre.
 - A lista está em scripts/missoes.gd (LISTA). As missões ficam salvas com a viagem.
+SALVAMENTO
+- A viagem salva passou a ficar numa pasta fixa (%APPDATA%\Pescador no Windows), que não muda mais
+  quando o número da versão muda. Uma viagem salva na 0.3.3 não é encontrada: comece uma nova.
