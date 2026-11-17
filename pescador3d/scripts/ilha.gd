@@ -818,6 +818,62 @@ func _criar_pinheiros() -> void:
     inst.set_meta("sem_reducao", true)
     add_child(inst)
 
+## Caixa inclinada: gira em Y (como _caixa) e depois cai ou sobe ao longo do próprio eixo X.
+func _caixa_inclinada(pai: Node3D, tam: Vector3, pos: Vector3, mat: Material, giro_y: float, inclinacao: float) -> MeshInstance3D:
+    var m: MeshInstance3D = _caixa(pai, tam, pos, mat)
+    m.basis = Basis(Vector3.UP, giro_y) * Basis(Vector3.BACK, inclinacao)
+    return m
+
+## Rampa de tábuas que liga o fim da rua ao piso do cais. O pé do cais nasce enterrado no morro (o piso fica
+## em 1,26 m e o chão ali sobe a 3 m), então a rampa acompanha o chão e termina rente ao piso. Tem travessas e corrimão.
+func _criar_rampa_do_cais(pai: Node3D) -> void:
+    var o := Vector2(cais_inicio.x - centro.x, cais_inicio.z - centro.z)
+    var d := Vector2(cais_ponta.x - cais_inicio.x, cais_ponta.z - cais_inicio.z).normalized()
+    var lat := Vector2(-d.y, d.x)
+    var giro: float = -atan2(d.y, d.x)
+    var tabua := _material(Color(1.0, 0.95, 0.88), "res://assets/texturas/ilha/madeira.png")
+    var escura := _material(Color(0.55, 0.45, 0.38), "res://assets/texturas/ilha/madeira.png")
+    var k_topo := -1.5               # onde a rua encosta (o fim da rua 11 em layout_principal.gd)
+    var k_pe := 4.8                  # onde o piso do cais sai do chão
+    var n := 7
+    var passo: float = (k_pe - k_topo) / float(n)
+    var largura := 3.0
+    var piso_cais := 1.26            # topo do cais: caixa de 0,22 m centrada em y = 1,15
+    var ys: Array = []
+    for i in n + 1:
+        var k: float = k_topo + passo * float(i)
+        var p: Vector2 = o + d * k
+        var chao: float = maxf(_altura_local(p.x, p.y), maxf(_altura_local(p.x + lat.x * 1.5, p.y + lat.y * 1.5), _altura_local(p.x - lat.x * 1.5, p.y - lat.y * 1.5)))
+        ys.append(lerpf(chao + 0.13, piso_cais, clampf((k - 4.0) / 0.8, 0.0, 1.0)))
+    for i in n:
+        var k0: float = k_topo + passo * float(i)
+        var y0: float = ys[i]
+        var y1: float = ys[i + 1]
+        var meio: Vector2 = o + d * (k0 + passo * 0.5)
+        var y_meio: float = (y0 + y1) * 0.5
+        var ang: float = atan2(y1 - y0, passo)
+        var comp: float = sqrt(passo * passo + (y1 - y0) * (y1 - y0))
+        _caixa_inclinada(pai, Vector3(comp + 0.05, 0.14, largura), Vector3(meio.x, y_meio - 0.07, meio.y), tabua, giro, ang)
+        _caixa_inclinada(pai, Vector3(0.14, 0.05, largura - 0.1), Vector3(meio.x, y_meio + 0.025, meio.y), escura, giro, ang)
+        # Apoio: preenche o vão entre a rampa e o chão dos lados.
+        var baixo: float = minf(_altura_local(meio.x, meio.y), minf(_altura_local(meio.x + lat.x * largura * 0.5, meio.y + lat.y * largura * 0.5), _altura_local(meio.x - lat.x * largura * 0.5, meio.y - lat.y * largura * 0.5)))
+        var fundo: float = (y_meio - 0.14) - baixo
+        if fundo > 0.12:
+            _caixa_inclinada(pai, Vector3(comp, fundo, largura - 0.5), Vector3(meio.x, y_meio - 0.14 - fundo * 0.5, meio.y), escura, giro, ang)
+        for s in [-1.0, 1.0]:
+            var q: Vector2 = meio + lat * float(s) * (largura * 0.5 - 0.08)
+            _caixa_inclinada(pai, Vector3(comp + 0.05, 0.07, 0.07), Vector3(q.x, y_meio + 0.9, q.y), escura, giro, ang)
+    for i in n + 1:
+        if i % 2 != 0 and i != n:
+            continue
+        var pp: Vector2 = o + d * (k_topo + passo * float(i))
+        for s in [-1.0, 1.0]:
+            var q: Vector2 = pp + lat * float(s) * (largura * 0.5 - 0.08)
+            _caixa(pai, Vector3(0.1, 0.95, 0.1), Vector3(q.x, float(ys[i]) + 0.47, q.y), escura, giro)
+    for k in [0.0, 3.0]:
+        var pr: Vector2 = o + d * k
+        _ocupado.append(Vector3(pr.x, pr.y, 3.0))
+
 ## Busca o ponto de maior altitude no interior da ilha principal, afastado da praia e dos rochedos.
 ## O cume é calculado a partir da mesma função usada na malha 3D e na colisão.
 func _encontrar_cume() -> Vector2:
@@ -1034,11 +1090,8 @@ func _criar_detalhes_porto() -> void:
     vermelho.cull_mode = BaseMaterial3D.CULL_DISABLED
     azul.cull_mode = BaseMaterial3D.CULL_DISABLED
 
-    # Passarela alargada no acesso ao cais e duas defensas de madeira.
-    var base: Vector2 = origem - dir * 5.0
-    var altura_base: float = _altura_local(base.x, base.y)
-    if altura_base > 0.4:
-        _caixa(detalhes, Vector3(7.2, 0.22, 6.8), Vector3(base.x, altura_base + 0.11, base.y), madeira, giro)
+    # Rampa de tábuas da rua até o piso do cais (no lugar da antiga plataforma solta) e duas defensas de madeira.
+    _criar_rampa_do_cais(detalhes)
     for s in [-1.0, 1.0]:
         var p: Vector2 = origem + lado * float(s) * 3.9 + dir * 3.0
         _cilindro(detalhes, 0.25, 0.19, 2.1, Vector3(p.x, -0.3, p.y), madeira)

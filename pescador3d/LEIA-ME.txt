@@ -1,3 +1,21 @@
+PESCADOR — Versão 0.3.22 (Godot 4.7)
+================================================
+Base: a 0.3.21 mais o acesso ao cais abaixo. Detalhes em docs/PESCADOR_v0.3.22_NOVIDADES.txt.
+
+NOVIDADES
+- Saiu a plataforma de madeira solta que ficava na praia, antes do cais (não servia para nada).
+- A rua de pedra agora chega até o cais: uma rampa de tábuas com travessas e corrimão acompanha o morro e termina rente ao piso do cais.
+
+TESTE RÁPIDO V0.3.22
+1. Chegue de barco ao cais e olhe para a praia: a plataforma solta não existe mais.
+2. Olhe o pé do cais: a rua de pedra desce por uma rampa de madeira até o piso do cais.
+
+VALIDAÇÃO (honesta)
+Sondas automáticas (Godot 4.7, software, sem GPU): sem erros de script; capturas do mar, de cima e do nível da rua; teste do cais (barco atraca) repetido.
+NÃO testado: jogo por uma pessoa, FPS em placa de vídeo de verdade.
+
+------------------------------------------------------------------------------------------------
+ANTERIOR — 0.3.21
 PESCADOR — Versão 0.3.21 (Godot 4.7)
 ================================================
 Base: a 0.3.20 mais a vila nova abaixo. Detalhes em docs/PESCADOR_v0.3.21_NOVIDADES.txt.

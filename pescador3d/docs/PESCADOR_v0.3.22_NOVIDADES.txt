@@ -1,0 +1,19 @@
+PESCADOR 0.3.22 — ACESSO DA RUA AO CAIS
+=======================================
+
+PEDIDO (17/11/2026, 14:42): "em rosa circulado tem uma estrutura que não serve para nada, remova e faça um acesso da estrada para o cais/pier".
+
+O QUE ERA
+A "passarela alargada" de _criar_detalhes_porto: uma caixa de madeira de 7,2 x 6,8 m a 5 m do pé do cais, horizontal sobre um chão inclinado
+(ficava com um canto enterrado e outro no ar). Nenhuma rua nem o cais chegava nela.
+
+O QUE MUDOU (scripts/ilha.gd, scripts/layout_principal.gd)
+- Plataforma removida.
+- _criar_rampa_do_cais(): rampa de tábuas de 3 m de largura e 6,3 m de comprimento, em 7 trechos que acompanham o chão do morro (+0,13 m),
+  terminando rente ao piso do cais (1,26 m). Travessas a cada trecho, apoios de madeira onde há vão, corrimão dos dois lados.
+  Motivo: o cais nasce enterrado no morro (piso a 1,26 m, chão a ~3 m no pé), então só dava para chegar nele por uma rampa.
+- Rua 11 (a que liga a rua principal ao cais) agora termina no topo da rampa: [-18.99,72.22] -> [-19.5,74.3] -> [-20.39,75.78].
+
+VALIDAÇÃO (honesta)
+Sondas automáticas: sem erros de script; capturas do mar, de cima e do nível da rua mostram a rua de pedra entrando na rampa e a rampa no cais;
+_cais.gd (barco atraca) repetido. NÃO testado: jogo por uma pessoa, GPU real.
