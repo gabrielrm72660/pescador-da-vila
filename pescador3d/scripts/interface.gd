@@ -228,7 +228,7 @@ func _construir_menu() -> void:
 
     _construir_volume(col)
 
-    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nMouse direito: câmera  •  Roda: aproxima  •  V: recentra\nB isca  •  N profundidade  •  J técnica  •  M mapa\nK clima  •  L luz  •  F3 FPS  •  F4 diagnóstico  •  F10 gráficos", 14, Color(0.77, 0.87, 0.84, 1.0), true)
+    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nMouse direito: câmera  •  Roda: aproxima  •  V: recentra\nB isca  •  N profundidade  •  J técnica  •  M mapa\nK clima  •  L luz  •  F3 FPS  •  F4 diagnóstico  •  F10 gráficos  •  F9 construtor", 14, Color(0.77, 0.87, 0.84, 1.0), true)
     dica.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(dica)
 

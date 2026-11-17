@@ -33,6 +33,8 @@ const FaunaCosteira = preload("res://scripts/fauna_costeira.gd")
 const VidaPortuaria = preload("res://scripts/vida_portuaria.gd")
 const Boias = preload("res://scripts/boias.gd")
 const OpcoesGraficas = preload("res://scripts/opcoes_graficas.gd")
+const Construtor = preload("res://scripts/construtor.gd")
+var construtor: Node                  # Modo Construtor (F9): edita a ilha principal
 var fauna_costeira: Node3D
 var vida_portuaria: Node3D
 var boias: Node3D
@@ -160,6 +162,12 @@ func _ready() -> void:
     add_child(graficos)
     graficos.configurar(ilhas, $Sol, oceano, $Ceu)
     graficos.qualidade_ajustada.connect(func(texto: String): interface.aviso(texto))
+    construtor = Construtor.new()
+    construtor.name = "Construtor"
+    add_child(construtor)
+    for i in ilhas:
+        if i.editavel:
+            construtor.configurar(self, i)
     barco.encalhou.connect(func(): interface.aviso("Cuidado com a costa! Dê ré (S) para sair."))
     interface.vender_pressed.connect(vender)
     interface.volume_mudou.connect(func(grupo, valor): som.definir_volume(grupo, valor))
@@ -245,7 +253,7 @@ func _process(delta: float) -> void:
         atualizar_interface()
 
 func _unhandled_input(event: InputEvent) -> void:
-    if not iniciado:
+    if not iniciado or (construtor != null and construtor.ativo):
         return
     if event is InputEventKey and event.pressed and not event.echo:
         if atracado:                                   # no cais só valem as teclas do cais
@@ -326,7 +334,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.3.22] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.4.0] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:

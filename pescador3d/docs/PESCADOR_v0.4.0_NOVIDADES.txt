@@ -1,0 +1,39 @@
+PESCADOR 0.4.0 — MODO CONSTRUTOR
+================================
+
+PEDIDO (17/11/2026, 14:52): "No godot é possível criar um app que eu possa editar e criar a ilha com o que já criamos? tipo um editor de mundo"
+ESCOLHAS: tudo (terreno, cais/postes/props, vegetação, casas e ruas) e modo dentro do jogo. A 0.4.0 entrega tudo menos o terreno e o cais em si.
+
+COMO FUNCIONA
+- scripts/mundo_dados.gd: o mundo editável da ilha principal é um dicionário (ruas, casas, postes, props, pinheiros, coqueiros, arvores, pedras, moitas).
+  Lê user://mundo_ilha_principal.json (o que você salvou), depois res://dados/mundo_ilha_principal.json (um mundo publicado com o jogo);
+  sem nenhum dos dois, a ilha gera o padrão (layout_principal.gd + vegetação sorteada) e guarda em memória.
+  Posições em metros no sistema local da ilha; a altura vem sempre do terreno. Cada árvore/pedra guarda uma "semente" (tamanho, giro e inclinação).
+- scripts/ilha.gd foi separado em "gerar" (padrão) e "construir" (nós 3D) por categoria. reconstruir("casas") apaga e refaz só aquele nó
+  (Ruas, Casas, Props, Postes ou o MultiMesh da vegetação) e junta as peças de novo com o Mesclador. Reconstruir leva de 1 a 25 ms (software).
+  restaurar_padrao() volta ao desenho original.
+- scripts/construtor.gd: o editor (F9). Pausa a árvore do jogo, usa uma câmera própria, interface em código, picking por raio contra a altura do terreno.
+  Desfazer/refazer guardam fotos do mundo (até 60). Fechar salva sozinho se houve mudança.
+- scripts/opcoes_graficas.gd: com o editor aberto a vegetação não é desbastada (na qualidade Baixa quem edita precisa ver tudo); ao sair volta ao normal.
+
+ARQUIVOS NOVOS
+scripts/mundo_dados.gd, scripts/construtor.gd, docs/PESCADOR_v0.4.0_NOVIDADES.txt
+ALTERADOS: scripts/ilha.gd, scripts/jogo.gd, scripts/opcoes_graficas.gd, scripts/interface.gd (dica F9), project.godot, LEIA-ME.txt
+
+DETALHES DE USO
+- Ímã: a casa colocada a menos de 15 m de uma rua encosta a 3,7 m do eixo e vira a porta para ela (mesma regra do desenho original).
+- Casas não podem ficar uma em cima da outra (o fantasma fica vermelho e o clique é recusado). Água e praia baixa também não.
+- "Tirar árvores do caminho": ao colocar/mover casa ou terminar/mover rua, a vegetação debaixo some.
+- Ruas: começar na ponta de uma rua existente continua ela; os pontos grudam em pontos e trechos de rua existentes (cruzamentos limpos).
+- "Gravar na pasta do jogo" escreve dados/mundo_ilha_principal.json dentro do projeto (só rodando pelo editor do Godot). Mande esse arquivo
+  para virar o mundo padrão de todo mundo.
+
+LIMITES DESTA VERSÃO
+- Só a ilha principal (Vila do Porto) é editável. O terreno (relevo) e o cais em si não são editáveis ainda (planejado: 0.4.1).
+- O mundo padrão não traz redes, canoas e caixotes (só os 3 postes): o gerador antigo não achou lugar livre em terra firme.
+  Dá para colocá-los você mesmo na categoria Props (tecla 4).
+- Coqueiros, pedras e moitas do mundo padrão são sorteados de novo (mesma regra, posições diferentes das da 0.3.22).
+
+VALIDAÇÃO (honesta)
+Sondas automáticas (_construtor.gd, _construtor2.gd) com cliques/teclas simulados; bateria de regressão do jogo (cais, farol, trilha, pesca, save, radar).
+NÃO testado: uso real com mouse, FPS do editor em GPU de verdade.
