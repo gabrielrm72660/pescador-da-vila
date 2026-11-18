@@ -7,6 +7,7 @@ signal botao(nome: String)
 signal devolveu(item: Dictionary)      # o jogador jogou um peixe do porão de volta ao mar
 
 const Cardumes = preload("res://scripts/cardumes.gd")
+const Aq = preload("res://scripts/aquarela.gd")
 const TINTA := Color(0.075, 0.125, 0.19, 0.90)        # azul-marinho das pinceladas
 const CREME := Color(0.96, 0.93, 0.84)
 const DOURADO := Color(0.98, 0.76, 0.33)
@@ -59,6 +60,12 @@ const CASA := 50.0               # lado de uma casa da grade (px, antes de encol
 var pesca: Node = null           # scripts/pesca.gd: o anel do minijogo é lido direto dele, a cada quadro
 
 var _fonte: Font
+var _fonte_titulo: Font
+var _lav: Array = []                # lavagens de aquarela (ColorRect atrás do desenho): uma por cartão, reaproveitadas a cada quadro
+var _lav_sig: Array = []
+var _lav_n := 0
+var _orig := Vector2.ZERO           # transformação de desenho atual (ver _ancorar): para pôr as lavagens no lugar certo da tela
+var _esc := 1.0
 var _sprites_peixes: Dictionary = {}
 var _pop_texto: String = ""       # "PERFEITO!", "BOM!", "ERROU": sobe e some acima do anel
 var _pop_tempo: float = 0.0
@@ -72,7 +79,8 @@ var _sobre := ""                # botão sob o mouse
 func _ready() -> void:
     set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     mouse_filter = Control.MOUSE_FILTER_PASS
-    _fonte = ThemeDB.fallback_font
+    _fonte = Aq.FONTE_TEXTO
+    _fonte_titulo = Aq.FONTE_TITULO
     var dir_sprites := "res://assets/texturas/peixes/porao/"
     for especie in Cardumes.ESPECIES:
         var arquivo: String = dir_sprites + Cardumes.slug(especie) + ".png"
@@ -103,7 +111,9 @@ func _process(delta: float) -> void:
 ## 0.5,1 = meio da borda de baixo; 1,1 = canto de baixo à direita).
 func _ancorar(ax: float, ay: float, fator: float = -1.0) -> void:
     var e := escala if fator < 0.0 else fator
-    draw_set_transform(Vector2(size.x * ax, size.y * ay) * (1.0 - e), 0.0, Vector2(e, e))
+    _orig = Vector2(size.x * ax, size.y * ay) * (1.0 - e)
+    _esc = e
+    draw_set_transform(_orig, 0.0, Vector2(e, e))
 
 ## Onde o botão está na tela de verdade (depois de encolhido), para o clique acertar.
 func ret_botao_na_tela(indice: int) -> Rect2:
@@ -140,6 +150,7 @@ func apertar(nome: String) -> void:
 # ------------------------------------------------------------------ desenho
 
 func _draw() -> void:
+    _lav_n = 0
     _ancorar(0.0, 0.0)
     _placa_barco()
     _ancorar(0.5, 0.0)
@@ -158,55 +169,107 @@ func _draw() -> void:
     _ancorar(0.5, 0.5, minf(1.0, escala + 0.2))
     _painel()
     draw_set_transform(Vector2.ZERO)
+    _orig = Vector2.ZERO
+    _esc = 1.0
+    for i in range(_lav_n, _lav.size()):
+        _lav[i].visible = false
 
-## Mancha de tinta: retângulo com as pontas rasgadas, como uma pincelada larga e seca.
-func _pincelada(r: Rect2, semente: int, cor: Color = TINTA) -> void:
-    if noite > 0.0:                                    # à noite a placa clareia um pouco e ganha fio: senão some no mar escuro
-        cor = Color(cor.lerp(Color(0.13, 0.21, 0.31), 0.75 * noite), lerpf(cor.a, maxf(cor.a, 0.94), noite))
-    var rng := RandomNumberGenerator.new()
-    rng.seed = semente
-    var faixas := maxi(3, int(r.size.y / 13.0))
-    var esq := PackedVector2Array()
-    var dir := PackedVector2Array()
-    for i in faixas + 1:
-        var y := r.position.y + r.size.y * float(i) / faixas
-        esq.append(Vector2(r.position.x - rng.randf_range(0.0, 20.0), y))
-        dir.append(Vector2(r.end.x + rng.randf_range(0.0, 24.0), y))
-    for i in faixas:                                   # cada faixa é um trapézio (sempre desenhável)
-        draw_colored_polygon(PackedVector2Array([esq[i], dir[i], dir[i + 1], esq[i + 1]]), cor)
-    if noite > 0.0:
-        draw_line(esq[0], dir[0], Color(CREME, 0.30 * noite), 1.5)
-        draw_line(esq[faixas], dir[faixas], Color(CREME, 0.30 * noite), 1.5)
-    for i in 3:                                        # fios soltos nas pontas
-        var y := r.position.y + rng.randf_range(4.0, r.size.y - 4.0)
-        draw_line(Vector2(r.end.x + 6.0, y), Vector2(r.end.x + rng.randf_range(26.0, 44.0), y), Color(cor, cor.a * 0.55), 2.0)
-        draw_line(Vector2(r.position.x - 6.0, y + 5.0), Vector2(r.position.x - rng.randf_range(24.0, 38.0), y + 5.0), Color(cor, cor.a * 0.55), 2.0)
+## Cartão de aquarela: uma lavagem de pigmento com borda que escorre, mancha e grão de papel (shaders/aquarela.gdshader).
+## "cor" só dá a transparência (alfa); a cor vem do esquema ("pigmento", "mar", "ouro"...). À noite clareia e ganha um fio de luz.
+func _pincelada(r: Rect2, semente: int, cor: Color = TINTA, nome_esquema: String = "pigmento", raio: float = -1.0, ajuste: Dictionary = {}) -> void:
+    var esq: Dictionary = Aq.esquema(nome_esquema)
+    var c1: Color = esq["cor"]
+    var c2: Color = esq["cor2"]
+    var extra: Dictionary = (esq["extra"] as Dictionary).duplicate()
+    var alfa_base: float = float(extra.get("alfa", 0.9))
+    extra["alfa"] = minf(1.0, alfa_base * cor.a / 0.9)
+    if noite > 0.0:                                    # à noite o cartão clareia um pouco e ganha fio: senão some no mar escuro
+        c1 = c1.lerp(Color(0.13, 0.21, 0.31), 0.75 * noite)
+        c2 = c2.lerp(Color(0.10, 0.17, 0.26), 0.75 * noite)
+        extra["alfa"] = lerpf(float(extra["alfa"]), maxf(float(extra["alfa"]), 0.94), noite)
+        extra["tinta"] = Color(CREME, 0.5 * noite)
+    if raio >= 0.0:
+        extra["raio"] = raio
+    for k in ajuste:
+        extra[k] = ajuste[k]
+    _lavagem(r, semente, c1, c2, extra)
 
-func _texto(pos: Vector2, texto: String, tam: int, cor: Color = CREME, alinhar: int = HORIZONTAL_ALIGNMENT_LEFT, largura: float = -1.0) -> void:
-    draw_string_outline(_fonte, pos, texto, alinhar, largura, tam, 4, Color(0.03, 0.06, 0.1, 0.55))
-    draw_string(_fonte, pos, texto, alinhar, largura, tam, cor)
+func _lavagem(r: Rect2, semente: int, c1: Color, c2: Color, extra: Dictionary) -> void:
+    var tela := Rect2(_orig + r.position * _esc, r.size * _esc)
+    if _lav_n >= _lav.size():
+        var novo := ColorRect.new()
+        novo.show_behind_parent = true                 # a lavagem fica por baixo de tudo o que o HUD desenha
+        novo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        novo.material = Aq.material(c1, c2, 1.0)
+        add_child(novo)
+        _lav.append(novo)
+        _lav_sig.append(null)
+    var no: ColorRect = _lav[_lav_n]
+    var sig: Array = [tela, semente, c1, c2, extra, _esc]
+    if _lav_sig[_lav_n] != sig:
+        _lav_sig[_lav_n] = sig
+        var folga := 22.0
+        Aq.ajustar(no, tela, folga)
+        var m: ShaderMaterial = no.material
+        m.set_shader_parameter("cor", c1)
+        m.set_shader_parameter("cor2", c2)
+        m.set_shader_parameter("semente", float(semente) * 0.173)
+        for k in extra:
+            var v = extra[k]
+            if k == "irregular" or k == "largura_borda" or k == "raio":
+                v = float(v) * _esc
+            m.set_shader_parameter(k, v)
+    no.visible = true
+    _lav_n += 1
+
+func _texto(pos: Vector2, texto: String, tam: int, cor: Color = CREME, alinhar: int = HORIZONTAL_ALIGNMENT_LEFT, largura: float = -1.0, titulo: bool = false) -> void:
+    var fonte: Font = _fonte_titulo if titulo else _fonte
+    draw_string(fonte, pos + Vector2(1.6, 1.8), texto, alinhar, largura, tam, Color(0.02, 0.05, 0.09, 0.62 * cor.a))
+    draw_string(fonte, pos, texto, alinhar, largura, tam, cor)
+
+## Um traço de pincel horizontal: as bordas tremem de leve e as pontas são redondas.
+func _traco(a: Vector2, b: Vector2, espessura: float, cor: Color, semente: float) -> void:
+    var comp := a.distance_to(b)
+    if comp < 1.0:
+        return
+    var n := maxi(6, int(comp / 8.0))
+    var cima := PackedVector2Array()
+    var baixo := PackedVector2Array()
+    var meia := espessura * 0.5
+    for i in n + 1:
+        var t := float(i) / float(n)
+        var ponta := clampf(minf(t, 1.0 - t) * comp / meia, 0.0, 1.0)
+        var w := meia * (0.90 + 0.14 * sin(t * 11.0 + semente) + 0.06 * sin(t * 27.0 + semente * 2.0)) * sqrt(1.0 - (1.0 - ponta) * (1.0 - ponta))
+        var p := a.lerp(b, t)
+        cima.append(p + Vector2(0.0, -w))
+        baixo.append(p + Vector2(0.0, w))
+    baixo.reverse()
+    cima.append_array(baixo)
+    draw_colored_polygon(cima, cor)
 
 func _barra(r: Rect2, fracao: float, cor: Color) -> void:
-    var raio := r.size.y / 2.0
-    draw_line(Vector2(r.position.x + raio, r.position.y + raio), Vector2(r.end.x - raio, r.position.y + raio), Color(0.02, 0.05, 0.08, 0.85), r.size.y)
-    draw_circle(Vector2(r.position.x + raio, r.position.y + raio), raio, Color(0.02, 0.05, 0.08, 0.85))
-    draw_circle(Vector2(r.end.x - raio, r.position.y + raio), raio, Color(0.02, 0.05, 0.08, 0.85))
+    var meia := r.size.y / 2.0
+    var y := r.position.y + meia
+    var x0 := r.position.x + meia
+    var x1 := r.end.x - meia
+    var sem := r.position.x * 0.13 + r.position.y * 0.07
+    _traco(Vector2(x0 - meia * 0.6, y), Vector2(x1 + meia * 0.6, y), r.size.y + 3.0, Color(0.02, 0.05, 0.08, 0.62), sem)      # trilho: tinta escura
+    _traco(Vector2(x0 - meia * 0.6, y), Vector2(x1 + meia * 0.6, y), r.size.y + 3.0, Color(CREME, 0.10), sem + 2.0)
     var f := clampf(fracao, 0.0, 1.0)
     if f > 0.01:
-        var fim := r.position.x + raio + (r.size.x - r.size.y) * f
-        draw_line(Vector2(r.position.x + raio, r.position.y + raio), Vector2(fim, r.position.y + raio), cor, r.size.y - 5.0)
-        draw_circle(Vector2(r.position.x + raio, r.position.y + raio), raio - 2.5, cor)
-        draw_circle(Vector2(fim, r.position.y + raio), raio - 2.5, cor)
+        var fim := x0 + (x1 - x0) * f
+        _traco(Vector2(x0 - meia * 0.4, y), Vector2(fim + meia * 0.4, y), r.size.y - 2.0, cor, sem + 5.0)
+        _traco(Vector2(x0, y - meia * 0.28), Vector2(maxf(x0 + 2.0, fim - meia * 0.3), y - meia * 0.28), maxf(2.0, r.size.y * 0.24), Color(1, 1, 1, 0.26), sem + 9.0)   # reflexo: papel aparecendo
 
 func _placa_barco() -> void:
     _pincelada(Rect2(46, 30, 330, 58), 11)
     _pincelada(Rect2(46, 96, 300, 44), 12)
     _icone_barco(Vector2(118, 66), 1.0, CREME)
-    _texto(Vector2(206, 74), nome_barco, 30, CREME)
+    _texto(Vector2(206, 78), nome_barco, 40, CREME, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     _icone_engrenagem(Vector2(88, 118), 12.0, CREME)
     _barra(Rect2(116, 108, 218, 20), fracao_motor, VERDE)
     _pincelada(Rect2(46, 148, 190, 40), 13)
-    _texto(Vector2(64, 176), "R$ %d" % dinheiro, 24, DOURADO)
+    _texto(Vector2(64, 179), "R$ %d" % dinheiro, 32, DOURADO, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     if hora != "":                                             # relógio: sol de dia, lua à noite
         _pincelada(Rect2(46, 196, 150, 38), 14)
         var c := Vector2(72, 215)
@@ -218,7 +281,7 @@ func _placa_barco() -> void:
             for i in 8:
                 var d := Vector2.from_angle(TAU * i / 8.0)
                 draw_line(c + d * 9.0, c + d * 12.5, DOURADO, 2.0)
-        _texto(Vector2(94, 223), hora, 22, CREME)
+        _texto(Vector2(94, 225), hora, 26, CREME)
 
 func _bussola() -> void:
     var cx := size.x / 2.0
@@ -226,7 +289,7 @@ func _bussola() -> void:
     var y := 54.0
     _pincelada(Rect2(cx - meia, y - 16.0, meia * 2.0, 34.0), 21, Color(TINTA, 0.62))
     _pincelada(Rect2(cx - 42.0, 8.0, 84.0, 34.0), 22)
-    _texto(Vector2(cx - 42.0, 34.0), "%03d°" % (int(round(rumo)) % 360), 24, CREME, HORIZONTAL_ALIGNMENT_CENTER, 84.0)
+    _texto(Vector2(cx - 42.0, 36.0), "%03d°" % (int(round(rumo)) % 360), 32, CREME, HORIZONTAL_ALIGNMENT_CENTER, 84.0, true)
     var px_por_grau := meia * 2.0 / 135.0                      # a fita mostra 135 graus
     draw_line(Vector2(cx - meia + 10.0, y + 14.0), Vector2(cx + meia - 10.0, y + 14.0), Color(CREME, 0.7), 1.5)
     var primeiro := int(floor((rumo - 75.0) / 15.0)) * 15
@@ -238,7 +301,7 @@ func _bussola() -> void:
         var apagar := clampf((meia - absf(x - cx)) / 70.0, 0.0, 1.0)   # some nas pontas da fita
         if grau % 45 == 0:
             draw_line(Vector2(x, y + 6.0), Vector2(x, y + 16.0), Color(CREME, apagar), 2.0)
-            _texto(Vector2(x - 30.0, y + 6.0), PONTOS[grau / 45], 17, Color(DOURADO if grau == 0 else CREME, apagar), HORIZONTAL_ALIGNMENT_CENTER, 60.0)
+            _texto(Vector2(x - 30.0, y + 6.0), PONTOS[grau / 45], 21, Color(DOURADO if grau == 0 else CREME, apagar), HORIZONTAL_ALIGNMENT_CENTER, 60.0, true)
         else:
             draw_line(Vector2(x, y + 10.0), Vector2(x, y + 16.0), Color(CREME, apagar * 0.75), 1.5)
     draw_colored_polygon(PackedVector2Array([Vector2(cx, y + 4.0), Vector2(cx + 7.0, y + 14.0), Vector2(cx, y + 24.0), Vector2(cx - 7.0, y + 14.0)]), DOURADO)
@@ -252,12 +315,12 @@ func _missao() -> void:
     _pincelada(Rect2(x, 30, 326, 50), 31)
     _pincelada(Rect2(x, 86, 326, 62 + extra), 32)
     _icone_prancheta(Vector2(x + 30.0, 55.0), CREME)
-    _texto(Vector2(x + 62.0, 64.0), missao_titulo, 22, DOURADO)
+    _texto(Vector2(x + 62.0, 66.0), missao_titulo, 30, DOURADO, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     var caixa := Rect2(x + 22.0, 98.0, 16.0, 16.0)
     draw_rect(caixa, CREME, false, 2.0)
     if missao_feita:
         draw_polyline(PackedVector2Array([caixa.position + Vector2(3, 8), caixa.position + Vector2(7, 13), caixa.position + Vector2(15, 1)]), VERDE, 3.0)
-    var tam_texto := 18
+    var tam_texto := 20
     while tam_texto > 12 and _fonte.get_string_size(missao_texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tam_texto).x > largura_util - 28.0:
         tam_texto -= 1
     _texto(Vector2(x + 50.0, 113.0), missao_texto, tam_texto, VERDE if missao_feita else CREME)
@@ -302,8 +365,8 @@ func _poligono_radar(contorno: PackedVector2Array, c: Vector2, raio: float, disc
 func _radar() -> void:
     var c := Vector2(150.0, size.y - 148.0)
     var raio := 104.0
-    draw_circle(c, raio + 7.0, Color(TINTA, 0.85))
-    draw_circle(c, raio, Color(0.06, 0.28, 0.36, 0.88))
+    _pincelada(Rect2(c - Vector2(raio + 11.0, raio + 11.0), Vector2(raio + 11.0, raio + 11.0) * 2.0), 41, Color(TINTA, 0.9), "pigmento", raio + 11.0, {"irregular": 2.6, "seco": 0.0, "respingos": 0.35})
+    _pincelada(Rect2(c - Vector2(raio + 1.5, raio + 1.5), Vector2(raio + 1.5, raio + 1.5) * 2.0), 42, Color(TINTA, 0.9), "mar", raio + 1.5, {"irregular": 1.0, "seco": 0.0, "respingos": 0.0, "tinta": Color(0, 0, 0, 0)})
     # Minimapa: águas rasas, praia e mata das ilhas ao alcance, no lugar certo e girando com a proa.
     if barco_ref != null and not radar_ilhas.is_empty():
         var disco := PackedVector2Array()
@@ -368,7 +431,9 @@ func _radar() -> void:
             _icone_ancora(c + pc, DOURADO)
     draw_colored_polygon(PackedVector2Array([c + Vector2(0, -15), c + Vector2(9, 12), c + Vector2(0, 6), c + Vector2(-9, 12)]), CREME)
     var rodape := "Percorrido: %d m" % int(distancia) if cais_rel == Vector2.INF else "Cais a %d m" % int(cais_dist)
-    _texto(Vector2(c.x - raio, c.y + raio + 26.0), rodape, 18, CREME, HORIZONTAL_ALIGNMENT_CENTER, raio * 2.0)
+    var larg_rodape := _fonte.get_string_size(rodape, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x + 34.0
+    _pincelada(Rect2(c.x - larg_rodape / 2.0, c.y + raio + 8.0, larg_rodape, 34.0), 29, Color(TINTA, 0.86))   # sobre o mar claro o texto sumia
+    _texto(Vector2(c.x - raio, c.y + raio + 31.0), rodape, 21, CREME, HORIZONTAL_ALIGNMENT_CENTER, raio * 2.0)
 
 func _velocimetro() -> void:
     var x := size.x - 262.0
@@ -381,7 +446,7 @@ func _velocimetro() -> void:
         cor_tanque = cor_tanque.lightened(0.35)                    # pisca quando está acabando
     _icone_bomba(Vector2(x + 34.0, y + 114.0), cor_tanque if baixo else DOURADO)
     _barra(Rect2(x + 60.0, y + 105.0, 104.0, 18.0), combustivel, cor_tanque)
-    _texto(Vector2(x + 170.0, y + 121.0), "%d L" % roundi(litros), 16, CREME)
+    _texto(Vector2(x + 170.0, y + 122.0), "%d L" % roundi(litros), 19, CREME)
     var c := Vector2(x + 40.0, y + 40.0)
     draw_arc(c, 24.0, 0.0, TAU, 48, DOURADO, 3.0, true)
     for i in 7:
@@ -390,9 +455,9 @@ func _velocimetro() -> void:
     var ponteiro := PI * 0.75 + PI * 1.5 * clampf(fracao_motor, 0.0, 1.0)
     draw_line(c, c + Vector2.from_angle(ponteiro) * 17.0, CREME, 3.0)
     draw_circle(c, 3.5, CREME)
-    _texto(Vector2(x + 78.0, y + 46.0), ("%.1f" % nos).replace(".", ","), 32, CREME)
-    var larg := _fonte.get_string_size(("%.1f" % nos), HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x
-    _texto(Vector2(x + 86.0 + larg, y + 46.0), "nós", 20, CREME)
+    _texto(Vector2(x + 78.0, y + 50.0), ("%.1f" % nos).replace(".", ","), 42, CREME, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+    var larg := _fonte_titulo.get_string_size(("%.1f" % nos), HORIZONTAL_ALIGNMENT_LEFT, -1, 42).x
+    _texto(Vector2(x + 86.0 + larg, y + 48.0), "nós", 24, CREME)
     _barra(Rect2(x + 76.0, y + 60.0, 128.0, 12.0), fracao_motor, VERDE)
 
 func _barra_botoes() -> void:
@@ -405,9 +470,9 @@ func _barra_botoes() -> void:
         var nome: String = BOTOES[i]
         var r := ret_botao(i)
         var aceso := (nome == "pescar" and pesca_ativa) or nome == painel_aberto
-        var cor := DOURADO if (aceso or nome == _sobre) else CREME
-        _caixa_arredondada(r, Color(0.10, 0.17, 0.25, 0.92))
-        _contorno_arredondado(r, cor if aceso else Color(cor, 0.55), 3.5 if aceso else 2.0)
+        var destaque := aceso or nome == _sobre
+        _pincelada(r.grow(2.0), 90 + i, Color(TINTA, 0.95), "ouro" if destaque else "mar", r.size.x * 0.5 + 2.0, {"irregular": 3.2, "seco": 0.0, "respingos": 0.4})
+        var cor := Aq.NANQUIM if destaque else CREME
         var c := r.position + r.size / 2.0
         match nome:
             "pescar": _icone_anzol(c, cor)
@@ -415,21 +480,21 @@ func _barra_botoes() -> void:
             "diario": _icone_livro(c, cor)
             "config": _icone_engrenagem(c, 17.0, cor)
         if nome == _sobre:
-            _texto(Vector2(r.position.x - 60.0, r.position.y - 12.0), DICA[nome], 14, CREME, HORIZONTAL_ALIGNMENT_CENTER, TAM_BOTAO + 120.0)
+            _texto(Vector2(r.position.x - 60.0, r.position.y - 14.0), DICA[nome], 18, CREME, HORIZONTAL_ALIGNMENT_CENTER, TAM_BOTAO + 120.0)
 
 func _aviso() -> void:
     if dica != "" and painel_aberto == "":                     # dica fixa, em dourado, logo acima dos botões
-        var ld := _fonte.get_string_size(dica, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + 60.0
+        var ld := _fonte.get_string_size(dica, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x + 70.0
         var rd := Rect2(size.x / 2.0 - ld / 2.0, size.y - 168.0, ld, 42.0)
         _pincelada(rd, 62, Color(TINTA, 0.92))
-        draw_string(_fonte, Vector2(rd.position.x, rd.position.y + 29.0), dica, HORIZONTAL_ALIGNMENT_CENTER, ld, 20, DOURADO)
+        draw_string(_fonte, Vector2(rd.position.x, rd.position.y + 30.0), dica, HORIZONTAL_ALIGNMENT_CENTER, ld, 24, DOURADO)
     if aviso_tempo <= 0.0 or aviso_texto == "" or painel_aberto != "":
         return
     var alfa := clampf(aviso_tempo / 0.6, 0.0, 1.0)
-    var larg := minf(_fonte.get_string_size(aviso_texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x + 60.0, 760.0)
+    var larg := minf(_fonte.get_string_size(aviso_texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x + 70.0, 780.0)
     var r := Rect2(size.x / 2.0 - larg / 2.0, size.y - (246.0 if dica != "" else 196.0), larg, 40.0)
     _pincelada(r, 61, Color(TINTA, 0.88 * alfa))
-    draw_string(_fonte, Vector2(r.position.x, r.position.y + 27.0), aviso_texto, HORIZONTAL_ALIGNMENT_CENTER, larg, 18, Color(CREME, alfa))
+    draw_string(_fonte, Vector2(r.position.x, r.position.y + 28.0), aviso_texto, HORIZONTAL_ALIGNMENT_CENTER, larg, 21, Color(CREME, alfa))
 
 func _painel() -> void:
     if painel_aberto == "":
@@ -437,14 +502,42 @@ func _painel() -> void:
     if painel_aberto == "porao" and porao != null:
         _painel_porao()
         return
-    var r := Rect2(size.x / 2.0 - 250.0, size.y / 2.0 - 190.0, 500.0, 340.0)
-    _pincelada(r, 71, Color(TINTA, 0.95))
-    _texto(Vector2(r.position.x + 28.0, r.position.y + 44.0), titulo_painel, 24, DOURADO)
-    draw_line(Vector2(r.position.x + 28.0, r.position.y + 56.0), Vector2(r.end.x - 28.0, r.position.y + 56.0), Color(CREME, 0.4), 1.5)
-    var y := r.position.y + 88.0
-    for linha in linhas_painel:
-        draw_string(_fonte, Vector2(r.position.x + 28.0, y), str(linha), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 56.0, 16, CREME)
-        y += 26.0
+    # O diário quebra as linhas longas em vez de cortá-las; a folha cresce com o texto e, se não couber, só ficam as mais recentes.
+    var larg_folha := 540.0
+    var larg_texto := larg_folha - 64.0
+    var quebra := TextServer.BREAK_WORD_BOUND | TextServer.BREAK_MANDATORY
+    var util := minf(size.y - 90.0, 560.0) - 96.0 - 30.0
+    var blocos: Array = []
+    var alturas: Array = []
+    var usado := 0.0
+    for i in range(linhas_painel.size() - 1, -1, -1):
+        var t := str(linhas_painel[i])
+        var h := _fonte.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, larg_texto, 19, -1, quebra).y + 9.0
+        if usado + h > util and not blocos.is_empty():
+            break
+        usado += h
+        blocos.push_front(t)
+        alturas.push_front(h)
+    var altura := maxf(300.0, 96.0 + usado + 30.0)
+    var r := Rect2(size.x / 2.0 - larg_folha / 2.0, size.y / 2.0 - 20.0 - altura / 2.0, larg_folha, altura)
+    _pincelada(r, 71, Color(TINTA, 0.97), "papel")
+    _texto(Vector2(r.position.x + 32.0, r.position.y + 50.0), titulo_painel, 36, Color(0.55, 0.22, 0.14), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+    _fio_de_tinta(Vector2(r.position.x + 32.0, r.position.y + 62.0), Vector2(r.end.x - 32.0, r.position.y + 62.0), Color(Aq.NANQUIM, 0.5))
+    var y := r.position.y + 96.0
+    for k in blocos.size():
+        draw_multiline_string(_fonte, Vector2(r.position.x + 32.0, y), str(blocos[k]), HORIZONTAL_ALIGNMENT_LEFT, larg_texto, 19, -1, Aq.NANQUIM, quebra)
+        y += float(alturas[k])
+    if blocos.is_empty():
+        draw_string(_fonte, Vector2(r.position.x + 32.0, y), "Nada anotado ainda.", HORIZONTAL_ALIGNMENT_LEFT, larg_texto, 19, Color(Aq.NANQUIM, 0.6))
+
+## Linha de nanquim tremida, como feita à mão.
+func _fio_de_tinta(a: Vector2, b: Vector2, cor: Color, espessura: float = 2.0) -> void:
+    var n := maxi(4, int(a.distance_to(b) / 14.0))
+    var pts := PackedVector2Array()
+    for i in n + 1:
+        var t := float(i) / float(n)
+        pts.append(a.lerp(b, t) + Vector2(0.0, sin(t * 17.0 + a.x * 0.1) * 0.9))
+    draw_polyline(pts, cor, espessura, true)
 
 ## Minijogo de pesca: anel com faixas verdes, ponteiro girando e a barra do peixe subindo.
 func _anel_de_pesca() -> void:
@@ -459,10 +552,12 @@ func _anel_de_pesca() -> void:
     _pincelada(Rect2(c.x - 138.0, c.y - 176.0, 276.0, 50.0), 81)
     _pincelada(Rect2(c.x - 128.0, c.y + 122.0, 256.0, 78.0), 82)
     var especie: String = pesca.alvo.get("especie", "")
-    _texto(Vector2(c.x - 138.0, c.y - 142.0), especie.to_upper(), 24, DOURADO, HORIZONTAL_ALIGNMENT_CENTER, 276.0)
+    _texto(Vector2(c.x - 138.0, c.y - 140.0), especie, 36, DOURADO, HORIZONTAL_ALIGNMENT_CENTER, 276.0, true)
     # o anel
-    draw_circle(c, raio + grossura / 2.0 + 9.0, Color(TINTA, 0.90))
-    draw_circle(c, raio - grossura / 2.0 - 3.0, Color(0.06, 0.28, 0.36, 0.92))
+    var r_ext := raio + grossura / 2.0 + 10.0
+    _pincelada(Rect2(c - Vector2(r_ext, r_ext), Vector2(r_ext, r_ext) * 2.0), 83, Color(TINTA, 0.92), "pigmento", r_ext, {"irregular": 2.8, "seco": 0.0, "respingos": 0.4})
+    var r_int := raio - grossura / 2.0 - 2.0
+    _pincelada(Rect2(c - Vector2(r_int, r_int), Vector2(r_int, r_int) * 2.0), 84, Color(TINTA, 0.95), "mar", r_int, {"irregular": 1.4, "seco": 0.0, "respingos": 0.0, "tinta": Color(0, 0, 0, 0)})
     draw_arc(c, raio, 0.0, TAU, 96, Color(0.02, 0.06, 0.09, 0.95), grossura, true)
     draw_arc(c, raio + grossura / 2.0 + 2.0, 0.0, TAU, 96, Color(CREME, 0.85), 2.0, true)
     draw_arc(c, raio - grossura / 2.0 - 2.0, 0.0, TAU, 96, Color(CREME, 0.45), 1.5, true)
@@ -503,12 +598,12 @@ func _anel_de_pesca() -> void:
     draw_colored_polygon(PackedVector2Array([ponta, ponta + d * 12.0 + lat * 7.0, ponta + d * 12.0 - lat * 7.0]), cor_ponteiro)
     if _pop_tempo > 0.0:                                       # PERFEITO! / BOM! / ERROU sobem e somem
         var vida: float = _pop_tempo / 0.9
-        _texto(Vector2(c.x + raio + grossura / 2.0 + 22.0, c.y - 4.0 - (1.0 - vida) * 26.0), _pop_texto, 26, Color(_pop_cor, clampf(vida * 1.8, 0.0, 1.0)))
+        _texto(Vector2(c.x + raio + grossura / 2.0 + 22.0, c.y - 4.0 - (1.0 - vida) * 26.0), _pop_texto, 38, Color(_pop_cor, clampf(vida * 1.8, 0.0, 1.0)), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     if pesca.brilho > 0.0:                                     # clarão do acerto
         draw_arc(c, raio, 0.0, TAU, 96, Color(DOURADO if pesca.ultimo_perfeito else VERDE, pesca.brilho * 1.6), 3.0 + (0.35 - pesca.brilho) * 40.0, true)
     # embaixo: barra do peixe, cardume e a tecla
     _barra(Rect2(c.x - 106.0, c.y + 132.0, 212.0, 18.0), p, DOURADO if p > 0.8 else VERDE)
-    _texto(Vector2(c.x - 106.0, c.y + 174.0), "Cardume: %s" % pesca.estoque(), 16, CREME)
+    _texto(Vector2(c.x - 106.0, c.y + 176.0), "Cardume: %s" % pesca.estoque(), 19, CREME)
     # Indicador de tensão: vermelho próximo do limite da linha.
     var tensao_atual: float = tensao_anel
     var alerta_piscando: bool = tensao_atual > 0.72 and int(Time.get_ticks_msec() / 140.0) % 2 == 0
@@ -517,7 +612,7 @@ func _anel_de_pesca() -> void:
     var tecla := Rect2(c.x + 30.0, c.y + 157.0, 24.0, 24.0)
     _caixa_arredondada(tecla, CREME if pesca.trava <= 0.0 else Color(CREME, 0.4))
     draw_string(_fonte, Vector2(tecla.position.x, tecla.position.y + 18.0), "F", HORIZONTAL_ALIGNMENT_CENTER, 24.0, 16, Color(0.06, 0.10, 0.15))
-    _texto(Vector2(tecla.end.x + 8.0, c.y + 175.0), "Puxar", 16, CREME)
+    _texto(Vector2(tecla.end.x + 8.0, c.y + 177.0), "Puxar", 19, CREME)
 
 # ------------------------------------------------------------------ porão em grade
 
@@ -632,23 +727,19 @@ func _peixe_na_grade(especie: String, casas: Array, origem: Vector2, cor: Color,
 
 func _painel_porao() -> void:
     var r := _ret_painel_porao()
-    _pincelada(r, 71, Color(TINTA, 0.96))
-    if _textura_madeira != null:
-        draw_texture_rect(_textura_madeira, r.grow(-5.0), false, Color(0.85, 0.93, 0.94, 0.62))
-    draw_rect(r.grow(-5.0), Color(0.02, 0.06, 0.10, 0.18), false, 3.0)
-    _icone_caixa(Vector2(r.position.x + 44.0, r.position.y + 40.0), DOURADO)
-    _texto(Vector2(r.position.x + 76.0, r.position.y + 46.0), "Porão", 26, DOURADO)
-    _texto(Vector2(r.position.x + 160.0, r.position.y + 46.0), "%d de %d casas" % [porao.casas_ocupadas(), porao.colunas * porao.linhas], 16, Color(CREME, 0.8))
-    draw_line(Vector2(r.position.x + 28.0, r.position.y + 58.0), Vector2(r.end.x - 28.0, r.position.y + 58.0), Color(CREME, 0.4), 1.5)
+    _pincelada(r, 71, Color(TINTA, 0.97), "papel")
+    _icone_caixa(Vector2(r.position.x + 46.0, r.position.y + 42.0), Color(0.55, 0.22, 0.14))
+    _texto(Vector2(r.position.x + 80.0, r.position.y + 52.0), "Porão", 38, Color(0.55, 0.22, 0.14), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+    draw_string(_fonte, Vector2(r.position.x + 190.0, r.position.y + 50.0), "%d de %d casas" % [porao.casas_ocupadas(), porao.colunas * porao.linhas], HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Aq.NANQUIM_CLARO)
+    _fio_de_tinta(Vector2(r.position.x + 30.0, r.position.y + 64.0), Vector2(r.end.x - 30.0, r.position.y + 64.0), Color(Aq.NANQUIM, 0.5))
     var o := _origem_grade()
-    draw_rect(Rect2(o, Vector2(porao.colunas, porao.linhas) * CASA), Color(0.015, 0.045, 0.07, 0.95))
+    var grade := Rect2(o, Vector2(porao.colunas, porao.linhas) * CASA)
+    _pincelada(grade.grow(7.0), 72, Color(TINTA, 0.97), "mar", 8.0, {"irregular": 2.2, "seco": 0.0, "respingos": 0.0})
     for j in porao.linhas:
         for i in porao.colunas:
             var casa_rect := Rect2(o + Vector2(i, j) * CASA, Vector2(CASA, CASA))
-            if _textura_casa != null:
-                draw_texture_rect(_textura_casa, casa_rect, false, Color(1, 1, 1, 0.94))
-            else:
-                draw_rect(casa_rect.grow(-1), Color(0.10, 0.18, 0.22, 0.95), true)
+            draw_rect(casa_rect.grow(-1.0), Color(0.01, 0.05, 0.09, 0.28), true)
+            draw_rect(casa_rect.grow(-1.5), Color(Aq.CREME, 0.17), false, 1.2)
     var sob: Dictionary = porao.item_em(_casa_em(_mouse)) if _na_mao.is_empty() else _na_mao
     for item in porao.itens:
         if is_same(item, _na_mao):
@@ -666,21 +757,20 @@ func _painel_porao() -> void:
     var x: float = o.x + porao.colunas * CASA + 26.0
     var y := r.position.y + 96.0
     if not sob.is_empty():
-        _texto(Vector2(x, y), sob.especie, 22, porao.CORES.get(sob.especie, CREME))
-        _texto(Vector2(x, y + 26.0), "%s kg  •  %s" % [("%.1f" % sob.peso).replace(".", ","), String(sob.get("qualidade", "Regular"))], 16, CREME)
+        _texto(Vector2(x, y), sob.especie, 32, Color(porao.CORES.get(sob.especie, CREME)).darkened(0.45), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+        draw_string(_fonte, Vector2(x, y + 28.0), "%s kg  •  %s" % [("%.1f" % sob.peso).replace(".", ","), String(sob.get("qualidade", "Regular"))], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Aq.NANQUIM)
     else:
-        _texto(Vector2(x, y), "%d peixe(s)" % porao.itens.size(), 22, CREME)
-        _texto(Vector2(x, y + 26.0), "%s kg  •  R$ %d" % [("%.1f" % porao.peso_total()).replace(".", ","), porao.valor_total()], 16, CREME)
+        _texto(Vector2(x, y), "%d peixe(s)" % porao.itens.size(), 32, Aq.NANQUIM, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+        draw_string(_fonte, Vector2(x, y + 28.0), "%s kg  •  R$ %d" % [("%.1f" % porao.peso_total()).replace(".", ","), porao.valor_total()], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Aq.NANQUIM)
     var dicas := ["Clique num peixe para pegar.", "Clique numa casa para soltar.", "R ou botão direito: girar."] if not porao.itens.is_empty() \
             else ["Vazio. Pare perto de um", "cardume e pesque com F.", "Peixe grande ocupa mais casas."]
     for i in dicas.size():
-        draw_string(_fonte, Vector2(x, y + 66.0 + i * 22.0), dicas[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(CREME, 0.75))
+        draw_string(_fonte, Vector2(x, y + 68.0 + i * 24.0), dicas[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Aq.NANQUIM_CLARO)
     var b := _ret_arrumar()
     var sobre_botao := b.has_point(_para_painel(_mouse))
     var devolver := not _na_mao.is_empty()
-    _caixa_arredondada(b, Color(0.50, 0.16, 0.12, 0.95) if devolver else Color(0.10, 0.17, 0.25, 0.95))
-    _contorno_arredondado(b, DOURADO if sobre_botao else Color(CREME, 0.55), 2.0)
-    draw_string(_fonte, Vector2(b.position.x, b.position.y + 25.0), "Devolver ao mar" if devolver else "Arrumar o porão", HORIZONTAL_ALIGNMENT_CENTER, b.size.x, 16, CREME)
+    _pincelada(b, 73, Color(TINTA, 0.97), "terracota" if devolver else ("ouro" if sobre_botao else "turquesa"), 10.0, {"irregular": 2.5, "seco": 0.0, "respingos": 0.0})
+    draw_string(_fonte, Vector2(b.position.x, b.position.y + 26.0), "Devolver ao mar" if devolver else "Arrumar o porão", HORIZONTAL_ALIGNMENT_CENTER, b.size.x, 21, CREME if (devolver or not sobre_botao) else Aq.NANQUIM)
 
 # ------------------------------------------------------------------ ícones
 

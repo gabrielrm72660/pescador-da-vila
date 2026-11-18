@@ -1083,3 +1083,214 @@ static func pescador(jaqueta: Color, bermuda: Color, balde: bool = false) -> Arr
         _tubo(m, alca, 0.007, Color(0.55, 0.55, 0.58), 4)
         _elipsoide(m, Vector3(0.46, 0.25, 0.06), Vector3(0.11, 0.025, 0.11), Color(0.5, 0.62, 0.66), 10, 4)     # peixes e gelo no fundo
     return m.malha()
+
+
+## ---- v0.5.5: banco, varal de redes, mirante e tripulação dos barcos --------------------------------------------------
+## Mesma regra das outras peças: uma superfície, cor nos vértices, origem no chão (y = 0).
+
+## Junta malhas de uma superfície só (cor nos vértices): cada peça é [ArrayMesh, Transform3D].
+static func _fundir(partes: Array) -> ArrayMesh:
+    var v := PackedVector3Array()
+    var n := PackedVector3Array()
+    var c := PackedColorArray()
+    var ind := PackedInt32Array()
+    for p in partes:
+        var a: Array = (p[0] as ArrayMesh).surface_get_arrays(0)
+        var t: Transform3D = p[1]
+        var vs: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+        var ns: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+        var cs: PackedColorArray = a[Mesh.ARRAY_COLOR]
+        var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+        var base: int = v.size()
+        var nb: Basis = t.basis.inverse().transposed()
+        for i in vs.size():
+            v.append(t * vs[i])
+            n.append((nb * ns[i]).normalized())
+            c.append(cs[i])
+        for i in ix:
+            ind.append(base + i)
+    var arr: Array = []
+    arr.resize(Mesh.ARRAY_MAX)
+    arr[Mesh.ARRAY_VERTEX] = v
+    arr[Mesh.ARRAY_NORMAL] = n
+    arr[Mesh.ARRAY_COLOR] = c
+    arr[Mesh.ARRAY_INDEX] = ind
+    var mesh := ArrayMesh.new()
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+    return mesh
+
+
+static func _tom(cor: Color, f: float) -> Color:
+    return Color(clampf(cor.r * f, 0.0, 1.0), clampf(cor.g * f, 0.0, 1.0), clampf(cor.b * f, 0.0, 1.0), 1.0)
+
+
+## Banco de praça: assento de quatro ripas, encosto inclinado de três, laterais de ferro com braços. 2,3 m ao longo de X;
+## quem senta olha para +Z.
+static func banco(cor: Color = Color(0.50, 0.34, 0.20)) -> ArrayMesh:
+    var m := Malha.new()
+    var ferro := Color(0.14, 0.15, 0.14)
+    var comp: float = 2.3
+    for i in 4:                                                    # assento: ripas com tom e folga próprios
+        var tom: float = 1.0 - 0.10 * float((i * 3) % 4) / 3.0
+        m.caixa(Vector3(0, 0.45, -0.205 + 0.138 * float(i)), Vector3(comp, 0.05, 0.118), _tom(cor, tom), Basis.IDENTITY, _tom(cor.lightened(0.06), tom))
+    var inclina := Basis(Vector3.RIGHT, -0.21)                      # encosto caído para trás
+    for i in 3:
+        var y: float = 0.64 + 0.15 * float(i)
+        var tom: float = 1.0 - 0.09 * float((i * 5) % 3) / 2.0
+        m.caixa(Vector3(0, y, -0.285 - (y - 0.5) * 0.21), Vector3(comp, 0.12, 0.034), _tom(cor, tom), inclina)
+    for s in [-1.0, 1.0]:
+        var x: float = float(s) * (comp * 0.5 - 0.13)
+        m.caixa(Vector3(x, 0.50, -0.30 - 0.50 * 0.21 * 0.5), Vector3(0.055, 1.02, 0.05), ferro, inclina)     # perna de trás vai até o encosto
+        m.caixa(Vector3(x, 0.225, 0.20), Vector3(0.055, 0.45, 0.05), ferro)                                    # perna da frente
+        m.caixa(Vector3(x, 0.415, -0.02), Vector3(0.055, 0.045, 0.58), ferro)                                  # travessa do assento
+        m.caixa(Vector3(x, 0.70, 0.02), Vector3(0.075, 0.04, 0.52), ferro.lightened(0.04))                     # braço
+        m.caixa(Vector3(x, 0.575, 0.22), Vector3(0.045, 0.25, 0.045), ferro)                                   # apoio do braço
+        m.caixa(Vector3(x, 0.012, 0.20), Vector3(0.13, 0.024, 0.14), ferro.darkened(0.15))                     # sapata
+        m.caixa(Vector3(x, 0.012, -0.34), Vector3(0.13, 0.024, 0.14), ferro.darkened(0.15))
+    return m.malha()
+
+
+## Varal de redes: dois mourões em forquilha com escora, travessa e duas redes penduradas (verde e ocre), com bóias no
+## alto e chumbos na barra. Vão de 4,2 m ao longo de X, travessa a 2,6 m. Os mourões descem 70 cm para pegar terreno torto.
+static func varal_de_redes() -> ArrayMesh:
+    var m := Malha.new()
+    var mad := Color(0.42, 0.29, 0.18)
+    var vao: float = 2.1
+    var topo: float = 2.45
+    for s in [-1.0, 1.0]:
+        var x: float = float(s) * vao
+        m.tronco(Vector3(x, -0.7, 0), 0.13, 0.095, topo + 0.7, 8, mad.darkened(0.22), mad, true, Callable(), 2)
+        _seg(m, Vector3(x, topo - 0.12, 0), Vector3(x, topo + 0.26, -0.14), 0.05, 0.034, mad.lightened(0.06), 6)
+        _seg(m, Vector3(x, topo - 0.12, 0), Vector3(x, topo + 0.26, 0.14), 0.05, 0.034, mad.lightened(0.06), 6)
+        _seg(m, Vector3(x, 1.35, 0), Vector3(x + float(s) * 0.62, -0.05, 0), 0.048, 0.055, mad.darkened(0.12), 6)       # escora para fora
+    _seg(m, Vector3(-vao - 0.12, topo + 0.19, 0), Vector3(vao + 0.12, topo + 0.19, 0), 0.058, 0.058, mad.lightened(0.05), 8)
+    var redes: Array = [
+        {"de": -1.95, "ate": -0.10, "fundo": Color(0.20, 0.36, 0.30), "fio": Color(0.46, 0.58, 0.42)},
+        {"de": 0.10, "ate": 1.95, "fundo": Color(0.52, 0.42, 0.24), "fio": Color(0.78, 0.66, 0.40)},
+    ]
+    var y_topo: float = topo + 0.12
+    var barra := func(x: float, ph: float) -> float:
+        return 1.10 + 0.20 * absf(sin(x * 1.3 + ph)) + 0.12 * sin(x * 3.1 + ph * 2.0)
+    var r_idx: int = 0
+    for r in redes:
+        var de: float = r["de"]
+        var ate: float = r["ate"]
+        var ph: float = 0.9 * float(r_idx)
+        var nverts: int = 9
+        for i in nverts:                                           # fios verticais, com a barra irregular
+            var x: float = lerpf(de, ate, float(i) / float(nverts - 1))
+            var yb: float = barra.call(x, ph)
+            var pts: Array = []
+            for k in 5:
+                var t: float = float(k) / 4.0
+                pts.append(Vector3(x, lerpf(y_topo, yb, t), 0.05 * sin(t * 3.0 + x * 2.0) * t))
+            var cor_fio: Color = (r["fundo"] as Color).lerp(r["fio"], 0.5 + 0.5 * sin(float(i) * 1.7))
+            _tubo(m, pts, 0.012, cor_fio, 4)
+            if i % 2 == 0:
+                _elipsoide(m, Vector3(x, yb - 0.02, 0.05 * sin(3.0 + x * 2.0)), Vector3(0.028, 0.04, 0.028), Color(0.22, 0.22, 0.24), 6, 4)   # chumbo
+        for k in 6:                                                # fios de través, acompanhando a queda
+            var t2: float = float(k + 1) / 6.5
+            var pts2: Array = []
+            for i in 13:
+                var x2: float = lerpf(de, ate, float(i) / 12.0)
+                var yy: float = lerpf(y_topo, barra.call(x2, ph), t2) - 0.04 * sin(PI * float(i) / 12.0) * (1.0 - t2)
+                pts2.append(Vector3(x2, yy, 0.05 * sin(t2 * 3.0 + x2 * 2.0) * t2))
+            _tubo(m, pts2, 0.010, (r["fundo"] as Color).lerp(r["fio"], 0.35 + 0.1 * float(k % 2)), 4)
+        var cores: Array = [Color(0.92, 0.92, 0.88), Color(0.90, 0.40, 0.14)]
+        for i in 6:                                                # bóias na tralha de cima
+            var xb: float = lerpf(de + 0.12, ate - 0.12, float(i) / 5.0)
+            _elipsoide(m, Vector3(xb, y_topo + 0.02, 0.06), Vector3(0.062, 0.062, 0.062), cores[(i + r_idx) % 2], 6, 4)
+        r_idx += 1
+    return m.malha()
+
+
+## Mirante da serra: piso de tábuas, quatro mourões que sobem até uma cobertura de palha, guarda-corpo com balaústres
+## (aberto no lado +X, com dois degraus), luneta sobre tripé no lado -X e pilares de pedra. Origem no chão, ao centro;
+## os mourões descem 90 cm para pegar a encosta. O piso fica a 30 cm.
+static func mirante() -> ArrayMesh:
+    var m := Malha.new()
+    var mad := Color(0.46, 0.31, 0.19)
+    var pedra := Color(0.44, 0.42, 0.38)
+    var palha := Color(0.64, 0.52, 0.30)
+    var ferro := Color(0.15, 0.15, 0.15)
+    var lado: float = 2.45
+    var piso: float = 0.30
+    for i in 11:                                                   # tábuas do piso
+        var tom: float = 1.0 - 0.10 * float((i * 7) % 4) / 3.0
+        m.caixa(Vector3(0, piso - 0.06, -2.5 + 0.5 * float(i)), Vector3(5.5, 0.12, 0.47), _tom(mad.lightened(0.10), tom), Basis.IDENTITY, _tom(mad.lightened(0.18), tom))
+    for k in 3:                                                    # vigas sob o piso
+        m.caixa(Vector3(-1.9 + 1.9 * float(k), piso - 0.20, 0), Vector3(0.14, 0.16, 5.5), mad.darkened(0.3))
+    for sx in [-1.0, 1.0]:
+        for sz in [-1.0, 1.0]:
+            var x: float = float(sx) * lado
+            var z: float = float(sz) * lado
+            m.caixa(Vector3(x, -0.05, z), Vector3(0.50, 0.55, 0.50), pedra, Basis.IDENTITY, pedra.lightened(0.08))          # pilar de pedra
+            m.tronco(Vector3(x, -0.9, z), 0.115, 0.095, 3.65, 8, mad.darkened(0.15), mad, true, Callable(), 2)               # mourão até a cobertura
+    # guarda-corpo: duas travessas e balaústres, com a entrada aberta em +X
+    var trechos: Array = [
+        [Vector3(-lado, 0, -lado), Vector3(lado, 0, -lado)],
+        [Vector3(-lado, 0, lado), Vector3(lado, 0, lado)],
+        [Vector3(-lado, 0, -lado), Vector3(-lado, 0, lado)],
+        [Vector3(lado, 0, -lado), Vector3(lado, 0, -0.75)],
+        [Vector3(lado, 0, 0.75), Vector3(lado, 0, lado)],
+    ]
+    for t in trechos:
+        var a: Vector3 = t[0]
+        var b: Vector3 = t[1]
+        var comp: float = a.distance_to(b)
+        var centro: Vector3 = (a + b) * 0.5
+        var ao_longo: bool = absf(b.x - a.x) > absf(b.z - a.z)
+        var dim_trav := Vector3(comp, 0.09, 0.07) if ao_longo else Vector3(0.07, 0.09, comp)
+        m.caixa(Vector3(centro.x, piso + 1.02, centro.z), dim_trav, mad.lightened(0.10))
+        m.caixa(Vector3(centro.x, piso + 0.62, centro.z), Vector3(dim_trav.x, 0.06, dim_trav.z), mad)
+        var n_bal: int = maxi(1, int(round(comp / 0.55)))
+        for i in n_bal + 1:
+            var p: Vector3 = a.lerp(b, float(i) / float(n_bal))
+            if absf(p.x) > lado - 0.02 and absf(p.z) > lado - 0.02:
+                continue                                           # o mourão já está ali
+            m.caixa(Vector3(p.x, piso + 0.52, p.z), Vector3(0.05, 0.98, 0.05), mad.lightened(0.04))
+    for i in 2:                                                    # dois degraus na entrada
+        var topo: float = piso - 0.14 * float(i + 1)
+        m.caixa(Vector3(lado + 0.35 + 0.45 * float(i), (topo - 0.9) * 0.5, 0), Vector3(0.50, topo + 0.9, 1.4), _tom(mad.lightened(0.06), 1.0 - 0.08 * float(i)), Basis.IDENTITY, mad.lightened(0.16))
+    # cobertura: forro de madeira e palha em quatro fiadas sobrepostas, com franja de fios na beira e ponta de pirâmide
+    m.caixa(Vector3(0, 2.76, 0), Vector3(6.75, 0.06, 6.75), mad.darkened(0.25))
+    for k in 4:
+        var r0: float = 4.65 - 0.95 * float(k)
+        var tom_f: float = 0.80 + 0.09 * float(k)
+        var cf := func(t: float, ang: float) -> Color:
+            var fio: float = 0.5 + 0.5 * sin(ang * 23.0 + float(k) * 1.3)
+            return _tom(palha.lerp(palha.lightened(0.18), t), tom_f * (0.93 + 0.10 * fio))
+        m.tronco(Vector3(0, 2.78 + 0.32 * float(k), 0), r0, r0 - 0.55, 0.40, 4, palha, palha.lightened(0.15), false, cf, 1, PI * 0.25)
+    m.tronco(Vector3(0, 4.14, 0), 1.25, 0.12, 0.46, 4, _tom(palha, 0.98), palha.lightened(0.22), true, Callable(), 1, PI * 0.25)
+    m.tronco(Vector3(0, 4.58, 0), 0.07, 0.07, 0.26, 6, ferro, ferro)                      # pináculo
+    var meio: float = 4.65 * 0.7071
+    for lado_f in 4:                                                                       # franja de fios pendurados
+        var giro_f := Basis(Vector3.UP, PI * 0.5 * float(lado_f))
+        for i in 30:
+            var pos_x: float = lerpf(-meio, meio, float(i) / 29.0)
+            var comp_f: float = 0.20 + 0.10 * absf(sin(float(i) * 2.3 + float(lado_f)))
+            var a: Vector3 = giro_f * Vector3(pos_x, 2.80, meio)
+            var b: Vector3 = giro_f * Vector3(pos_x + 0.03 * sin(float(i)), 2.80 - comp_f, meio + 0.07)
+            _seg(m, a, b, 0.022, 0.006, _tom(palha, 0.78 + 0.12 * sin(float(i) * 1.9)), 3)
+    # luneta no lado -X: tripé de madeira, corpo azul-escuro e anel de latão
+    var lx: float = -1.75
+    for k in 3:
+        var ang: float = TAU * float(k) / 3.0 + 0.4
+        _seg(m, Vector3(lx, piso + 1.12, 0), Vector3(lx + cos(ang) * 0.42, piso, sin(ang) * 0.42), 0.032, 0.026, mad.lightened(0.12), 6)
+    var ponta := Vector3(lx - 0.95, piso + 1.46, 0)
+    _seg(m, Vector3(lx + 0.35, piso + 1.20, 0), ponta, 0.052, 0.062, Color(0.14, 0.20, 0.30), 10)
+    _seg(m, ponta, ponta + Vector3(-0.10, 0.03, 0), 0.07, 0.07, Color(0.72, 0.55, 0.20), 10)
+    _elipsoide(m, Vector3(lx, piso + 1.15, 0), Vector3(0.07, 0.07, 0.07), Color(0.72, 0.55, 0.20), 8, 5)
+    return m.malha()
+
+
+## Tripulação de um barco de pesca (para o convés do PE-3476 e dos NPC): um pescador de vara na proa, de lado, e um na popa
+## com balde, junto a um monte de rede. "lado" (+1 ou -1) diz de que borda o da proa pesca. Convés em y = 0,60.
+static func tripulacao(jaqueta_a: Color, bermuda_a: Color, jaqueta_b: Color, bermuda_b: Color, lado: float = 1.0) -> ArrayMesh:
+    var conves: float = 0.60
+    var partes: Array = []
+    var gira_a := Basis(Vector3.UP, -PI * 0.5 * lado)             # de frente para a borda
+    partes.append([pescador(jaqueta_a, bermuda_a, false), Transform3D(gira_a, Vector3(0.50 * lado, conves, -2.45))])
+    partes.append([pescador(jaqueta_b, bermuda_b, true), Transform3D(Basis(Vector3.UP, PI), Vector3(-0.38 * lado, conves, 3.72))])
+    partes.append([rede_pilha(), Transform3D(Basis(Vector3.UP, 0.6), Vector3(0.52 * lado, conves, 3.80))])
+    return _fundir(partes)

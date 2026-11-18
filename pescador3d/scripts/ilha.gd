@@ -824,6 +824,11 @@ func _criar_vila() -> void:
     _cilindro(vila, 0.8, 0.6, 1.1, Vector3(praca.x, hp + 0.25, praca.y), _material(Color(0.72, 0.71, 0.66)))
     for s in [-1.0, 1.0]:
         var pos_banco: Vector2 = praca + lado * float(s) * 7.2
+        if OS.get_environment("PESCADOR_CASA_SIMPLES") != "1":
+            var banco_praca: MeshInstance3D = _instancia(vila, _malha_arq("banco"), _materiais_arq(Color.WHITE)["acab"], "BancoDaPraca")
+            banco_praca.position = Vector3(pos_banco.x, _altura_local(pos_banco.x, pos_banco.y) - 0.02, pos_banco.y)
+            banco_praca.rotation.y = virada + (PI if s > 0.0 else 0.0)        # quem senta olha para a fonte
+            continue
         _caixa(vila, Vector3(2.8, 0.25, 0.7), Vector3(pos_banco.x, _altura_local(pos_banco.x, pos_banco.y) + 0.55, pos_banco.y), _material(Color(0.36, 0.27, 0.17)), virada)
 
     # Grupos compactos de casinhas, com rua e respiro entre quadras; casas não invadem o mar.
@@ -1642,6 +1647,12 @@ func _malha_arq(chave: String) -> Mesh:
                 _mats_arq[k] = Arq.defensa_pneus()
             "cabeco":
                 _mats_arq[k] = Arq.cabeco()
+            "banco":
+                _mats_arq[k] = Arq.banco()
+            "varal":
+                _mats_arq[k] = Arq.varal_de_redes()
+            "mirante":
+                _mats_arq[k] = Arq.mirante()
             _:
                 _mats_arq[k] = Arq.barril(Color(0.50, 0.36, 0.22))
     return _mats_arq[k]
@@ -1671,6 +1682,11 @@ func _construir_props() -> void:
                     var q: Vector2 = p + u * float(s) * 2.1
                     chao.append(_altura_local(q.x, q.y))
                 var nivel: float = maxf(float(chao[0]), float(chao[1]))
+                if props_novos:
+                    var varal: MeshInstance3D = _instancia(no, _malha_arq("varal"), _materiais_arq(Color.WHITE)["acab"], "VaralDeRedes")
+                    varal.position = Vector3(p.x, nivel - 0.15, p.y)
+                    varal.rotation.y = giro
+                    continue
                 for i in 2:
                     var q2: Vector2 = p + u * (-2.1 if i == 0 else 2.1)
                     var base: float = float(chao[i]) - 0.1
@@ -1714,6 +1730,11 @@ func _construir_props() -> void:
                     _cilindro(no, 0.375, 0.375, 0.07, Vector3(p.x, h + 0.2, p.y), aro)
                     _cilindro(no, 0.355, 0.355, 0.07, Vector3(p.x, h + 0.66, p.y), aro)
             "banco":
+                if props_novos:
+                    var bc: MeshInstance3D = _instancia(no, _malha_arq("banco"), _materiais_arq(Color.WHITE)["acab"], "Banco")
+                    bc.position = Vector3(p.x, h - 0.02, p.y)
+                    bc.rotation.y = giro
+                    continue
                 _caixa(no, Vector3(2.4, 0.18, 0.62), Vector3(p.x, h + 0.55, p.y), madeira, giro)
                 for s in [-1.0, 1.0]:
                     var q4: Vector2 = p + u * float(s) * 0.95
@@ -1733,14 +1754,24 @@ func _criar_mirante() -> void:
     add_child(ponto)
     var madeira: Material = _material(Color(0.48, 0.32, 0.19), "res://assets/texturas/ilha/madeira.png", 0.4)
     var claro: Material = _material(Color(0.77, 0.67, 0.45))
-    _caixa(ponto, Vector3(5.5, 0.22, 5.5), Vector3(local.x, h + 0.14, local.y), madeira)
-    for dx in [-1.0, 1.0]:
-        for dz in [-1.0, 1.0]:
-            var base: Vector2 = local + Vector2(dx * 2.45, dz * 2.45)
-            _cilindro(ponto, 0.10, 0.10, 1.25, Vector3(base.x, h + 0.16, base.y), madeira)
-    for s in [-1.0, 1.0]:
-        _caixa(ponto, Vector3(5.0, 0.11, 0.10), Vector3(local.x, h + 1.2, local.y + float(s) * 2.45), claro)
-        _caixa(ponto, Vector3(0.10, 0.11, 5.0), Vector3(local.x + float(s) * 2.45, h + 1.2, local.y), claro)
+    var fim_da_trilha: Vector2 = Vector2(cais_inicio.x - centro.x, cais_inicio.z - centro.z) - dir * 66.0 + lado * 3.0
+    if _usa_layout():
+        fim_da_trilha = Vector2(LayoutPrincipal.TRILHA_INICIO[0], LayoutPrincipal.TRILHA_INICIO[1])
+    if OS.get_environment("PESCADOR_CASA_SIMPLES") != "1":
+        # Mirante novo: cobertura de palha, guarda-corpo, degraus e luneta. A entrada (+X da malha) fica virada para a trilha.
+        var para_a_trilha: Vector2 = fim_da_trilha - local
+        var mir: MeshInstance3D = _instancia(ponto, _malha_arq("mirante"), _materiais_arq(Color.WHITE)["acab"], "Mirante")
+        mir.position = Vector3(local.x, h, local.y)
+        mir.rotation.y = atan2(-para_a_trilha.y, para_a_trilha.x)
+    else:
+        _caixa(ponto, Vector3(5.5, 0.22, 5.5), Vector3(local.x, h + 0.14, local.y), madeira)
+        for dx in [-1.0, 1.0]:
+            for dz in [-1.0, 1.0]:
+                var base: Vector2 = local + Vector2(dx * 2.45, dz * 2.45)
+                _cilindro(ponto, 0.10, 0.10, 1.25, Vector3(base.x, h + 0.16, base.y), madeira)
+        for s in [-1.0, 1.0]:
+            _caixa(ponto, Vector3(5.0, 0.11, 0.10), Vector3(local.x, h + 1.2, local.y + float(s) * 2.45), claro)
+            _caixa(ponto, Vector3(0.10, 0.11, 5.0), Vector3(local.x + float(s) * 2.45, h + 1.2, local.y), claro)
     _fixar(local.x, local.y, 4.6)
     _mirante_pronto = true
     var origem: Vector2 = Vector2(cais_inicio.x - centro.x, cais_inicio.z - centro.z)

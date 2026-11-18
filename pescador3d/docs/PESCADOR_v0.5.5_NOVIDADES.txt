@@ -1,0 +1,50 @@
+PESCADOR v0.5.5 — BARCOS COM FÍSICA, INTERFACE EM AQUARELA E MALHAS NOVAS
+================================================
+
+1) FÍSICA DOS BARCOS NPC (scripts/fisica_barcos.gd, novo)
+- Cada pesqueiro é um casco rígido em 2D: velocidade para a frente (u), deriva lateral (v), taxa de giro, inércia, leme com limite de giro e atraso.
+  O casco é uma corrente de três círculos (proa, meio e popa, raio 1,35 m) para as batidas terem forma de barco e não de bola.
+- Roda em passo fixo (_physics_process, 60 passos/s) e o desenho interpola entre dois passos: sem tremor mesmo em monitor de 100 Hz.
+  O barco ainda acompanha a onda (mola amortecida em altura, caturro e balanço), como o seu.
+- Rota: um "cenoura" anda adiante na rota e o leme (controle PD) vai atrás dela.
+- Desvio: previsão do ponto de maior aproximação (CPA) com horizonte de 9 s, alerta a partir de 75 m e folga de 14 m (+3 m se for o jogador).
+  Regras: quem vem por boreste tem a preferência; obstáculo parado é contornado; quem é alcançado por trás não precisa ceder.
+  Se fecha demais (< 8,5 m) o barco tira o motor e, se preciso, dá ré. Memória de manobra evita o "vai e volta" de frente com frente.
+- Terra: sondas à frente a cada 0,12 s e uma trava dura que impede entrar em água bloqueada (ilha.bloqueado). Se travar, há recuperação de encalhe.
+- Colisão: impulso com restituição 0,28, inércia de giro 6, massa 1,0 (NPC) e 1,5 (seu barco). Barco NPC x NPC e NPC x jogador.
+  No seu barco: muda a velocidade e a deriva, gira, balança de lado e o casco arfa (scripts/barco.gd: receber_batida, afastar),
+  toca o estalo do casco e mostra "Barco batendo no seu! Cuidado." (scripts/jogo.gd). A batida nunca empurra o seu barco para a terra.
+- A física nova substitui o círculo simples que os NPC faziam antes (não há chave para voltar a ele).
+
+2) INTERFACE EM AQUARELA
+- shaders/aquarela.gdshader: uma "lavagem" de pigmento sobre papel. Contorno irregular, pincel seco nas pontas, pigmento que junta na borda,
+  duas cores que se misturam, flores de aquarela, granulação do papel, sal, respingos soltos e um fio de nanquim quebrado.
+- shaders/veu_aquarela.gdshader: véu azul-marinho atrás dos menus, ralo no meio (o mar aparece) e carregado nas bordas.
+- scripts/aquarela.gd: paleta de pigmentos, esquemas ("pigmento", "papel", "turquesa", "ouro", "ocre", "terracota", "mar") e fontes.
+- scripts/botao_aquarela.gd e deslizante_aquarela.gd: botão e controle de volume pintados à mão.
+- HUD (scripts/hud.gd): placa do barco, combustível, dinheiro, hora, bússola em fita, missão, radar, aviso, velocímetro e botões usam lavagens
+  numa reserva (pool) de 18 ColorRect; só se atualiza o shader quando a forma muda (cache por assinatura), então o custo por quadro é mínimo.
+- Menus (scripts/interface.gd): menu inicial, pausa e cais em folha de papel; os cartões se encolhem sozinhos se não couberem.
+- Diário de bordo: as linhas longas quebram e a folha cresce com o texto (só ficam as mais recentes se não couber).
+- Fontes: Caveat Brush (títulos e números grandes) e Patrick Hand (texto), ambas licença OFL, em assets/fontes (com os textos de licença).
+
+3) MALHAS NOVAS (scripts/arquitetura_malhas.gd, scripts/ilha.gd, scripts/vida_portuaria.gd)
+- Banco: assento de quatro ripas, encosto inclinado de três, laterais de ferro com braços e sapatas (252 triângulos). Os bancos da vila usam.
+- Varal de redes: dois mourões em forquilha com escora, travessa e duas redes (verde e ocre) penduradas, com bóias e chumbos (~3 mil triângulos).
+- Mirante da serra: piso de tábuas, pilares de pedra, quatro mourões, guarda-corpo com balaústres, dois degraus virados para a trilha,
+  cobertura de palha em quatro fiadas com franja, e luneta sobre tripé (~1,8 mil triângulos).
+- Barcos NPC: dois pescadores com chapéu de palha (um de vara na proa, de lado; outro de balde na popa) e um monte de rede. Uma malha só por barco.
+- Com PESCADOR_CASA_SIMPLES=1 volta o desenho antigo.
+
+COMO TESTEI (e o que ficou de fora)
+- Física: sonda sem tela (headless) com 6 barcos NPC e 3 ilhas. Passo da física: 126 µs com 6 barcos (7,6 ms por segundo de jogo, no meu ambiente).
+  Resultados: jogador parado na rota SEM desvio: 8 batidas; COM desvio: 0, menor distância 11,4 m. Jogador a 5,7 m/s de frente: sem desvio 1 batida,
+  com desvio 0 (11,5 m). NPC x NPC de frente: sem desvio 8 batidas, com desvio 0 (9,8 m). Nenhum quadro em terra em nenhum teste.
+- Interface: prints em 1280x720 e 1920x1080 no meu ambiente (renderizador de compatibilidade). Menu, HUD de dia e de noite, pesca, cais, porão, diário e pausa.
+- Malhas: galeria isolada e dentro do jogo (bancos, varal, mirante, barcos NPC de três ângulos).
+- NÃO foi testado no seu PC (RX 6600, Forward+): custo de GPU dos efeitos de aquarela do HUD (devem ser baratos, mas não medi), e o "jeito" do desvio
+  em jogo real (tuning de distâncias e de quando o NPC cede). Se um NPC ceder cedo demais ou tarde demais, mande o que viu que eu ajusto
+  as constantes ATENCAO, TEMPO_ATENCAO e SEGURA no topo de scripts/fisica_barcos.gd.
+- Limitação conhecida: numa rota de teste artificial que corta o cais e a praia ao mesmo tempo, o barco fica quase parado (a trava dura o impede de
+  entrar na terra, então ele fica esperando). Nas rotas reais do jogo (círculos em água livre) isso não acontece.
+- Os previews 3D por trás da interface foram feitos sem os efeitos do Forward+ (SDFGI, SSR etc.).

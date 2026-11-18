@@ -1,3 +1,17 @@
+PESCADOR — Versão 0.5.5 (Godot 4.7)
+================================================
+NOVO NA 0.5.5 — BARCOS COM FÍSICA, INTERFACE EM AQUARELA E MALHAS NOVAS (detalhes em docs/PESCADOR_v0.5.5_NOVIDADES.txt):
+- BARCOS NPC COM FÍSICA DE VERDADE: cada pesqueiro é um casco rígido (avanço, deriva lateral, giro, inércia e leme com atraso), segue a rota com leme
+  e DESVIA do seu barco, dos outros NPC e da terra. Respeita a regra do mar (cede passagem a quem vem por boreste) e freia/dá ré quando fecha.
+- Se um barco bater no seu (ou você nele), há colisão por impulso: os dois se empurram e giram, o seu barco recebe a batida (muda a velocidade e a deriva, gira,
+  balança de lado, toca o estalo do casco e aparece o aviso). Os NPC nunca entram em água bloqueada nem encalham.
+- INTERFACE EM AQUARELA: placas e fitas de pigmento com borda irregular, pincel seco nas pontas, granulação e respingos; menus e painéis em folha de papel;
+  botões e controles de volume pintados à mão; fontes manuscritas (Caveat Brush e Patrick Hand, licença OFL). Tudo em código: as únicas imagens novas são as fontes.
+- DIÁRIO DE BORDO quebra linhas longas e a folha cresce com o texto. Menu e cais se encolhem sozinhos se não couberem na tela.
+- MALHAS NOVAS: bancos de ripas com braços de ferro, varais de redes com rede caindo, bóias e chumbos, MIRANTE com cobertura de palha em fiadas,
+  guarda-corpo, degraus e luneta; barcos NPC com dois pescadores (vara na proa, balde e rede na popa).
+- Para comparar com o visual antigo: PESCADOR_CASA_SIMPLES=1.
+
 PESCADOR — Versão 0.5.4 (Godot 4.7)
 ================================================
 NOVO NA 0.5.4 — PAINEL CINEMA (detalhes em docs/PESCADOR_v0.5.4_NOVIDADES.txt):

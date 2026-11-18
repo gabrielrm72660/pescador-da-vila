@@ -15,11 +15,13 @@ extends Node3D
 @export var velocidade_reserva: float = 1.0    # m/s (~2 nós) sem combustível: só o resto de embalo e a corrente
 
 signal encalhou                                # bateu na costa ou no cais
+signal bateu_em_barco(intensidade: float)      # outro barco bateu no seu (0..1)
 signal combustivel_baixo                       # passou para menos de 20%
 signal combustivel_acabou
 
 var combustivel: float = 60.0
 var _avisou_baixo: bool = false
+var _recarga_batida: float = 0.0
 
 var ativo: bool = false
 var velocidade: float = 0.0
@@ -99,6 +101,7 @@ func _refinar_materiais(no: Node) -> void:
 
 func _physics_process(delta: float) -> void:
     tempo_animacao += delta
+    _recarga_batida = maxf(0.0, _recarga_batida - delta)
     if ativo:
         var acelerador: float = Input.get_action_strength("ui_up")
         var re: float = Input.get_action_strength("ui_down")
@@ -303,6 +306,35 @@ func _seguir_ondas(delta: float) -> void:
     balanceio.rotation.z = clampf(balanceio.rotation.z, deg_to_rad(-19.0), deg_to_rad(19.0))
     _ultimo_nivel_onda = altura_alvo
 
+
+## Velocidade no mundo (m/s): proa + deriva lateral. É o que os barcos NPC usam para prever a aproximação.
+func velocidade_mundo() -> Vector3:
+    return -global_transform.basis.z * velocidade + global_transform.basis.x * _deriva_lateral
+
+## Outro barco bateu: a variação de velocidade dv (m/s, no plano) aplicada no ponto de contato (mundo) muda sua
+## marcha, sua deriva e o giro (pelo braço do impulso), e o casco adernará com o tranco.
+func receber_batida(dv: Vector3, ponto: Vector3, intensidade: float) -> void:
+    var frente: Vector3 = -global_transform.basis.z
+    var direita: Vector3 = global_transform.basis.x
+    velocidade += dv.dot(frente)
+    _deriva_lateral = clampf(_deriva_lateral + dv.dot(direita), -2.2, 2.2)
+    var braco: Vector3 = ponto - global_position
+    var torque: float = braco.z * dv.x - braco.x * dv.z          # componente Y de braço x impulso
+    _giro_atual = clampf(_giro_atual + torque / 6.0, -0.9, 0.9)
+    _velocidade_adernamento += dv.dot(direita) * 0.30
+    _velocidade_arfagem += dv.dot(frente) * 0.08
+    if intensidade > 0.12 and _recarga_batida <= 0.0:
+        _recarga_batida = 0.6
+        bateu_em_barco.emit(intensidade)
+
+## Correção de posição da batida (separação dos cascos); não deixa a batida empurrar o barco para a terra.
+func afastar(corrigir: Vector3) -> void:
+    corrigir.y = 0.0
+    if obstaculo != null:
+        for offset in [Vector3.ZERO, -global_transform.basis.z * 3.6, global_transform.basis.z * 2.8]:
+            if obstaculo.bloqueado(global_position + corrigir + offset):
+                return
+    global_position += corrigir
 
 func nos() -> float:
     return abs(velocidade) * 1.943844

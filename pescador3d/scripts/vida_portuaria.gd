@@ -21,22 +21,39 @@ const ESQUEMAS := [
 const VELOCIDADE := [2.7, 3.3]        # m/s de cada barco da ilha
 const DISTANCIA_PERTO := 260.0        # m: até aqui o barco acompanha cada quadro; além disso, só de vez em quando
 const DISTANCIA_VISTA := 480.0        # m: além disso nem é desenhado (poupa chamadas de desenho)
-const MEIO_COMPRIMENTO := 3.2
-const MEIA_BOCA := 1.2
+const Fisica = preload("res://scripts/fisica_barcos.gd")
+
+## Uma batida entre um barco NPC e o do jogador (intensidade 0..1, ponto no mundo).
+signal bateu_no_jogador(intensidade: float, ponto: Vector3)
 
 var simulando: bool = false
+var fisica = null                       # Fisica: dinâmica dos cascos (passo fixo)
 var _ilhas: Array = []
-var _barcos: Array = []
+var _barcos: Array = []                 # Fisica.Casco de cada barco NPC (o nó fica em casco.no)
 var _pessoas: Array = []
 var _tempo: float = 0.0
 var _oceano: Node = null
 var _cache_pintura: Dictionary = {}     # "esquema|papel" -> ShaderMaterial
+var _cache_tripulacao: Dictionary = {}  # "esquema|lado" -> malha da tripulação
+var _mat_tripulacao: StandardMaterial3D = null
 var _cache_refinado: Dictionary = {}    # id do material original -> material com o acabamento do barco do jogador
 
 func configurar(ilhas: Array) -> void:
     _ilhas = ilhas.duplicate()
     _oceano = get_node_or_null("../Oceano")
+    fisica = Fisica.new()
+    fisica.ilhas = _ilhas
+    fisica.oceano = _oceano
+    fisica.batida.connect(_ao_bater)
     _criar()
+
+## Diz à física quem é o barco do jogador: os NPC passam a desviar dele e a bater de verdade nele.
+func definir_jogador(barco: Node3D) -> void:
+    fisica.jogador = barco
+
+func _ao_bater(intensidade: float, ponto: Vector3, com_jogador: bool) -> void:
+    if com_jogador:
+        bateu_no_jogador.emit(intensidade, ponto)
 
 func _cor(cor: Color) -> StandardMaterial3D:
     var m := StandardMaterial3D.new()
@@ -51,20 +68,22 @@ func _criar() -> void:
         no.queue_free()
     _barcos.clear()
     _pessoas.clear()
+    if fisica != null:
+        fisica.cascos.clear()
     var contador: int = 0
     for ilha in _ilhas:
         for k in 2:
             var rota: Dictionary = _rota_livre(ilha, k)
             if rota.is_empty():
                 continue
-            var barco: Node3D = _novo_barco(contador % ESQUEMAS.size())
+            var sentido: float = 1.0 if (contador % 2) == 0 else -1.0
+            var barco: Node3D = _novo_barco(contador % ESQUEMAS.size(), sentido)
             barco.name = "PesqueiroNPC"
             add_child(barco)
-            var sentido: float = 1.0 if (contador % 2) == 0 else -1.0
             var vel: float = float(VELOCIDADE[k % VELOCIDADE.size()])
-            _barcos.append({"no": barco, "centro": rota.centro, "raio": rota.raio, "ang": float(contador) * 2.1,
-                    "vel": sentido * vel / float(rota.raio), "y": 0.0, "pitch": 0.0, "roll": 0.0, "folga": 0.0})
-            _mover(_barcos[_barcos.size() - 1], 0.0)
+            var casco = fisica.novo_casco(barco, rota.centro, float(rota.raio), sentido, vel, float(contador) * 2.1)
+            _barcos.append(casco)
+            fisica.animar(casco, 0.0, 1.0, false)
             contador += 1
         _criar_pescadores(ilha)
 
@@ -93,10 +112,12 @@ func _circuito_livre(centro: Vector3, raio: float) -> bool:
                 return false
     return true
 
-func _novo_barco(indice_esquema: int) -> Node3D:
+func _novo_barco(indice_esquema: int, lado: float = 1.0) -> Node3D:
     var raiz := Node3D.new()
     var modelo: Node3D = MODELO_BARCO.instantiate()
     raiz.add_child(modelo)
+    if OS.get_environment("PESCADOR_CASA_SIMPLES") != "1":
+        raiz.add_child(_tripulacao(indice_esquema, lado))
     for no in modelo.find_children("*", "MeshInstance3D", true, false):
         var m := no as MeshInstance3D
         if m == null or m.mesh == null:
@@ -124,6 +145,31 @@ func _novo_barco(indice_esquema: int) -> Node3D:
             else:
                 m.set_surface_override_material(i, _refinado(original))
     return raiz
+
+## Dois pescadores (um de vara na proa, outro de balde na popa, junto a um monte de rede). A jaqueta muda de barco para barco.
+func _tripulacao(indice_esquema: int, lado: float) -> MeshInstance3D:
+    var chave := "%d|%d" % [indice_esquema, int(lado)]
+    if not _cache_tripulacao.has(chave):
+        var roupas: Array = [
+            [Color(0.90, 0.72, 0.16), Color(0.26, 0.28, 0.36)],
+            [Color(0.74, 0.28, 0.20), Color(0.32, 0.30, 0.26)],
+            [Color(0.22, 0.46, 0.58), Color(0.30, 0.27, 0.22)],
+            [Color(0.30, 0.52, 0.34), Color(0.28, 0.26, 0.22)],
+        ]
+        var a: Array = roupas[indice_esquema % roupas.size()]
+        var b: Array = roupas[(indice_esquema + 2) % roupas.size()]
+        _cache_tripulacao[chave] = Arq.tripulacao(a[0], a[1], b[0], b[1], lado)
+    if _mat_tripulacao == null:
+        _mat_tripulacao = StandardMaterial3D.new()
+        _mat_tripulacao.vertex_color_use_as_albedo = true
+        _mat_tripulacao.roughness = 0.9
+    var no := MeshInstance3D.new()
+    no.name = "Tripulacao"
+    no.mesh = _cache_tripulacao[chave]
+    no.material_override = _mat_tripulacao
+    no.visibility_range_end = DISTANCIA_VISTA
+    no.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    return no
 
 func _pintura(indice_esquema: int, nome_material: String, original: BaseMaterial3D) -> ShaderMaterial:
     var papel: String = PAPEL_TINTA[nome_material]
@@ -155,39 +201,6 @@ func _refinado(original: BaseMaterial3D) -> BaseMaterial3D:
     mat.rim_tint = 0.55
     _cache_refinado[id] = mat
     return mat
-
-func _altura_agua(p: Vector3) -> float:
-    if _oceano != null and _oceano.has_method("altura_em"):
-        return _oceano.altura_em(p)
-    return 0.0
-
-## Põe o barco na volta da rota e o acomoda nas ondas (altura, arfagem e adernamento, como o barco do jogador).
-func _mover(b: Dictionary, dt: float) -> void:
-    b["ang"] = float(b["ang"]) + float(b["vel"]) * dt
-    var ang: float = float(b["ang"])
-    var raio: float = float(b["raio"])
-    var no: Node3D = b["no"]
-    var centro: Vector3 = b["centro"]
-    var pos := centro + Vector3(cos(ang), 0.0, sin(ang)) * raio
-    var sentido: float = signf(float(b["vel"]))
-    var rumo := Vector3(-sin(ang), 0.0, cos(ang)) * sentido
-    var giro: float = atan2(-rumo.x, -rumo.z)               # a proa do modelo aponta para -Z
-    var frente := rumo
-    var lado := Vector3(-frente.z, 0.0, frente.x)            # boreste: a direita de quem olha para a proa
-    var h0: float = _altura_agua(pos)
-    var proa: float = _altura_agua(pos + frente * MEIO_COMPRIMENTO)
-    var popa: float = _altura_agua(pos - frente * MEIO_COMPRIMENTO)
-    var dir_h: float = _altura_agua(pos + lado * MEIA_BOCA)
-    var esq_h: float = _altura_agua(pos - lado * MEIA_BOCA)
-    var alvo_y: float = (h0 * 3.0 + proa + popa + dir_h + esq_h) / 7.0
-    var alvo_pitch: float = atan2(proa - popa, MEIO_COMPRIMENTO * 2.0)
-    var alvo_roll: float = atan2(dir_h - esq_h, MEIA_BOCA * 2.0)
-    var suave: float = 1.0 if dt <= 0.0 else 1.0 - exp(-5.0 * minf(dt, 0.25))
-    b["y"] = lerpf(float(b["y"]), alvo_y, suave) if dt > 0.0 else alvo_y
-    b["pitch"] = lerpf(float(b["pitch"]), alvo_pitch, suave) if dt > 0.0 else alvo_pitch
-    b["roll"] = lerpf(float(b["roll"]), alvo_roll, suave) if dt > 0.0 else alvo_roll
-    no.position = Vector3(pos.x, float(b["y"]), pos.z)
-    no.rotation = Vector3(float(b["pitch"]), giro, float(b["roll"]))
 
 # ------------------------------------------------------------------ pescadores no cais
 
@@ -286,6 +299,11 @@ func _criar_pescadores(ilha: Node3D) -> void:
 
 var _acumulado_longe: float = 0.0
 
+## Dinâmica dos barcos NPC em passo fixo (a mesma cadência do barco do jogador, que também anda no _physics_process).
+func _physics_process(delta: float) -> void:
+    if simulando and fisica != null:
+        fisica.passo(delta)
+
 func _process(delta: float) -> void:
     if not simulando:
         return
@@ -295,13 +313,13 @@ func _process(delta: float) -> void:
     var olho: Vector3 = camera.global_position if camera != null else Vector3.ZERO
     var atualiza_longe: bool = _acumulado_longe >= 0.3
     var dt_longe: float = _acumulado_longe
-    for b in _barcos:
-        var no: Node3D = b["no"]
-        var perto: bool = no.global_position.distance_to(olho) < DISTANCIA_PERTO
+    var alfa: float = Engine.get_physics_interpolation_fraction()      # entre dois passos fixos: imagem lisa a 100 Hz
+    for c in _barcos:
+        var perto: bool = c.no.global_position.distance_to(olho) < DISTANCIA_PERTO
         if perto:
-            _mover(b, delta)
+            fisica.animar(c, delta, alfa, true)
         elif atualiza_longe:
-            _mover(b, dt_longe)
+            fisica.animar(c, dt_longe, alfa, false)
     if atualiza_longe:
         _acumulado_longe = 0.0
     for item in _pessoas:

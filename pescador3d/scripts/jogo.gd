@@ -169,6 +169,10 @@ func _ready() -> void:
         if i.editavel:
             construtor.configurar(self, i)
     barco.encalhou.connect(func(): interface.aviso("Cuidado com a costa! Dê ré (S) para sair."))
+    vida_portuaria.definir_jogador(barco)
+    barco.bateu_em_barco.connect(func(forca: float):
+        som.tocar("estalo", lerpf(-16.0, -7.0, forca), randf_range(0.7, 0.85))
+        interface.aviso("Barco batendo no seu! Cuidado."))
     interface.vender_pressed.connect(vender)
     interface.volume_mudou.connect(func(grupo, valor): som.definir_volume(grupo, valor))
     interface.mudo_pressed.connect(func(): som.alternar_mudo())
@@ -335,7 +339,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.5.4] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.5.5] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:

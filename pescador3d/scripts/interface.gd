@@ -18,6 +18,10 @@ signal melhorar_linha_pressed
 
 const HudPintado = preload("res://scripts/hud.gd")
 const CartaMapa = preload("res://scripts/mapa_cartografico.gd")
+const Aq = preload("res://scripts/aquarela.gd")
+const BotaoAq = preload("res://scripts/botao_aquarela.gd")
+const DeslizanteAq = preload("res://scripts/deslizante_aquarela.gd")
+const VEU = preload("res://shaders/veu_aquarela.gdshader")
 
 var raiz: Control
 var menu: ColorRect
@@ -46,9 +50,10 @@ var capturas: Array:            # os peixes a bordo: {especie, peso, x, y, rot}
         return porao.itens if porao != null else []
 var _peso: float = 0.0
 
-const COR_TEXTO := Color(0.94, 0.96, 0.92, 1.0)
-const COR_TURQUESA := Color(0.43, 0.89, 0.84, 1.0)
-const COR_CREME := Color(0.97, 0.88, 0.69, 1.0)
+const COR_TEXTO := Aq.NANQUIM                       # tinta dos textos sobre o papel
+const COR_SECAO := Color(0.08, 0.40, 0.42)         # títulos de seção: verde-azulado
+const COR_TITULO := Color(0.58, 0.24, 0.15)        # terracota: nomes e títulos
+const COR_SUAVE := Aq.NANQUIM_CLARO
 
 func _ready() -> void:
     raiz = Control.new()
@@ -61,47 +66,57 @@ func _ready() -> void:
     _construir_porto()
     _construir_menu()
 
-func _estilo_painel() -> StyleBoxFlat:
-    var estilo := StyleBoxFlat.new()
-    estilo.bg_color = Color(0.023, 0.105, 0.16, 0.88)
-    estilo.border_color = Color(0.35, 0.68, 0.68, 0.43)
-    estilo.border_width_top = 1
-    estilo.border_width_bottom = 1
-    estilo.border_width_left = 1
-    estilo.border_width_right = 1
-    estilo.corner_radius_top_left = 12
-    estilo.corner_radius_top_right = 12
-    estilo.corner_radius_bottom_left = 12
-    estilo.corner_radius_bottom_right = 12
-    return estilo
-
-func _nova_label(texto: String, tamanho: int, cor: Color, quebra: bool = false) -> Label:
+func _nova_label(texto: String, tamanho: int, cor: Color, quebra: bool = false, titulo: bool = false) -> Label:
     var item := Label.new()
     item.text = texto
+    item.add_theme_font_override("font", Aq.FONTE_TITULO if titulo else Aq.FONTE_TEXTO)
     item.add_theme_font_size_override("font_size", tamanho)
     item.add_theme_color_override("font_color", cor)
     if quebra:
         item.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     return item
 
-func _novo_painel() -> PanelContainer:
-    var painel := PanelContainer.new()
-    painel.add_theme_stylebox_override("panel", _estilo_painel())
-    painel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    raiz.add_child(painel)
-    return painel
+## Cartão de papel de aquarela: o PanelContainer perde o fundo liso e ganha a lavagem por baixo.
+func _cartao_papel(cartao: PanelContainer, semente: float) -> void:
+    var vazio := StyleBoxEmpty.new()
+    cartao.add_theme_stylebox_override("panel", vazio)
+    var esq: Dictionary = Aq.esquema("papel")
+    Aq.fundo(cartao, esq["cor"], esq["cor2"], semente, esq["extra"], 12.0)
 
-func _coluna_em(painel: PanelContainer) -> VBoxContainer:
-    var margem := MarginContainer.new()
-    margem.add_theme_constant_override("margin_left", 17)
-    margem.add_theme_constant_override("margin_right", 17)
-    margem.add_theme_constant_override("margin_top", 12)
-    margem.add_theme_constant_override("margin_bottom", 12)
-    painel.add_child(margem)
-    var coluna := VBoxContainer.new()
-    coluna.add_theme_constant_override("separation", 5)
-    margem.add_child(coluna)
-    return coluna
+## Se a folha for mais alta que a tela, encolhe de leve em vez de cortar o rodapé (vale para qualquer resolução e texto).
+func _encaixar(cartao: Control) -> void:
+    var ajustar := func():
+        if not cartao.is_inside_tree() or cartao.size.y < 1.0:
+            return
+        var area := cartao.get_viewport_rect().size
+        var f := minf(1.0, minf((area.y - 20.0) / cartao.size.y, (area.x - 20.0) / cartao.size.x))
+        cartao.pivot_offset = cartao.size * 0.5
+        cartao.scale = Vector2(f, f)
+    cartao.resized.connect(ajustar)
+    cartao.visibility_changed.connect(ajustar)
+    ajustar.call_deferred()
+
+func _botao_aq(texto: String, nome_esquema: String, semente: float, cor_texto: Color, tamanho: int, minimo: Vector2) -> Button:
+    var b := BotaoAq.new()
+    b.text = texto
+    b.custom_minimum_size = minimo
+    b.configurar(nome_esquema, semente, cor_texto, tamanho)
+    return b
+
+## Fio de nanquim ondulado entre seções (um Control que se desenha sozinho).
+func _ornamento(altura: float = 14.0, cor: Color = Color(Aq.NANQUIM, 0.5)) -> Control:
+    var o := Control.new()
+    o.custom_minimum_size = Vector2(0, altura)
+    o.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    o.draw.connect(func():
+        var w := o.size.x
+        var pts := PackedVector2Array()
+        var n := maxi(6, int(w / 12.0))
+        for i in n + 1:
+            var t := float(i) / float(n)
+            pts.append(Vector2(w * 0.04 + w * 0.92 * t, altura * 0.5 + sin(t * 23.0) * 1.3 + sin(t * 7.0) * 1.6))
+        o.draw_polyline(pts, cor, 2.0, true))
+    return o
 
 func _construir_hud() -> void:
     hud = HudPintado.new()
@@ -159,22 +174,12 @@ func _preencher_painel() -> void:
         hud.titulo_painel = "Diário de bordo"
         hud.linhas_painel = diario.slice(maxi(0, diario.size() - 9))
 
-func _estilo_botao(cor: Color) -> StyleBoxFlat:
-    var e := StyleBoxFlat.new()
-    e.bg_color = cor
-    e.corner_radius_top_left = 9
-    e.corner_radius_top_right = 9
-    e.corner_radius_bottom_left = 9
-    e.corner_radius_bottom_right = 9
-    e.content_margin_left = 14.0
-    e.content_margin_right = 14.0
-    e.content_margin_top = 11.0
-    e.content_margin_bottom = 11.0
-    return e
-
 func _construir_menu() -> void:
     menu = ColorRect.new()
-    menu.color = Color(0.017, 0.061, 0.09, 0.77)
+    menu.color = Color.WHITE
+    var veu := ShaderMaterial.new()
+    veu.shader = VEU
+    menu.material = veu
     menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     menu.mouse_filter = Control.MOUSE_FILTER_STOP
     raiz.add_child(menu)
@@ -184,67 +189,53 @@ func _construir_menu() -> void:
     menu.add_child(central)
 
     var cartao := PanelContainer.new()
-    cartao.custom_minimum_size = Vector2(530, 450)
-    cartao.add_theme_stylebox_override("panel", _estilo_painel())
+    cartao.custom_minimum_size = Vector2(580, 0)
+    _cartao_papel(cartao, 3.0)
     central.add_child(cartao)
+    _encaixar(cartao)
 
     var margem := MarginContainer.new()
-    margem.add_theme_constant_override("margin_left", 40)
-    margem.add_theme_constant_override("margin_right", 40)
-    margem.add_theme_constant_override("margin_top", 32)
-    margem.add_theme_constant_override("margin_bottom", 32)
+    margem.add_theme_constant_override("margin_left", 46)
+    margem.add_theme_constant_override("margin_right", 46)
+    margem.add_theme_constant_override("margin_top", 18)
+    margem.add_theme_constant_override("margin_bottom", 22)
     cartao.add_child(margem)
 
     var col := VBoxContainer.new()
-    col.add_theme_constant_override("separation", 12)
+    col.add_theme_constant_override("separation", 6)
     margem.add_child(col)
 
-    titulo_menu = _nova_label("PESCADOR", 46, COR_TEXTO)
+    titulo_menu = _nova_label("PESCADOR", 78, Color(0.10, 0.27, 0.36), false, true)
     titulo_menu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(titulo_menu)
+    col.add_child(_ornamento(14.0))
 
-    subtitulo_menu = _nova_label("Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do PE-3476.", 19, COR_CREME, true)
+    subtitulo_menu = _nova_label("Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do PE-3476.", 23, COR_TEXTO, true)
     subtitulo_menu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(subtitulo_menu)
 
-    botao_principal = Button.new()
-    botao_principal.text = "COMEÇAR A VIAGEM"
-    botao_principal.custom_minimum_size = Vector2(395, 50)
-    botao_principal.add_theme_font_size_override("font_size", 20)
-    botao_principal.add_theme_color_override("font_color", Color(0.03, 0.13, 0.17, 1.0))
-    botao_principal.add_theme_stylebox_override("normal", _estilo_botao(Color(0.49, 0.89, 0.82, 1.0)))
-    botao_principal.add_theme_stylebox_override("hover", _estilo_botao(Color(0.77, 0.96, 0.89, 1.0)))
-    botao_principal.add_theme_stylebox_override("pressed", _estilo_botao(Color(0.31, 0.73, 0.68, 1.0)))
+    botao_principal = _botao_aq("COMEÇAR A VIAGEM", "turquesa", 5.0, Aq.NANQUIM, 28, Vector2(430, 52))
     botao_principal.pressed.connect(_clicar_iniciar)
     col.add_child(botao_principal)
 
-    botao_reiniciar = Button.new()
-    botao_reiniciar.text = "REINICIAR PARTIDA"
-    botao_reiniciar.custom_minimum_size = Vector2(395, 43)
-    botao_reiniciar.add_theme_font_size_override("font_size", 16)
-    botao_reiniciar.add_theme_stylebox_override("normal", _estilo_botao(Color(0.14, 0.34, 0.39, 1.0)))
-    botao_reiniciar.add_theme_stylebox_override("hover", _estilo_botao(Color(0.23, 0.46, 0.48, 1.0)))
+    botao_reiniciar = _botao_aq("REINICIAR PARTIDA", "mar", 8.0, Aq.CREME, 21, Vector2(430, 40))
     botao_reiniciar.pressed.connect(_clicar_reiniciar)
     col.add_child(botao_reiniciar)
 
-    var botao_construtor := Button.new()
-    botao_construtor.text = "MODO CONSTRUTOR  (Tab)"
-    botao_construtor.custom_minimum_size = Vector2(395, 43)
-    botao_construtor.add_theme_font_size_override("font_size", 16)
-    botao_construtor.add_theme_stylebox_override("normal", _estilo_botao(Color(0.36, 0.28, 0.12, 1.0)))
-    botao_construtor.add_theme_stylebox_override("hover", _estilo_botao(Color(0.50, 0.39, 0.17, 1.0)))
+    var botao_construtor := _botao_aq("MODO CONSTRUTOR  (Tab)", "ocre", 11.0, Aq.CREME, 21, Vector2(430, 40))
     botao_construtor.pressed.connect(func(): construtor_pressed.emit())
     col.add_child(botao_construtor)
 
     _construir_volume(col)
 
-    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nMouse direito: câmera  •  Roda: aproxima  •  V: recentra\nB isca  •  N profundidade  •  J técnica  •  M mapa\nK clima  •  L luz  •  F3 FPS  •  F4 diagnóstico  •  F10 gráficos  •  TAB construtor", 14, Color(0.77, 0.87, 0.84, 1.0), true)
+    col.add_child(_ornamento(12.0, Color(Aq.NANQUIM, 0.35)))
+    var dica := _nova_label("WASD navegar  •  ESPAÇO frear  •  F pescar  •  E atracar\nMouse direito: câmera  •  Roda: aproxima  •  V: recentra\nB isca  •  N profundidade  •  J técnica  •  M mapa\nK clima  •  L luz  •  F3 FPS  •  F4 diagnóstico  •  F10 gráficos  •  TAB construtor", 17, COR_SUAVE, true)
     dica.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(dica)
 
 func _construir_porto() -> void:
     porto = ColorRect.new()
-    porto.color = Color(0.017, 0.061, 0.09, 0.45)
+    porto.color = Color(0.017, 0.061, 0.09, 0.40)
     porto.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     porto.mouse_filter = Control.MOUSE_FILTER_STOP
     porto.visible = false
@@ -253,87 +244,68 @@ func _construir_porto() -> void:
     central.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     porto.add_child(central)
     var cartao := PanelContainer.new()
-    cartao.custom_minimum_size = Vector2(660, 0)
-    cartao.add_theme_stylebox_override("panel", _estilo_painel())
+    cartao.custom_minimum_size = Vector2(700, 0)
+    _cartao_papel(cartao, 7.0)
     central.add_child(cartao)
+    _encaixar(cartao)
     var margem := MarginContainer.new()
-    for lado in ["left", "right", "top", "bottom"]:
-        margem.add_theme_constant_override("margin_" + lado, 16)
+    margem.add_theme_constant_override("margin_left", 30)
+    margem.add_theme_constant_override("margin_right", 30)
+    margem.add_theme_constant_override("margin_top", 20)
+    margem.add_theme_constant_override("margin_bottom", 22)
     cartao.add_child(margem)
     var col := VBoxContainer.new()
     col.add_theme_constant_override("separation", 5)
     margem.add_child(col)
-    porto_titulo = _nova_label("Cais", 27, COR_CREME)
+    porto_titulo = _nova_label("Cais", 46, COR_TITULO, false, true)
     col.add_child(porto_titulo)
-    porto_texto = _nova_label("", 15, COR_TEXTO, true)
+    col.add_child(_ornamento(10.0))
+    porto_texto = _nova_label("", 18, COR_TEXTO, true)
     col.add_child(porto_texto)
     # Vender e Abastecer lado a lado; iscas e linha também: o painel inteiro cabe nos 720 px da janela.
     var fila_a := HBoxContainer.new()
-    fila_a.add_theme_constant_override("separation", 8)
+    fila_a.add_theme_constant_override("separation", 10)
     col.add_child(fila_a)
-    porto_vender = _botao_porto("Vender", Color(0.49, 0.89, 0.82, 1.0), Color(0.03, 0.13, 0.17, 1.0))
-    porto_vender.custom_minimum_size = Vector2(300, 38)
-    porto_vender.add_theme_font_size_override("font_size", 15)
+    porto_vender = _botao_aq("Vender", "turquesa", 13.0, Aq.NANQUIM, 21, Vector2(300, 44))
     porto_vender.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     porto_vender.pressed.connect(func(): vender_pressed.emit())
     fila_a.add_child(porto_vender)
-    porto_abastecer = _botao_porto("Abastecer", Color(0.96, 0.62, 0.24, 1.0), Color(0.15, 0.07, 0.02, 1.0))
-    porto_abastecer.custom_minimum_size = Vector2(300, 38)
-    porto_abastecer.add_theme_font_size_override("font_size", 15)
+    porto_abastecer = _botao_aq("Abastecer", "ouro", 17.0, Aq.NANQUIM, 21, Vector2(300, 44))
     porto_abastecer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     porto_abastecer.pressed.connect(func(): abastecer_pressed.emit())
     fila_a.add_child(porto_abastecer)
     var fila_b := HBoxContainer.new()
-    fila_b.add_theme_constant_override("separation", 8)
+    fila_b.add_theme_constant_override("separation", 10)
     col.add_child(fila_b)
-    porto_iscas = _botao_porto("Comprar iscas [Q]", Color(0.25, 0.43, 0.44, 1.0), COR_TEXTO)
-    porto_iscas.custom_minimum_size = Vector2(300, 32)
-    porto_iscas.add_theme_font_size_override("font_size", 13)
+    porto_iscas = _botao_aq("Comprar iscas [Q]", "mar", 19.0, Aq.CREME, 17, Vector2(300, 38))
     porto_iscas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     porto_iscas.clip_text = true
     porto_iscas.pressed.connect(func(): comprar_iscas_pressed.emit())
     fila_b.add_child(porto_iscas)
-    porto_linha = _botao_porto("Reforçar linha [U]", Color(0.26, 0.34, 0.48, 1.0), COR_TEXTO)
-    porto_linha.custom_minimum_size = Vector2(300, 32)
-    porto_linha.add_theme_font_size_override("font_size", 13)
+    porto_linha = _botao_aq("Reforçar linha [U]", "mar", 23.0, Aq.CREME, 17, Vector2(300, 38))
     porto_linha.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     porto_linha.clip_text = true
     porto_linha.pressed.connect(func(): melhorar_linha_pressed.emit())
     fila_b.add_child(porto_linha)
-    porto_rotulo_loja = _nova_label("MELHORIAS DO BARCO", 14, COR_TURQUESA)
+    porto_rotulo_loja = _nova_label("MELHORIAS DO BARCO", 20, COR_SECAO, false, true)
     col.add_child(porto_rotulo_loja)
     var grade_oficina := GridContainer.new()
     grade_oficina.columns = 2
-    grade_oficina.add_theme_constant_override("h_separation", 8)
-    grade_oficina.add_theme_constant_override("v_separation", 6)
+    grade_oficina.add_theme_constant_override("h_separation", 10)
+    grade_oficina.add_theme_constant_override("v_separation", 7)
     col.add_child(grade_oficina)
+    var n_loja: float = 0.0
     for id in ["motor", "tanque", "porao", "vara", "casco", "leme", "helice", "radar"]:
-        var b := _botao_porto(id, Color(0.16, 0.30, 0.42, 1.0), COR_TEXTO)
-        b.custom_minimum_size = Vector2(300, 46)           # duas linhas: nome da melhoria e "antes -> depois · preço"
-        b.add_theme_font_size_override("font_size", 14)
+        n_loja += 1.0
+        var b := _botao_aq(id, "mar", 30.0 + n_loja * 3.7, Aq.CREME, 17, Vector2(300, 50))    # duas linhas: nome da melhoria e "antes -> depois · preço"
         b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         b.clip_text = true
         b.pressed.connect(func(): melhoria_pressed.emit(id))
         grade_oficina.add_child(b)
         porto_loja[id] = b
-    var sair := _botao_porto("Zarpar   [E]", Color(0.14, 0.34, 0.39, 1.0), COR_TEXTO)
-    sair.custom_minimum_size = Vector2(300, 38)
+    var sair := _botao_aq("Zarpar   [E]", "terracota", 41.0, Aq.CREME, 22, Vector2(300, 44))
     sair.pressed.connect(func(): zarpar_pressed.emit())
     col.add_child(sair)
-
-func _botao_porto(texto: String, cor: Color, cor_texto: Color) -> Button:
-    var b := Button.new()
-    b.text = texto
-    b.custom_minimum_size = Vector2(410, 40)
-    b.add_theme_font_size_override("font_size", 18)
-    b.add_theme_color_override("font_color", cor_texto)
-    b.add_theme_color_override("font_hover_color", cor_texto)
-    b.add_theme_color_override("font_disabled_color", Color(cor_texto, 0.45))
-    b.add_theme_stylebox_override("normal", _estilo_botao(cor))
-    b.add_theme_stylebox_override("hover", _estilo_botao(cor.lightened(0.18)))
-    b.add_theme_stylebox_override("pressed", _estilo_botao(cor.darkened(0.15)))
-    b.add_theme_stylebox_override("disabled", _estilo_botao(Color(cor, 0.3)))
-    return b
 
 ## Abre (ou atualiza) o painel do cais. dados: nome, dinheiro, peixes, peso, valor, falta_litros, preco_litro, litros_possiveis
 func mostrar_porto(d: Dictionary) -> void:
@@ -373,41 +345,36 @@ func esconder_porto() -> void:
 
 ## Menu de volume: quatro controles deslizantes e o botão de silenciar. Quem aplica é scripts/som.gd.
 func _construir_volume(col: VBoxContainer) -> void:
-    var titulo := _nova_label("SOM", 15, COR_TURQUESA)
+    var titulo := _nova_label("SOM", 24, COR_SECAO, false, true)
     col.add_child(titulo)
     var grade := GridContainer.new()
     grade.columns = 3
     grade.add_theme_constant_override("h_separation", 14)
-    grade.add_theme_constant_override("v_separation", 8)
+    grade.add_theme_constant_override("v_separation", 4)
     col.add_child(grade)
     var nomes := {"geral": "Geral", "ambiente": "Mar e vento", "barco": "Motor e casco", "efeitos": "Efeitos"}
     for grupo in ["geral", "ambiente", "barco", "efeitos"]:
-        var rotulo := _nova_label(nomes[grupo], 15, COR_TEXTO)
-        rotulo.custom_minimum_size = Vector2(120, 0)
+        var rotulo := _nova_label(nomes[grupo], 19, COR_TEXTO)
+        rotulo.custom_minimum_size = Vector2(140, 0)
         grade.add_child(rotulo)
-        var barra := HSlider.new()
+        var barra := DeslizanteAq.new()
         barra.min_value = 0.0
         barra.max_value = 100.0
         barra.step = 5.0
         barra.value = 80.0
-        barra.custom_minimum_size = Vector2(220, 22)
+        barra.custom_minimum_size = Vector2(220, 26)
         barra.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         barra.size_flags_vertical = Control.SIZE_SHRINK_CENTER
         grade.add_child(barra)
-        var valor := _nova_label("80%", 15, COR_CREME)
-        valor.custom_minimum_size = Vector2(46, 0)
+        var valor := _nova_label("80%", 19, COR_TITULO)
+        valor.custom_minimum_size = Vector2(52, 0)
         valor.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
         grade.add_child(valor)
         controles_volume[grupo] = {"barra": barra, "valor": valor}
         barra.value_changed.connect(func(v: float):
             valor.text = "%d%%" % roundi(v)
             volume_mudou.emit(grupo, v / 100.0))
-    botao_mudo = Button.new()
-    botao_mudo.text = "Silenciar tudo"
-    botao_mudo.custom_minimum_size = Vector2(395, 34)
-    botao_mudo.add_theme_font_size_override("font_size", 14)
-    botao_mudo.add_theme_stylebox_override("normal", _estilo_botao(Color(0.10, 0.24, 0.29, 1.0)))
-    botao_mudo.add_theme_stylebox_override("hover", _estilo_botao(Color(0.17, 0.36, 0.40, 1.0)))
+    botao_mudo = _botao_aq("Silenciar tudo", "mar", 17.0, Aq.CREME, 17, Vector2(430, 36))
     botao_mudo.pressed.connect(func(): mudo_pressed.emit())
     col.add_child(botao_mudo)
 
