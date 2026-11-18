@@ -9,6 +9,17 @@ const Mesclador = preload("res://scripts/mesclador.gd")
 
 const ESCALA := 1.45             # tamanho em relação a uma boia "de verdade": precisa ser vista do barco
 const DISTANCIA_PERTO := 420.0   # m: só as boias perto da câmera acompanham cada onda
+# v0.5.12: física. A boia é amarrada por corrente a uma poita: sai do lugar quando o casco empurra,
+# volta devagar (a corrente frouxa puxa pouco; esticada, segura firme) e se inclina com o tranco.
+const RAIO_CONTATO := 1.13 * 1.45 + 0.05   # defensa de borracha, na escala do jogo
+const MEIA_BOCA_BARCO := 1.15
+const PROA_BARCO := 3.5                     # m à frente do centro do barco
+const POPA_BARCO := 2.7                     # m atrás
+const FOLGA_CORRENTE := 3.2                 # m que a boia anda antes de a corrente esticar
+const PUXA_FROUXA := 0.35                   # 1/s²: a corrente frouxa traz de volta devagar
+const PUXA_ESTICADA := 9.0
+const AMORTECE := 0.9                       # 1/s: a água freia a boia
+const MASSA_RELATIVA := 0.18                # boia ≈ 1,5 t contra o barco ≈ 8 t
 const ALTURA_LUZ := 3.18         # altura da lanterna no modelo (antes de ESCALA)
 const SHADER_BOIA := preload("res://shaders/boia.gdshader")
 # alfa da cor do vértice = material (ver shaders/boia.gdshader)
@@ -25,6 +36,7 @@ const TIPOS := {
 
 var dados_radar: Array = []      # {mundo: Vector2, cor: Color}: o radar do HUD desenha pontinhos
 var _boias: Array = []
+var barco: Node3D = null
 var _oceano: Node = null
 var _numeros: Dictionary = {"boreste": 0, "bombordo": -1, "seguro": 0, "especial": 0}
 var _halo: Texture2D
@@ -104,7 +116,8 @@ func _nova_boia(tipo: String, pos: Vector3, indice: int) -> void:
     raiz.add_child(brilho)
     _pintar_numero(raiz, tipo)
     _boias.append({"no": raiz, "tipo": tipo, "luz": material_luz, "brilho": brilho, "periodo": float(d["periodo"]),
-            "aceso": float(d["aceso"]), "fase": fmod(float(indice) * 1.37, float(d["periodo"])), "y": 0.0, "rx": 0.0, "rz": 0.0})
+            "aceso": float(d["aceso"]), "fase": fmod(float(indice) * 1.37, float(d["periodo"])), "y": 0.0, "rx": 0.0, "rz": 0.0,
+            "ancora": Vector2(pos.x, pos.z), "desl": Vector2.ZERO, "vel": Vector2.ZERO, "inc": Vector2.ZERO, "vinc": Vector2.ZERO})
     dados_radar.append({"mundo": Vector2(pos.x, pos.z), "cor": Color(d["luz"]) if tipo != "seguro" else Color(0.95, 0.92, 0.85)})
     _acomodar(_boias[_boias.size() - 1], 0.0)
 
@@ -138,6 +151,85 @@ func _process(delta: float) -> void:
     if pisca:
         _acumulado = 0.0
 
+func _physics_process(delta: float) -> void:
+    if delta <= 0.0:
+        return
+    for b in _boias:
+        _mover(b, delta)
+        if barco != null:
+            _contato(b, delta)
+
+## Corrente da poita + atrito da água; a inclinação do tranco volta como um pêndulo amortecido.
+func _mover(b: Dictionary, dt: float) -> void:
+    var desl: Vector2 = b["desl"]
+    var vel: Vector2 = b["vel"]
+    var inc: Vector2 = b["inc"]
+    var vinc: Vector2 = b["vinc"]
+    if desl.length_squared() < 0.000001 and vel.length_squared() < 0.000001 and inc.length_squared() < 0.000001 and vinc.length_squared() < 0.000001:
+        return
+    var d: float = desl.length()
+    var puxa: float = PUXA_FROUXA + PUXA_ESTICADA * pow(clampf(d / FOLGA_CORRENTE, 0.0, 1.4), 4.0)
+    vel += (-desl * puxa - vel * AMORTECE) * dt
+    desl += vel * dt
+    if desl.length() > FOLGA_CORRENTE * 1.25:                # a corrente não deixa passar disso
+        desl = desl.normalized() * FOLGA_CORRENTE * 1.25
+        vel -= desl.normalized() * maxf(0.0, vel.dot(desl.normalized()))
+    vinc += (-inc * 6.5 - vinc * 2.2) * dt
+    inc += vinc * dt
+    b["desl"] = desl
+    b["vel"] = vel
+    b["inc"] = inc
+    b["vinc"] = vinc
+    var no: Node3D = b["no"]
+    no.position.x = b["ancora"].x + desl.x
+    no.position.z = b["ancora"].y + desl.y
+
+## O casco do barco (um segmento da popa à proa, com a meia boca de raio) contra a defensa da boia.
+func _contato(b: Dictionary, dt: float) -> void:
+    var no: Node3D = b["no"]
+    var c := Vector2(no.position.x, no.position.z)
+    var bp := Vector2(barco.global_position.x, barco.global_position.z)
+    if c.distance_squared_to(bp) > 100.0:
+        return
+    var f3: Vector3 = -barco.global_transform.basis.z
+    var frente := Vector2(f3.x, f3.z).normalized()
+    var popa: Vector2 = bp - frente * POPA_BARCO
+    var proa: Vector2 = bp + frente * PROA_BARCO
+    var seg: Vector2 = proa - popa
+    var t: float = clampf((c - popa).dot(seg) / seg.length_squared(), 0.0, 1.0)
+    var ponto: Vector2 = popa + seg * t
+    var dif: Vector2 = c - ponto
+    var dist: float = dif.length()
+    var minimo: float = RAIO_CONTATO + MEIA_BOCA_BARCO * (0.55 if t > 0.9 or t < 0.05 else 1.0)   # proa e popa são mais finas
+    if dist >= minimo:
+        return
+    var n: Vector2 = dif / dist if dist > 0.001 else frente
+    var pen: float = minimo - dist
+    # velocidade do casco no ponto de contato (avanço + deriva + giro) contra a da boia
+    var v3: Vector3 = barco.velocidade_mundo() if barco.has_method("velocidade_mundo") else Vector3.ZERO
+    var vb := Vector2(v3.x, v3.z)
+    var giro: float = float(barco.get("_giro_atual")) if barco.get("_giro_atual") != null else 0.0
+    var braco: Vector2 = ponto - bp
+    vb += Vector2(-braco.y, braco.x) * -giro * 0.5
+    var aproxima: float = (vb - (b["vel"] as Vector2)).dot(n)
+    # a boia cede enquanto a corrente está frouxa; esticada, quem recua é o barco
+    var desl: Vector2 = b["desl"]
+    var folga: float = 1.0 - clampf((desl + n * pen).length() / (FOLGA_CORRENTE * 1.2), 0.0, 1.0)
+    var parte_boia: float = lerpf(0.0, 0.85, folga)
+    b["desl"] = desl + n * pen * parte_boia
+    var corrigir := Vector3(-n.x, 0.0, -n.y) * pen * (1.0 - parte_boia)
+    if barco.has_method("afastar") and corrigir.length_squared() > 0.0:
+        barco.afastar(corrigir)
+    if aproxima > 0.0:
+        # impulso: a boia (mais leve) leva a maior parte; o barco perde um pouco de marcha e gira
+        var j: float = aproxima * 1.35
+        b["vel"] = (b["vel"] as Vector2) + n * j * (1.0 - MASSA_RELATIVA) * lerpf(0.25, 1.0, folga)
+        b["vinc"] = (b["vinc"] as Vector2) + n * clampf(aproxima * 0.35, 0.0, 0.9)
+        var dv := Vector3(-n.x, 0.0, -n.y) * j * lerpf(MASSA_RELATIVA, 0.95, 1.0 - folga)
+        if barco.has_method("receber_batida"):
+            var forca: float = clampf((aproxima - 0.9) / 3.5, 0.0, 1.0)
+            barco.receber_batida(dv, Vector3(ponto.x, barco.global_position.y, ponto.y), forca, "boia")
+
 ## Sobe e desce com a onda e se inclina com a inclinação dela (duas amostras por eixo).
 func _acomodar(b: Dictionary, dt: float) -> void:
     var no: Node3D = b["no"]
@@ -154,7 +246,8 @@ func _acomodar(b: Dictionary, dt: float) -> void:
     b["rx"] = lerpf(float(b["rx"]), alvo_rx, k) if dt > 0.0 else alvo_rx
     b["rz"] = lerpf(float(b["rz"]), alvo_rz, k) if dt > 0.0 else alvo_rz
     no.position.y = float(b["y"]) - 0.1
-    no.rotation = Vector3(float(b["rx"]), no.rotation.y, float(b["rz"]))
+    var inc: Vector2 = b.get("inc", Vector2.ZERO)
+    no.rotation = Vector3(float(b["rx"]) + inc.y, no.rotation.y, float(b["rz"]) - inc.x)
 
 func _altura_agua(p: Vector3) -> float:
     if _oceano != null and _oceano.has_method("altura_em"):

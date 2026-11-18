@@ -17,7 +17,7 @@ const CANAL := {"geral": "Master", "mar": "Mar", "vento": "Vento", "chuva": "Chu
 var barco: Node3D
 var oceano: Node3D
 var navegando: bool = false          # falso no menu e na pausa: o motor cala
-var volumes: Dictionary = {"geral": 0.8, "mar": 0.8, "vento": 0.8, "chuva": 0.8, "barco": 0.8, "efeitos": 0.8}
+var volumes: Dictionary = {"geral": 1.0, "mar": 0.7, "vento": 0.35, "chuva": 0.35, "barco": 0.8, "efeitos": 0.8}   # v0.5.12: padrões do Gabriel
 var _mar: AudioStreamPlayer
 var _vento: AudioStreamPlayer
 var _agua: AudioStreamPlayer

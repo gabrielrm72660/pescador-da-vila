@@ -218,6 +218,7 @@ func _ready() -> void:
     boias.name = "Boias"
     add_child(boias)
     boias.configurar(ilhas, oceano)
+    boias.barco = barco                    # v0.5.12: o casco bate nas boias
     graficos = OpcoesGraficas.new()
     graficos.name = "OpcoesGraficas"
     add_child(graficos)
@@ -238,6 +239,9 @@ func _ready() -> void:
     barco.bateu_em_barco.connect(func(forca: float):
         som.tocar("estalo", lerpf(-16.0, -7.0, forca), randf_range(0.7, 0.85))
         interface.aviso("Barco batendo no seu! Casco em %d%%." % floori(barco.saude)))
+    barco.bateu_em_boia.connect(func(forca: float):
+        som.tocar("estalo", lerpf(-14.0, -6.0, forca), randf_range(1.05, 1.25))
+        interface.aviso("Batida na boia! Casco em %d%%." % floori(barco.saude)))
     barco.casco_avariado.connect(_casco_avariado)
     interface.graficos = graficos
     interface._atualizar_graficos()
@@ -420,7 +424,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.5.11] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.5.12] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:

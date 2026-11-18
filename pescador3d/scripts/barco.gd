@@ -16,6 +16,7 @@ extends Node3D
 
 signal encalhou                                # bateu na costa ou no cais
 signal bateu_em_barco(intensidade: float)      # outro barco bateu no seu (0..1)
+signal bateu_em_boia(intensidade: float)       # v0.5.12: o casco bateu numa boia (0..1)
 signal combustivel_baixo                       # passou para menos de 20%
 signal combustivel_acabou
 const VELOCIDADE_PORTO: float = 2.57          # m/s = 5 nós: o mínimo que o raso do porto deixa andar
@@ -366,7 +367,7 @@ func velocidade_mundo() -> Vector3:
 
 ## Outro barco bateu: a variação de velocidade dv (m/s, no plano) aplicada no ponto de contato (mundo) muda sua
 ## marcha, sua deriva e o giro (pelo braço do impulso), e o casco adernará com o tranco.
-func receber_batida(dv: Vector3, ponto: Vector3, intensidade: float) -> void:
+func receber_batida(dv: Vector3, ponto: Vector3, intensidade: float, motivo: String = "barco") -> void:
     var frente: Vector3 = -global_transform.basis.z
     var direita: Vector3 = global_transform.basis.x
     velocidade += dv.dot(frente)
@@ -378,8 +379,12 @@ func receber_batida(dv: Vector3, ponto: Vector3, intensidade: float) -> void:
     _velocidade_arfagem += dv.dot(frente) * 0.08
     if intensidade > 0.12 and _recarga_batida <= 0.0:
         _recarga_batida = 0.6
-        danificar(1.5 + 7.0 * clampf(intensidade, 0.0, 1.0), "barco")
-        bateu_em_barco.emit(intensidade)
+        if motivo == "boia":
+            danificar(1.0 + 5.0 * clampf(intensidade, 0.0, 1.0), "boia")
+            bateu_em_boia.emit(intensidade)
+        else:
+            danificar(1.5 + 7.0 * clampf(intensidade, 0.0, 1.0), "barco")
+            bateu_em_barco.emit(intensidade)
 
 ## Correção de posição da batida (separação dos cascos); não deixa a batida empurrar o barco para a terra.
 func afastar(corrigir: Vector3) -> void:

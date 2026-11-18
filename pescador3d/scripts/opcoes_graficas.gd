@@ -10,12 +10,12 @@ static var modo_editor: bool = false     # Modo Construtor aberto: nada de veget
 const NOMES := ["Baixa", "Média", "Alta", "Ultra"]
 const QUALIDADE_MAX := 3
 const LIMITES := [30, 60, 120, 0]
-var qualidade: int = 1
-var automatica: bool = true      # abaixa a qualidade sozinha se o jogo ficar lento (nunca sobe sozinha)
-var fps_indice: int = 1
+var qualidade: int = 2           # v0.5.12: padrões do Gabriel (Alta, sem ajuste automático, 30 FPS, sem vsync, tela cheia)
+var automatica: bool = false      # abaixa a qualidade sozinha se o jogo ficar lento (nunca sobe sozinha)
+var fps_indice: int = 0
 var mostrar_fps: bool = false
-var tela_cheia: bool = false     # v0.5.8: Opções > Gráficos > Tela (janela ou tela cheia)
-var vsync: bool = true           # trava o FPS na taxa do monitor; desligue (com "Sem limite") para medir a capacidade real
+var tela_cheia: bool = true     # v0.5.8: Opções > Gráficos > Tela (janela ou tela cheia)
+var vsync: bool = false           # trava o FPS na taxa do monitor; desligue (com "Sem limite") para medir a capacidade real
 var _vsync_opcao: CheckButton
 ## Ajustes avulsos aplicados POR CIMA do nível de qualidade; só a bancada de GPU usa (mede o custo de cada recurso).
 ## Chaves: msaa (0 = desligado, 1 = 2x, 2 = 4x, 3 = 8x), sem_ssao, sem_glow, sem_sombra, faixas (1, 2 ou 4), atlas (tamanho),
@@ -468,12 +468,12 @@ func _carregar() -> void:
     var dados = JSON.parse_string(FileAccess.get_file_as_string(ARQUIVO))
     if typeof(dados) != TYPE_DICTIONARY:
         return
-    qualidade = clampi(int(dados.get("qualidade", 1)), 0, QUALIDADE_MAX)
-    automatica = bool(dados.get("automatica", true))
-    fps_indice = clampi(int(dados.get("fps", 1)), 0, 3)
+    qualidade = clampi(int(dados.get("qualidade", qualidade)), 0, QUALIDADE_MAX)
+    automatica = bool(dados.get("automatica", automatica))
+    fps_indice = clampi(int(dados.get("fps", fps_indice)), 0, 3)
     mostrar_fps = bool(dados.get("mostrar_fps", false))
-    vsync = bool(dados.get("vsync", true))
-    tela_cheia = bool(dados.get("tela_cheia", false))
+    vsync = bool(dados.get("vsync", vsync))
+    tela_cheia = bool(dados.get("tela_cheia", tela_cheia))
 
 func _salvar() -> void:
     var arquivo := FileAccess.open(ARQUIVO, FileAccess.WRITE)

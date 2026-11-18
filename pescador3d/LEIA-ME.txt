@@ -1,3 +1,10 @@
+PESCADOR — Versão 0.5.12 (Godot 4.7)
+================================================
+NOVO NA 0.5.12 (detalhes em docs/PESCADOR_v0.5.12_NOVIDADES.txt):
+- BOIAS COM FÍSICA: o barco bate nelas, elas cedem presas à corrente, se inclinam e voltam ao lugar; batida forte avaria o casco.
+- PADRÕES: som, gráficos e Cinema (F11) agora começam com as configurações do Gabriel.
+- ILHA PRINCIPAL: as edições do Gabriel no editor (F9) viraram o mundo padrão da Vila do Porto.
+
 PESCADOR — Versão 0.5.11 (Godot 4.7)
 ================================================
 NOVO NA 0.5.11 — BOIAS NOVAS (detalhes em docs/PESCADOR_v0.5.11_NOVIDADES.txt):

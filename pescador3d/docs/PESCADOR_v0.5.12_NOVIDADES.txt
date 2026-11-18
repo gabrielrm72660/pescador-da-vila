@@ -1,0 +1,31 @@
+PESCADOR v0.5.12 — FÍSICA DAS BOIAS, PADRÕES DO GABRIEL E ILHA PRINCIPAL EDITADA
+================================================
+
+1) FÍSICA DAS BOIAS (scripts/boias.gd, barco.gd, jogo.gd)
+- O casco (segmento da popa à proa, com a meia boca de raio; proa e popa mais finas) bate na defensa de borracha.
+- A boia é amarrada por corrente a uma poita: cede ao empurrão até ~3,2 m (corrente frouxa puxa pouco), depois
+  a corrente estica e segura; quem recua é o barco. Volta sozinha ao lugar em menos de 45 s.
+- O tranco inclina a boia (pêndulo amortecido) e tira marcha do barco (boia ~1,5 t contra barco ~8 t).
+- Batida acima de ~2,6 nós avaria o casco (1 a 6 pontos), com estalo metálico e o aviso "Batida na boia!".
+- Testado por script em 3 aproximações (devagar, rápido, de raspão): o casco nunca atravessa a boia.
+
+2) PADRÕES DO JOGO = CONFIGURAÇÕES DO GABRIEL (do AppData dele)
+- Som (som.gd): geral 100%, mar 70%, vento 35%, chuva 35%, motor/casco 80%, efeitos 80%.
+- Gráficos (opcoes_graficas.gd): qualidade Alta, ajuste automático desligado, limite 30 FPS, V-Sync desligado,
+  tela cheia.
+- Cinema/F11 (cinema.gd): ligado; AgX; exposição 0,75; brilho 0,89; saturação 0,94; glow 0,45 (bloom 0,06, limiar 1,2);
+  sol 0,70 com 0,35 de dourado; luz ambiente 0,70; SSAO 1,5; névoa 0,055; raios de sol 2,0; profundidade de campo
+  ligada (260 m / 340 m / 0,07); filtro pintura ligado (pincel 2, mistura 0,35); vinheta 0,15; grão 0,005.
+  "Restaurar padrão" no F11 agora volta para esses valores.
+- O save de viagem (pescador_viagem.json) NÃO virou padrão: é progresso de jogo, não configuração.
+- Quem já tem os arquivos de configuração continua com os seus; os padrões valem para instalação nova
+  (ou depois de apagar a pasta %APPDATA%\Godot\app_userdata\Pescador).
+
+3) ILHA PRINCIPAL EDITADA (dados/mundo_ilha_principal.json)
+- O mundo que o Gabriel editou no F9 virou o mundo publicado da Vila do Porto: 31 casas (antes 28), 16 ruas (13),
+  20 postes (18), 14 decorações (5), 753 pinheiros, 87 coqueiros, 112 árvores, 284 pedras, 176 moitas.
+- Ilha das Rocas e São Pedro ficaram como estavam (os arquivos dele dessas ilhas eram os gerados automaticamente).
+
+NÃO TESTADO AQUI
+- Física das boias jogando de verdade (testada por script).
+- O visual do Cinema com esses padrões em Forward+ (aqui o renderizador é gl_compatibility).
