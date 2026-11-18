@@ -1,0 +1,54 @@
+PESCADOR v0.5.8 — CARTA NÁUTICA NOVA, DOIS ARQUIPÉLAGOS E EDITOR DE ILHAS
+================================================
+
+1) MUNDO (scripts/jogo.gd, scripts/ilha.gd)
+- ARQUIPÉLAGO DE SÃO PAULO: Vila do Porto (ilha principal) + Ilha das Conchas.
+  A Ilha das Conchas foi para perto da principal, a leste (centro 400, -300; raio 46) e perdeu o cais e a casa:
+  agora é só mato, coqueiros e pinheiros.
+- ILHA DAS ROCAS: é a antiga Ilha da Rata (mesmo lugar, mesmo cais). Missões e textos renomeados.
+- TRÊS ILHOTAS desabitadas (só coqueiros e pinheiros) entre a principal e a das Rocas:
+  Ilhota dos Atobás, Ilhota do Meio e Ilhota das Garças (raios 23 a 27 m).
+- ARQUIPÉLAGO DE SÃO PEDRO, a oeste (~1,4 km da vila): Ilha de São Pedro (raio 92, habitada) com CAIS e uma VILA
+  pequena (rua de terra, travessa, ~12 casas, capela, armazém, postes, canoas e redes) + Ilhéu do Cação e Ilhéu da Agulha
+  (desabitados). Venda em São Pedro paga 25% a mais; diesel R$ 5/L. Ida gasta ~23 L (tanque 60 L).
+  A missão "Atracar na Ilha das Conchas" virou "Atracar na Ilha de São Pedro" (prêmio R$ 220).
+- Relevo das ilhas pequenas escalado pelo raio (sem "cones" íngremes).
+- O mar agora recebe um único mapa de costa para todas as ilhas (até 12): espuma e água rasa em volta de cada uma.
+- Barcos NPC e pescadores só usam ilhas que têm cais.
+
+2) PORTO A 5 NÓS (scripts/barco.gd, jogo.gd)
+- Depois da boia de entrada a velocidade máxima é 5 nós (2,57 m/s), antes 3. Para atracar: 5 nós ou menos.
+
+3) CARTA NÁUTICA (M) refeita no estilo DREDGE (scripts/mapa_cartografico.gd)
+- Folha de papel com borda rasgada, dobras e cantos virados, moldura dupla.
+- Grade verde com NÚMEROS na faixa da esquerda e LETRAS na faixa de baixo (ex.: "J-8"); a grade acompanha o zoom
+  (casas de 100 a 500 m) e as coordenadas não "escorregam" mais.
+- Ilhas com sombra, área alta mais escura, linha clara de costa, curvas de profundidade (raso / fundo),
+  cais, casas (quadradinhos), farol, recifes e bancos tracejados, nome de cada ilha e dos ARQUIPÉLAGOS em letras espaçadas.
+- Rota tracejada até o destino com X e referência da grade; seta do barco com pulso; rosa dos ventos.
+- Cabeçalho com título e legenda; rodapé com posição, casa da grade, rumo e distância ao destino; escala.
+- Abre centrada no barco com zoom 1,8. Roda do mouse dá zoom em volta do cursor (1x a 8x).
+  Ilhotas pequenas só ganham nome a partir de zoom 1,7.
+
+4) EDITOR DO MUNDO (F9) (scripts/construtor.gd, ilha.gd, mundo_dados.gd, arquitetura_malhas.gd)
+- ILHA: escolha entre Vila do Porto, Ilha das Rocas e Ilha de São Pedro (cada uma salva em user://mundo_<ilha>.json;
+  "Gravar na pasta do jogo" grava res://dados/mundo_<ilha>.json). Ao trocar, a ilha atual é salva.
+- T PINTAR CHÃO: pincel de Grama, Terra, Areia e Apagar (botão direito apaga). Ctrl+roda ou [ ] mudam o pincel.
+  A pintura fica numa imagem 256x256 por ilha, guardada no mundo salvo.
+- REMOVER (X): clique em qualquer coisa (casa, prop, poste, árvore, coqueiro, pinheiro, moita, pedra ou rua inteira)
+  para remover só ela. Passando o mouse, o alvo fica vermelho ("Vai remover: ...").
+- DECORAÇÕES NOVAS (22 no total): monte de rede, bobina de cabo, pneus, cabeço, pilha de caixas, barril azul,
+  caixote novo, bomba d'água, vaso de plantas, cerca, fogueira, âncora, boias penduradas, mesa com bancos, carrinho de mão.
+- PEDRAS: variadas, pequena, média ou grande.
+- GIRO ANTES DE COLOCAR: o fantasma mostra a direção (seta). Shift+roda ou Q/E giram 15°, R gira 90°,
+  botões ⟲ 15° / ⟳ 15° / ↻ 90° e o texto "Giro do próximo objeto".
+- O MIRANTE ao lado do farol (fim da estrada) foi removido.
+
+5) OUTROS
+- Configuração de som: leitura antiga sem a chave "ambiente" não gera mais erro no console.
+- Textos novos em pt/es/en.
+
+NÃO TESTADO AQUI
+- Forward+ / RX 6600 (as fotos são gl_compatibility).
+- Editor com mouse de verdade (testado por script: pintura, 15 decorações, remover, trocar de ilha).
+- Viagem completa até São Pedro jogando (combustível calculado, não navegado).

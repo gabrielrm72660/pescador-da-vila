@@ -388,12 +388,13 @@ func _radar() -> void:
                         draw_colored_polygon(poligono, camada[1])
                         if camada[0] == "linha":
                             draw_polyline(poligono + PackedVector2Array([poligono[0]]), Color(CREME, 0.85), 1.5, true)
-            var cais_a := _rel_barco(ilha.cais[0])
-            var cais_b := _rel_barco(ilha.cais[1])
-            var pa := c + Vector2(cais_a.x, -cais_a.y) / alcance_radar * raio
-            var pb := c + Vector2(cais_b.x, -cais_b.y) / alcance_radar * raio
-            if pa.distance_to(c) < raio - 2.0 and pb.distance_to(c) < raio - 2.0:
-                draw_line(pa, pb, Color(0.55, 0.38, 0.22), 3.0)
+            if (ilha.cais as Array).size() >= 2:
+                var cais_a := _rel_barco(ilha.cais[0])
+                var cais_b := _rel_barco(ilha.cais[1])
+                var pa := c + Vector2(cais_a.x, -cais_a.y) / alcance_radar * raio
+                var pb := c + Vector2(cais_b.x, -cais_b.y) / alcance_radar * raio
+                if pa.distance_to(c) < raio - 2.0 and pb.distance_to(c) < raio - 2.0:
+                    draw_line(pa, pb, Color(0.55, 0.38, 0.22), 3.0)
     if barco_ref != null:
         for boia in radar_boias:                               # boias: pontinhos vermelho/verde/branco/amarelo
             var rb := _rel_barco(boia.mundo)

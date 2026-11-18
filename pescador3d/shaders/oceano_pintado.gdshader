@@ -24,6 +24,8 @@ uniform vec2 ilha_centro_c = vec2(1000000.0);
 uniform float ilha_raio_a = 0.0;
 uniform float ilha_raio_b = 0.0;
 uniform float ilha_raio_c = 0.0;
+uniform vec3 ilhas_mar[12];                 // v0.5.8: (x, z, raio) de até 12 ilhas
+uniform int n_ilhas_mar = 0;
 uniform vec2 direcao_vento = vec2(0.84, -0.54);
 uniform float brilho : hint_range(0.0, 1.0, 0.01) = 0.55;
 uniform float brilho_especular : hint_range(0.0, 1.0, 0.01) = 0.38;
@@ -73,9 +75,9 @@ varying float altura_crista;
 // Distancia (m) do ponto ate a costa aproximada da ilha mais proxima.
 float dist_costa(vec2 p) {
     float d = 99999.0;
-    if (ilha_raio_a > 0.0) { d = min(d, length(p - ilha_centro_a) - ilha_raio_a); }
-    if (ilha_raio_b > 0.0) { d = min(d, length(p - ilha_centro_b) - ilha_raio_b); }
-    if (ilha_raio_c > 0.0) { d = min(d, length(p - ilha_centro_c) - ilha_raio_c); }
+    for (int i = 0; i < n_ilhas_mar; i++) {
+        d = min(d, length(p - ilhas_mar[i].xy) - ilhas_mar[i].z);
+    }
     return d;
 }
 
@@ -120,17 +122,9 @@ vec2 inclinacao_onda(vec2 p, float t) {
     // A transição costeira também altera a normal das ondas, não só sua altura.
     float d = 99999.0;
     vec2 radial = vec2(0.0);
-    if (ilha_raio_a > 0.0) {
-        float da = length(p - ilha_centro_a) - ilha_raio_a;
-        if (da < d) { d = da; radial = normalize(p - ilha_centro_a + vec2(0.00001)); }
-    }
-    if (ilha_raio_b > 0.0) {
-        float db = length(p - ilha_centro_b) - ilha_raio_b;
-        if (db < d) { d = db; radial = normalize(p - ilha_centro_b + vec2(0.00001)); }
-    }
-    if (ilha_raio_c > 0.0) {
-        float dc = length(p - ilha_centro_c) - ilha_raio_c;
-        if (dc < d) { d = dc; radial = normalize(p - ilha_centro_c + vec2(0.00001)); }
+    for (int i = 0; i < n_ilhas_mar; i++) {
+        float di = length(p - ilhas_mar[i].xy) - ilhas_mar[i].z;
+        if (di < d) { d = di; radial = normalize(p - ilhas_mar[i].xy + vec2(0.00001)); }
     }
     float u = clamp((d - 25.0) / 225.0, 0.0, 1.0);
     vec2 df = radial * (6.0 * u * (1.0 - u) / 225.0); // amplitude aumenta de 0.27 para 1.27

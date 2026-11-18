@@ -161,10 +161,14 @@ func configurar_costas(ilhas: Array) -> void:
     for i in ilhas:
         _costas.append({"centro": Vector2(i.centro.x, i.centro.z), "raio": float(i.raio)})
     if _material != null:
-        for j in mini(3, _costas.size()):
-            var sufixo: String = ["a", "b", "c"][j]
-            _material.set_shader_parameter("ilha_centro_" + sufixo, _costas[j].centro)
-            _material.set_shader_parameter("ilha_raio_" + sufixo, _costas[j].raio)
+        var arr := PackedVector3Array()                      # v0.5.8: até 12 ilhas (x, z, raio); antes eram 3
+        for j in 12:
+            if j < _costas.size():
+                arr.append(Vector3(_costas[j].centro.x, _costas[j].centro.y, _costas[j].raio))
+            else:
+                arr.append(Vector3(1000000.0, 1000000.0, 0.0))
+        _material.set_shader_parameter("ilhas_mar", arr)
+        _material.set_shader_parameter("n_ilhas_mar", mini(12, _costas.size()))
 
 func distancia_costeira(pos: Vector3) -> float:
     var menor: float = 99999.0

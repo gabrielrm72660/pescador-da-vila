@@ -5,8 +5,11 @@ extends Node
 ## O jogo fica pausado enquanto o construtor está aberto; ao sair, o mundo editado vale para a viagem.
 ##
 ## Câmera:  WASD move · setas giram · roda aproxima · botão do meio (ou Alt + esquerdo) gira · Shift acelera
-## Ações:   B colocar · V mover · X apagar · 1..9 e 0 trocam de categoria · Q/E giram · C varia · Delete apaga
-##          Ctrl+Z desfaz · Ctrl+Y refaz · Ctrl+S salva · Tab sai
+## Ações:   B colocar · V mover · X remover (um item de qualquer tipo) · 1..9, T e 0 trocam de categoria
+##          Q/E giram 15°, R gira 90°, Shift+roda gira (antes de colocar) · C varia · Delete apaga
+##          Ctrl+Z desfaz · Ctrl+Y refaz · Ctrl+S salva · F9 sai
+## v0.5.8: escolhe a ilha (Vila do Porto, Ilha das Rocas, Ilha de São Pedro), pincel de chão (grama, terra, areia),
+##         pedras pequena/média/grande e muitas decorações novas.
 
 signal fechado
 
@@ -28,6 +31,7 @@ const CATEGORIAS := [
     ["arvores", "7  Árvores", KEY_7],
     ["moitas", "8  Moitas", KEY_8],
     ["pedras", "9  Pedras", KEY_9],
+    ["terreno", "T  Pintar chão", KEY_T],
     ["limpar", "0  Borracha", KEY_0],
 ]
 const VEGETACAO := ["pinheiros", "coqueiros", "arvores", "moitas", "pedras"]
@@ -42,11 +46,21 @@ const REGRAS := {
 const TIPOS_CASA := [["casa", "Casa de pescador"], ["armazem", "Armazém"], ["mercado", "Mercado"], ["capela", "Capela"]]
 const TIPOS_RUA := [["calcada", "Calçada de pedra"], ["areia", "Areia batida"]]
 ## tipo, variante, rótulo
-const TIPOS_PROP := [["rede", 0, "Rede de pesca"], ["canoa", 0, "Canoa vermelha"], ["canoa", 1, "Canoa azul"],
-        ["caixote", 0, "Caixote"], ["caixote", 1, "Pilha de caixotes"], ["barril", 0, "Barril"], ["banco", 0, "Banco"]]
+const TIPOS_PROP := [["rede", 0, "Varal de redes"], ["canoa", 0, "Canoa vermelha"], ["canoa", 1, "Canoa azul"],
+        ["caixote", 0, "Caixote"], ["caixote", 1, "Pilha de caixotes"], ["barril", 0, "Barril"], ["banco", 0, "Banco"],
+        ["monte_rede", 0, "Monte de rede"], ["bobina", 0, "Rolo de corda"], ["pneus", 0, "Pneus (defensa)"], ["cabeco", 0, "Cabeço de amarração"],
+        ["pilha_caixas", 0, "Caixas de peixe"], ["barril_azul", 0, "Barril azul"], ["caixote_novo", 0, "Caixote de ripas"],
+        ["bomba", 0, "Bomba de diesel"], ["vaso", 0, "Vaso de flores"], ["cerca", 0, "Cerca (4 m)"], ["fogueira", 0, "Fogueira"],
+        ["ancora", 0, "Âncora velha"], ["boias", 0, "Monte de bóias"], ["mesa", 0, "Mesa de limpar peixe"], ["carrinho", 0, "Carrinho de mão"]]
+## Tamanho do fantasma (caixa verde) de cada decoração, para ver o giro antes de colocar
+const TAM_PROP := {"rede": Vector3(4.6, 2.6, 0.6), "canoa": Vector3(4.2, 0.7, 1.2), "banco": Vector3(2.3, 0.9, 0.7), "cerca": Vector3(4.0, 1.1, 0.2),
+        "mesa": Vector3(1.8, 0.9, 2.0), "carrinho": Vector3(1.8, 0.8, 0.7), "ancora": Vector3(1.4, 0.3, 2.2), "bomba": Vector3(0.8, 1.6, 0.6)}
+const TIPOS_PEDRA := [["Pedras variadas", -1], ["Pedra pequena", 0], ["Pedra média", 1], ["Pedra grande", 2]]
+const TIPOS_CHAO := [["Grama", 0], ["Terra", 1], ["Areia", 2], ["Apagar a pintura", -1]]
 
 var jogo: Node3D
 var ilha: Node3D
+var ilhas_editaveis: Array = []               # v0.5.8: Vila do Porto, Ilha das Rocas e Ilha de São Pedro
 var ativo: bool = false
 var categoria: String = "casas"
 var ferramenta: String = "colocar"            # colocar | selecionar | apagar
@@ -67,6 +81,11 @@ var _limpar_ao_construir: bool = true
 var _tipo_casa: int = 0
 var _tipo_rua: int = 0
 var _tipo_prop: int = 0
+var _tipo_pedra: int = 0
+var _tipo_chao: int = 0
+var _pintou_chao: bool = false
+var _botoes_ilha: Array = []
+var _rotulo_giro: Label
 var _desfazer: Array = []
 var _refazer: Array = []
 var _sel: Dictionary = {}                     # {"cat", "i", "v"} ou vazio
@@ -113,9 +132,10 @@ var _check_ima: CheckButton
 var _check_limpar: CheckButton
 var _check_macio: CheckButton
 
-func configurar(jogo_: Node3D, ilha_: Node3D) -> void:
+func configurar(jogo_: Node3D, ilha_: Node3D, lista: Array = []) -> void:
     jogo = jogo_
     ilha = ilha_
+    ilhas_editaveis = lista if not lista.is_empty() else ([ilha_] if ilha_ != null else [])
     process_mode = Node.PROCESS_MODE_ALWAYS
     _rng.randomize()
 
@@ -166,7 +186,7 @@ func abrir() -> void:
     _escolher_ferramenta(ferramenta)
     _atualizar_camera()
     Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-    _mostrar_aviso("Modo Construtor aberto. Clique na ilha para colocar. Tab sai e guarda.")
+    _mostrar_aviso("Modo Construtor aberto (%s). Clique na ilha para colocar. F9 sai e guarda." % ilha.nome)
     _registrar_diagnostico("abriu")
     get_tree().paused = true                      # por último: se algo acima falhar, o jogo não fica congelado
 
@@ -191,13 +211,39 @@ func fechar() -> void:
         jogo.interface.aviso("Mundo salvo. O que você construiu vale daqui para frente.")
     fechado.emit()
 
+## v0.5.8: escolher qual ilha editar (Vila do Porto, Ilha das Rocas, Ilha de São Pedro). Salva a anterior se mudou.
+func trocar_ilha(nova: Node3D) -> void:
+    if nova == null or nova == ilha or not nova.editavel:
+        return
+    if modificado:
+        _salvar(false)
+    ilha = nova
+    if _visuais != null:
+        _visuais.reparent(ilha, false)
+    _desfazer.clear()
+    _refazer.clear()
+    _sel = {}
+    _rua_atual = []
+    _rua_estende = {}
+    modificado = false
+    _foco = _centro_da_vila()
+    _dist = clampf(ilha.raio * 1.1, 60.0, 140.0)
+    for k in _botoes_ilha.size():
+        (_botoes_ilha[k] as Button).set_pressed_no_signal(ilhas_editaveis[k] == ilha)
+    _atualizar_pontos_ruas()
+    _atualizar_marca()
+    _atualizar_camera()
+    _mostrar_aviso("Editando: %s" % ilha.nome)
+
 func _centro_da_vila() -> Vector2:
     var soma := Vector2.ZERO
     var n := 0
     for c in ilha.mundo.get("casas", []):
         soma += Vector2(float(c["x"]), float(c["z"]))
         n += 1
-    return soma / float(n) if n > 0 else Vector2.ZERO
+    if n > 0:
+        return soma / float(n)
+    return Vector2(ilha.cais_inicio.x - ilha.centro.x, ilha.cais_inicio.z - ilha.centro.z) * 0.6 if ilha.tem_cais else Vector2.ZERO
 
 # ---------------------------------------------------------------------------------------------------------------
 # câmera
@@ -230,7 +276,7 @@ func _process(delta: float) -> void:
             var frente := Vector2(-sin(_yaw), -cos(_yaw))
             var direita := Vector2(cos(_yaw), -sin(_yaw))
             _foco += (frente * -mover.y + direita * mover.x) * _dist * 0.8 * rapido * delta
-            _foco = _foco.clamp(Vector2(-165, -165), Vector2(165, 165))
+            _foco = _foco.clamp(-Vector2.ONE * ilha.lado * 0.55, Vector2.ONE * ilha.lado * 0.55)
             mudou = true
     if Input.is_key_pressed(KEY_LEFT):
         _yaw += 1.6 * delta
@@ -325,14 +371,18 @@ func _unhandled_input(event: InputEvent) -> void:
 func _mouse_botao(e: InputEventMouseButton) -> void:
     match e.button_index:
         MOUSE_BUTTON_WHEEL_UP:
-            if e.pressed:
+            if e.pressed and e.shift_pressed:
+                _girar(PI / 12.0)
+            elif e.pressed:
                 if e.ctrl_pressed and _categoria_e_pincel():
                     _mudar_pincel(1.0)
                 else:
                     _dist = clampf(_dist * 0.88, 10.0, 340.0)
                     _atualizar_camera()
         MOUSE_BUTTON_WHEEL_DOWN:
-            if e.pressed:
+            if e.pressed and e.shift_pressed:
+                _girar(-PI / 12.0)
+            elif e.pressed:
                 if e.ctrl_pressed and _categoria_e_pincel():
                     _mudar_pincel(-1.0)
                 else:
@@ -373,6 +423,9 @@ func _mouse_movimento(e: InputEventMouseMotion) -> void:
     _atualizar_cursor()
     if _hover == null:
         return
+    if ferramenta == "apagar" and not _categoria_e_pincel() and not _arrastando:
+        _sel = _achar_qualquer(_hover)            # o que vai sair fica marcado antes do clique
+        _atualizar_marca()
     var p: Vector2 = _hover
     if _arrastando:
         if not _arrasto_moveu:
@@ -381,7 +434,7 @@ func _mouse_movimento(e: InputEventMouseMotion) -> void:
         _mover_selecionado(p)
         _atualizar_marca()
     elif _pintando != 0 and _categoria_e_pincel():
-        if p.distance_to(_ultimo_carimbo) >= maxf(1.2, _raio_pincel * 0.45):
+        if p.distance_to(_ultimo_carimbo) >= maxf(0.8, _raio_pincel * (0.22 if categoria == "terreno" else 0.45)):
             _carimbar(p, _pintando == 2)
 
 func _esquerdo_aperta(e: InputEventMouseButton) -> void:
@@ -405,6 +458,7 @@ func _esquerdo_aperta(e: InputEventMouseButton) -> void:
             _apagar(p)
 
 func _esquerdo_solta() -> void:
+    _fim_pintura_chao()
     if _arrastando:
         _arrastando = false
         if _arrasto_moveu:
@@ -459,6 +513,8 @@ func _tecla(e: InputEventKey) -> void:
             _girar(-PI / 12.0 * (0.33 if e.shift_pressed else 1.0))
         KEY_C:
             _variar()
+        KEY_R:
+            _girar(PI * 0.5)
         KEY_ENTER, KEY_KP_ENTER:
             if categoria == "ruas":
                 _terminar_rua()
@@ -483,7 +539,7 @@ func _tecla(e: InputEventKey) -> void:
 # ---------------------------------------------------------------------------------------------------------------
 
 func _categoria_e_pincel() -> bool:
-    return categoria == "limpar" or VEGETACAO.has(categoria)
+    return categoria == "limpar" or categoria == "terreno" or VEGETACAO.has(categoria)
 
 func _escolher_categoria(id: String) -> void:
     categoria = id
@@ -507,6 +563,9 @@ func _escolher_categoria(id: String) -> void:
 
 func _escolher_ferramenta(nome: String) -> void:
     ferramenta = nome
+    _sel = {}
+    if _marca != null:
+        _atualizar_marca()
     _arrastando = false
     _pintando = 0
     for chave in _botoes_ferr:
@@ -531,6 +590,14 @@ func _preencher_tipos() -> void:
             for t in TIPOS_PROP:
                 itens.append(t[2])
             escolhido = _tipo_prop
+        "pedras":
+            for t in TIPOS_PEDRA:
+                itens.append(t[0])
+            escolhido = _tipo_pedra
+        "terreno":
+            for t in TIPOS_CHAO:
+                itens.append(t[0])
+            escolhido = _tipo_chao
     for nome in itens:
         _tipo_opcao.add_item(nome)
     _tipo_opcao.visible = not itens.is_empty()
@@ -545,6 +612,10 @@ func _ao_escolher_tipo(n: int) -> void:
             _tipo_rua = n
         "props":
             _tipo_prop = n
+        "pedras":
+            _tipo_pedra = n
+        "terreno":
+            _tipo_chao = n
     _atualizar_cursor()
 
 func _mudar_pincel(passo: float) -> void:
@@ -556,6 +627,8 @@ func _atualizar_dica() -> void:
     var texto := ""
     if categoria == "limpar":
         texto = "Segure o botão e passe a borracha: apaga toda a vegetação sob o círculo. Ctrl+roda muda o tamanho."
+    elif categoria == "terreno":
+        texto = "Segure e pinte o chão (grama, terra ou areia). Botão direito apaga a pintura. Ctrl+roda ou [ ] mudam o pincel."
     elif ferramenta == "colocar":
         match categoria:
             "casas":
@@ -565,13 +638,13 @@ func _atualizar_dica() -> void:
             "postes":
                 texto = "Clique para colocar um poste de luz (acende à noite)."
             "props":
-                texto = "Clique para colocar. Q/E giram, C varia."
+                texto = "Gire ANTES de colocar: Q/E (15°), R (90°) ou Shift+roda. A seta laranja mostra a frente. C varia."
             _:
                 texto = "Segure o botão e pinte. Botão direito apaga. Ctrl+roda ou [ ] mudam o tamanho do pincel."
     elif ferramenta == "selecionar":
         texto = "Clique num objeto para escolher e arraste para mover. Q/E giram, C varia, Delete apaga."
     else:
-        texto = "Clique no objeto para apagar. Na vegetação, segure e arraste para varrer."
+        texto = "Passe o mouse: o que fica marcado é o que sai. Clique para remover só aquele item (casa, rua, poste, decoração, árvore, pedra...)."
     _dica.text = texto
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -579,7 +652,9 @@ func _atualizar_dica() -> void:
 # ---------------------------------------------------------------------------------------------------------------
 
 func _lista(cat: String) -> Array:
-    return ilha.mundo.get(cat, [])
+    if not ilha.mundo.has(cat):
+        ilha.mundo[cat] = []                  # ilha que ainda não tinha essa categoria: a lista nova fica guardada
+    return ilha.mundo[cat]
 
 func _pos_item(item) -> Vector2:
     if item is Dictionary:
@@ -599,6 +674,10 @@ func _restaurar(foto: Dictionary) -> void:
         if foto.has(chave) and ilha.mundo.get(chave) != foto[chave]:
             ilha.mundo[chave] = foto[chave]
             refazer_cats.append(chave)
+    for chave_t in MundoDados.CHAVES_TEXTO:
+        if str(foto.get(chave_t, "")) != str(ilha.mundo.get(chave_t, "")):
+            ilha.mundo[chave_t] = str(foto.get(chave_t, ""))
+            refazer_cats.append(chave_t)
     _sel = {}
     _rua_atual = []
     _rua_estende = {}
@@ -630,7 +709,8 @@ func _reconstruir(cats: Array) -> void:
     _atualizar_cursor()
 
 func _salvar(avisar: bool) -> bool:
-    var ok: bool = MundoDados.salvar(ilha.mundo)
+    _fim_pintura_chao()
+    var ok: bool = MundoDados.salvar(ilha.mundo, MundoDados.caminho_usuario(ilha.chave_mundo))
     if ok:
         modificado = false
     if avisar:
@@ -639,8 +719,8 @@ func _salvar(avisar: bool) -> bool:
 
 func _exportar() -> void:
     DirAccess.make_dir_recursive_absolute("res://dados")
-    var ok: bool = MundoDados.salvar(ilha.mundo, MundoDados.ARQUIVO_JOGO)
-    _mostrar_aviso("Gravado na pasta do jogo: dados/mundo_ilha_principal.json" if ok else "Só dá para gravar na pasta do jogo rodando pelo editor do Godot.")
+    var ok: bool = MundoDados.salvar(ilha.mundo, MundoDados.caminho_jogo(ilha.chave_mundo))
+    _mostrar_aviso(("Gravado na pasta do jogo: dados/mundo_%s.json" % ilha.chave_mundo) if ok else "Só dá para gravar na pasta do jogo rodando pelo editor do Godot.")
 
 func _restaurar_padrao(publicado: bool = true) -> void:
     _guardar_desfazer()
@@ -893,6 +973,12 @@ func _tem_obstaculo(p: Vector2) -> bool:
 
 func _carimbar(centro: Vector2, apagar: bool) -> void:
     _ultimo_carimbo = centro
+    if categoria == "terreno":
+        var tipo_c: int = -1 if apagar else int(TIPOS_CHAO[_tipo_chao][1])
+        ilha.pintar_terreno(centro, _raio_pincel, tipo_c)
+        _pintou_chao = true
+        modificado = true
+        return
     var mudadas: Array = []
     if apagar:
         var cats: Array = VEGETACAO if categoria == "limpar" else [categoria]
@@ -908,9 +994,13 @@ func _carimbar(centro: Vector2, apagar: bool) -> void:
             _sel = {}
             _reconstruir(mudadas)
         return
-    var regra: Dictionary = REGRAS[categoria]
+    var regra: Dictionary = REGRAS[categoria].duplicate()
     var lista2: Array = _lista(categoria)
     var quantas: int = clampi(roundi(_raio_pincel * _raio_pincel * 0.10), 1, 16)
+    if categoria == "pedras" and int(TIPOS_PEDRA[_tipo_pedra][1]) >= 0:
+        var tam_p: int = int(TIPOS_PEDRA[_tipo_pedra][1])
+        regra["dist"] = [1.2, 2.6, 5.5][tam_p]           # pedra grande precisa de mais espaço
+        quantas = clampi(quantas / (1 + tam_p * 2), 1, 16)
     var mudou := false
     for n in quantas:
         var ang: float = _rng.randf() * TAU
@@ -930,6 +1020,8 @@ func _carimbar(centro: Vector2, apagar: bool) -> void:
             continue
         if categoria == "coqueiros":
             lista2.append([q.x, q.y, _rng.randi(), _rng.randi() % 3])
+        elif categoria == "pedras" and int(TIPOS_PEDRA[_tipo_pedra][1]) >= 0:
+            lista2.append([q.x, q.y, _rng.randi(), int(TIPOS_PEDRA[_tipo_pedra][1])])
         else:
             lista2.append([q.x, q.y, _rng.randi()])
         mudou = true
@@ -1080,9 +1172,15 @@ func _depois_de_mover() -> void:
         cats.append_array(_limpar_vegetacao_na_rua(_pontos_da_rua(_lista("ruas")[int(_sel["i"])]), 2.4))
     _reconstruir(cats)
 
+func _fim_pintura_chao() -> void:
+    if _pintou_chao:
+        _pintou_chao = false
+        ilha.mundo["pintura"] = ilha.pintura_para_texto()
+
 func _girar(passo: float) -> void:
-    if _sel.is_empty():
+    if _sel.is_empty() or ferramenta == "colocar":
         _giro_atual = fposmod(_giro_atual + passo, TAU)
+        _atualizar_giro()
         _atualizar_cursor()
         return
     var cat: String = _sel["cat"]
@@ -1092,6 +1190,10 @@ func _girar(passo: float) -> void:
     var item: Dictionary = _lista(cat)[int(_sel["i"])]
     item["giro"] = fposmod(float(item["giro"]) + passo, TAU)
     _reconstruir([cat])
+
+func _atualizar_giro() -> void:
+    if _rotulo_giro != null:
+        _rotulo_giro.text = "Giro do próximo objeto: %d°" % roundi(rad_to_deg(_giro_atual))
 
 func _variar() -> void:
     if _sel.is_empty():
@@ -1117,18 +1219,48 @@ func _variar() -> void:
             item[2] = _rng.randi()
     _reconstruir([cat])
 
+## v0.5.8: clique remove só UM item, de qualquer categoria: o mais perto do mouse (o que estava marcado).
 func _apagar(p: Vector2) -> void:
-    if VEGETACAO.has(categoria):
+    if categoria == "terreno":
         _guardar_desfazer()
         _pintando = 2
         _ultimo_carimbo = Vector2(1e9, 1e9)
         _carimbar(p, true)
         return
-    var r: Dictionary = _achar(categoria, p)
+    var r: Dictionary = _achar_qualquer(p)
     if r.is_empty():
+        _mostrar_aviso("Nada aqui para remover.")
         return
     _sel = r
+    var nome: String = str(r["cat"])
     _apagar_selecionado()
+    _mostrar_aviso("Removido: %s" % nome)
+    _sel = _achar_qualquer(p)
+    _atualizar_marca()
+
+## O item mais perto de p entre todas as categorias (casas, ruas, postes, decorações e vegetação).
+func _achar_qualquer(p: Vector2) -> Dictionary:
+    var melhor: Dictionary = {}
+    var melhor_nota: float = INF
+    for cat in ["casas", "props", "postes", "pinheiros", "coqueiros", "arvores", "moitas", "pedras", "ruas"]:
+        var r: Dictionary = _achar(cat, p)
+        if r.is_empty():
+            continue
+        var lista: Array = _lista(cat)
+        var d: float
+        var alcance: float
+        if cat == "ruas":
+            d = float(_rua_mais_proxima(p)["d"])
+            alcance = 3.0
+            r["v"] = -1                               # remover numa rua tira a rua inteira
+        else:
+            d = _pos_item(lista[int(r["i"])]).distance_to(p)
+            alcance = {"casas": 5.2, "props": 2.6, "postes": 1.8}.get(cat, float(REGRAS.get(cat, {"pega": 1.6})["pega"]))
+        var nota: float = d / alcance + (0.35 if cat == "ruas" else 0.0)
+        if nota < melhor_nota:
+            melhor_nota = nota
+            melhor = r
+    return melhor
 
 func _apagar_selecionado() -> void:
     if _sel.is_empty():
@@ -1237,6 +1369,8 @@ func _atualizar_cursor() -> void:
     if _categoria_e_pincel():
         raio = _raio_pincel
         cor = Color(1.0, 0.45, 0.35, 0.95) if (categoria == "limpar" or ferramenta == "apagar") else Color(0.55, 1.0, 0.55, 0.95)
+        if categoria == "terreno" and ferramenta != "apagar":
+            cor = [Color(0.45, 0.95, 0.35, 0.95), Color(0.85, 0.55, 0.30, 0.95), Color(1.0, 0.92, 0.55, 0.95), Color(1.0, 0.45, 0.35, 0.95)][_tipo_chao]
     elif ferramenta == "apagar":
         cor = Color(1.0, 0.4, 0.35, 0.95)
     elif ferramenta == "selecionar":
@@ -1255,7 +1389,8 @@ func _atualizar_cursor() -> void:
         (_fantasma.material_override as StandardMaterial3D).albedo_color = Color(1.0, 0.35, 0.30, 0.5) if ocupado else Color(0.45, 0.95, 0.55, 0.45)
         _cursor.position = Vector3(q.x, maxf(_altura(q), 0.0) + 0.25, q.y)
     elif ferramenta == "colocar" and categoria == "props":
-        _posicionar_fantasma(p, _giro_atual, Vector3(2.0, 1.0, 1.0))
+        var tipo_p: String = TIPOS_PROP[_tipo_prop][0]
+        _posicionar_fantasma(p, _giro_atual, TAM_PROP.get(tipo_p, Vector3(1.0, 0.9, 1.0)))
     elif ferramenta == "colocar" and categoria == "postes":
         _posicionar_fantasma(p, 0.0, Vector3(0.3, 4.2, 0.3))
     elif ferramenta == "selecionar" and _arrastando and not _sel.is_empty() and _sel["cat"] == "casas":
@@ -1270,7 +1405,7 @@ func _posicionar_fantasma(q: Vector2, giro: float, tam: Vector3) -> void:
     _fantasma.position = Vector3(q.x, h + tam.y * 0.5, q.y)
     _fantasma.rotation.y = giro
     _fantasma.visible = true
-    if categoria == "casas":
+    if categoria == "casas" or categoria == "props":
         _seta.visible = true
         _seta.position = Vector3(q.x, h + 0.35, q.y) + Vector3(cos(giro), 0.0, -sin(giro)) * (tam.x * 0.5 + 1.3)
         _seta.rotation.y = giro
@@ -1323,12 +1458,15 @@ func _atualizar_marca() -> void:
             altura_marca = float(REGRAS[cat]["marca"]) if REGRAS.has(cat) else 6.0
             descricao = cat.capitalize()
     var h: float = maxf(_altura(p), 0.0)
+    var cor_marca := Color(1.0, 0.30, 0.25, 1.0) if ferramenta == "apagar" else Color(1.0, 0.88, 0.15, 1.0)
+    (_marca.material_override as StandardMaterial3D).albedo_color = cor_marca
+    (_anel_marca.material_override as StandardMaterial3D).albedo_color = cor_marca
     _marca.visible = true
     _marca.position = Vector3(p.x, h + altura_marca + 1.1, p.y)
     _anel_marca.visible = true
     _anel_marca.position = Vector3(p.x, h + 0.3, p.y)
     _anel_marca.scale = Vector3(anel, 1.0, anel)
-    _info.text = "Selecionado: %s" % descricao
+    _info.text = ("Vai remover: %s" if ferramenta == "apagar" else "Selecionado: %s") % descricao
 
 ## Prévia da rua que está sendo desenhada (fita laranja) com um trecho até o mouse.
 func _atualizar_fita() -> void:
@@ -1441,7 +1579,17 @@ func _construir_interface() -> void:
     titulo.text = "MODO CONSTRUTOR"
     titulo.add_theme_font_size_override("font_size", 19)
     coluna.add_child(titulo)
-    coluna.add_child(_rotulo_pequeno("Tab sai e guarda · Ctrl+S salva"))
+    coluna.add_child(_rotulo_pequeno("F9 sai e guarda · Ctrl+S salva"))
+    coluna.add_child(HSeparator.new())
+    coluna.add_child(_rotulo_pequeno("ILHA"))
+    var grupo_ilha := ButtonGroup.new()
+    for il in ilhas_editaveis:
+        var alvo_ilha: Node3D = il
+        var bi := _botao(str(il.nome), func(): trocar_ilha(alvo_ilha), grupo_ilha)
+        bi.set_pressed_no_signal(il == ilha)
+        bi.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _botoes_ilha.append(bi)
+        coluna.add_child(bi)
     coluna.add_child(HSeparator.new())
 
     coluna.add_child(_rotulo_pequeno("O QUE CONSTRUIR"))
@@ -1462,7 +1610,7 @@ func _construir_interface() -> void:
     coluna.add_child(_rotulo_pequeno("FERRAMENTA"))
     var linha := HBoxContainer.new()
     var grupo_f := ButtonGroup.new()
-    for f in [["colocar", "Colocar (B)"], ["selecionar", "Mover (V)"], ["apagar", "Apagar (X)"]]:
+    for f in [["colocar", "Colocar (B)"], ["selecionar", "Mover (V)"], ["apagar", "Remover (X)"]]:
         var nome: String = f[0]
         var bf := _botao(f[1], func(): _escolher_ferramenta(nome), grupo_f)
         bf.alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1475,6 +1623,15 @@ func _construir_interface() -> void:
     _tipo_opcao.focus_mode = Control.FOCUS_NONE
     _tipo_opcao.item_selected.connect(_ao_escolher_tipo)
     coluna.add_child(_tipo_opcao)
+
+    var linha_giro := HBoxContainer.new()
+    linha_giro.add_child(_botao("⟲ 15°", func(): _girar(PI / 12.0)))
+    linha_giro.add_child(_botao("⟳ 15°", func(): _girar(-PI / 12.0)))
+    linha_giro.add_child(_botao("↻ 90°", func(): _girar(PI * 0.5)))
+    coluna.add_child(linha_giro)
+    _rotulo_giro = _rotulo_pequeno("")
+    coluna.add_child(_rotulo_giro)
+    _atualizar_giro()
 
     _linha_pincel = HBoxContainer.new()
     _rotulo_pincel = Label.new()

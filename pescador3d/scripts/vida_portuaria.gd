@@ -72,6 +72,8 @@ func _criar() -> void:
         fisica.cascos.clear()
     var contador: int = 0
     for ilha in _ilhas:
+        if not ilha.tem_cais:
+            continue
         for k in 2:
             var rota: Dictionary = _rota_livre(ilha, k)
             if rota.is_empty():

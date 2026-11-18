@@ -19,8 +19,16 @@ var coqueiros := 85
 var bonus_venda := 1.0                         # quanto o cais paga pelo peixe (1.3 = 30% a mais)
 var preco_diesel := 4                          # R$ por litro
 var tem_loja := true                           # vende melhorias do barco?
-var tem_farol := true                          # cada ilha decide se tem farol; Ilha Rata = false
+var tem_farol := true                          # cada ilha decide se tem farol; Ilha das Rocas = false
 var relevo_detalhado := true                    # espigoes e vales: apenas a ilha principal
+## v0.5.8
+var tem_cais := true                           # falso: ilha deserta, sem cais nem posto (não dá para atracar)
+var vila_pequena := false                      # vila de pescadores pequena ao pé do cais (ruas, casas, capela)
+var pinheiros_soltos := 0                      # pinheiros espalhados nas ilhas que não têm a vila desenhada
+var pode_editar := false                       # o Modo Construtor pode editar esta ilha (além da ilha principal)
+var chave_mundo := "ilha_principal"            # nome do arquivo do mundo editado: user://mundo_<chave>.json
+var arquipelago := ""                          # nome do arquipélago (só para a carta náutica)
+var lado := LADO                               # lado (m) do quadrado do terreno desta ilha (ilhotas usam menos)
 const TEX_COPA := "res://assets/texturas/ilha/copa.png"             # detalhe de folhagem (ferramentas/gerar_folhagem.py)
 const TEX_PALMEIRA := "res://assets/texturas/ilha/palmeira.png"       # folha em pena + casca
 const SHADER_COPA := "res://shaders/folhagem_vento.gdshader"          # folhagem que balança com o vento (Alta e Ultra)
@@ -51,16 +59,15 @@ func _ready() -> void:
     _ruido.frequency = 0.012
     _ruido.fractal_octaves = 4
     position = centro
-    editavel = _usa_layout()
+    editavel = _usa_layout() or pode_editar
     if editavel:
-        mundo = MundoDados.carregar()          # {} se o jogador nunca salvou: tudo nasce do padrão
+        mundo = MundoDados.carregar(chave_mundo)   # {} se o jogador nunca salvou: tudo nasce do padrão
     _criar_terreno()
     _criar_cais()
     _criar_vila()
     if com_vila:
         _criar_detalhes_porto()
-        _criar_mirante()
-        _registrar_pontos_interesse()
+        _registrar_pontos_interesse()          # v0.5.8: o mirante ao lado do farol saiu (o Gabriel achou sem sentido)
     _criar_pinheiros()
     _criar_coqueiros()
     _criar_arvores_nativas()
@@ -95,11 +102,14 @@ func altura_local(x: float, z: float) -> float:
 func restaurar_padrao(publicado: bool = true) -> void:
     if not editavel:
         return
-    MundoDados.apagar_salvo()
+    MundoDados.apagar_salvo(chave_mundo)
     _ocupado = _ocupado_fixo.duplicate()
     _reservando = true
-    mundo = MundoDados.carregar_publicado() if publicado else {}
-    _padrao_da_vila()
+    mundo = MundoDados.carregar_publicado(chave_mundo) if publicado else {}
+    if _usa_layout():
+        _padrao_da_vila()
+    else:
+        _padrao_simples()
     _construir_ruas()
     _construir_casas()
     if not mundo.has("props"):
@@ -109,14 +119,15 @@ func restaurar_padrao(publicado: bool = true) -> void:
     _construir_props()
     _construir_postes()
     if not mundo.has("pinheiros"):
-        mundo["pinheiros"] = _gerar_pinheiros()
+        mundo["pinheiros"] = _gerar_pinheiros() if _usa_layout() else _gerar_pinheiros_soltos()
     _construir_pinheiros()
     if not mundo.has("coqueiros"):
         mundo["coqueiros"] = _gerar_coqueiros()
     _construir_coqueiros()
-    if not mundo.has("arvores"):
-        mundo["arvores"] = _gerar_arvores_nativas()
-    _construir_arvores_nativas()
+    if com_vila:
+        if not mundo.has("arvores"):
+            mundo["arvores"] = _gerar_arvores_nativas()
+        _construir_arvores_nativas()
     if not mundo.has("pedras"):
         mundo["pedras"] = _gerar_pedras()
     if not mundo.has("moitas"):
@@ -132,7 +143,7 @@ func restaurar_padrao(publicado: bool = true) -> void:
 ## Modo Construtor: refaz só uma categoria do mundo editável (ruas, casas, postes, props, pinheiros, coqueiros,
 ## arvores, pedras, moitas) a partir de "mundo". O resto da ilha não é tocado.
 func reconstruir(categoria: String) -> void:
-    if not editavel or not mundo.has(categoria):
+    if not editavel or (not mundo.has(categoria) and categoria != "pintura"):
         return
     _reservando = false
     match categoria:
@@ -145,6 +156,7 @@ func reconstruir(categoria: String) -> void:
         "arvores": _construir_arvores_nativas()
         "pedras": _construir_pedras()
         "moitas": _construir_moitas()
+        "pintura": _carregar_pintura()
     var no_grupo: Node3D = get_node_or_null({"ruas": "Ruas", "casas": "Casas", "postes": "Postes", "props": "Props"}.get(categoria, "_")) as Node3D
     if no_grupo != null:
         Mesclador.mesclar(no_grupo)
@@ -154,7 +166,7 @@ func _altura_local(x: float, z: float) -> float:
         return _altura_principal(x, z)
     var plano := Vector2(x, z)
     var d := plano.length()
-    if d > LADO * 0.5:
+    if d > self.lado * 0.5:
         return -30.0
     var ang := atan2(z, x)
     var acesso := Vector2(-centro.x, -centro.z).normalized()
@@ -172,8 +184,9 @@ func _altura_local(x: float, z: float) -> float:
         contorno *= 1.0 - 0.16 * enseada + 0.08 * alarga_costas + 0.05 * ponta_lateral
     var r := d / maxf(raio * contorno, 1.0)
 
-    var h := 13.2 * pow(maxf(0.0, 1.0 - r * r), 1.42) - 1.45 * smoothstep(0.74, 1.48, r) * 6.0 + 0.85
-    h += _ruido.get_noise_2d(x * 2.2, z * 2.2) * 2.7 * clampf(1.0 - r, 0.0, 1.0)
+    var esc_alt: float = clampf(raio / 60.0, 0.38, 1.0)          # v0.5.8: ilhota pequena é baixa (senão vira um cone)
+    var h := 13.2 * esc_alt * pow(maxf(0.0, 1.0 - r * r), 1.42) - 1.45 * smoothstep(0.74, 1.48, r) * 6.0 + 0.85
+    h += _ruido.get_noise_2d(x * 2.2, z * 2.2) * 2.7 * esc_alt * clampf(1.0 - r, 0.0, 1.0)
 
     if com_vila:
         # Plataforma mais mansa em torno do cais e relevo principal recuado, como uma ilha habitada.
@@ -207,6 +220,11 @@ func _altura_local(x: float, z: float) -> float:
         var valeta: float = -2.6 * exp(-pow((z - 19.0 + 4.0 * ondulacao) / 13.0, 2.0))
         h += (espigao + espora + textura_montanha + valeta) * interior * protegido
 
+    if vila_pequena:
+        # chão da vila: um patamar manso que sobe da praia (o cais fica na beira; a vila, de 6 a 50 m para dentro)
+        var plat: float = exp(-(pow((along - raio * 0.42) / (raio * 0.30), 2.0) + pow(across / (raio * 0.34), 2.0)))
+        var nivel_v: float = 2.6 + 0.08 * (raio * 0.70 - along) + 0.5 * _ruido.get_noise_2d(x * 0.8, z * 0.8)
+        h = lerpf(h, maxf(nivel_v, 1.6), plat * 0.85 * (1.0 - smoothstep(0.86, 0.98, r)))
     if r > 1.0:
         h = minf(h, lerpf(h, -9.0, smoothstep(1.0, 1.6, r)))
     var dir_p: Vector2 = plano.normalized() if d > 0.01 else Vector2.ZERO
@@ -224,7 +242,7 @@ func _altura_local(x: float, z: float) -> float:
 func _altura_principal(x: float, z: float) -> float:
     var p := Vector2(x, z)
     var d := p.length()
-    if d > LADO * 0.5:
+    if d > self.lado * 0.5:
         return -30.0
     var frente := Vector2(-centro.x, -centro.z).normalized()
     var transversal := Vector2(-frente.y, frente.x)
@@ -324,29 +342,30 @@ func _barranco(h: float, x: float, z: float, r: float, raio_costa: float, livre:
     return lerpf(h, f, mascara)
 
 func _criar_terreno() -> void:
-    var passo := LADO / DIVISOES
+    var divisoes: int = maxi(90, int(round(float(DIVISOES) * lado / LADO)))     # mesma finura (~1,1 m) em ilha menor
+    var passo := lado / divisoes
     var alturas := PackedFloat32Array()
-    alturas.resize((DIVISOES + 1) * (DIVISOES + 1))
-    for j in DIVISOES + 1:
-        for i in DIVISOES + 1:
-            alturas[j * (DIVISOES + 1) + i] = _altura_local(-LADO / 2.0 + i * passo, -LADO / 2.0 + j * passo)
+    alturas.resize((divisoes + 1) * (divisoes + 1))
+    for j in divisoes + 1:
+        for i in divisoes + 1:
+            alturas[j * (divisoes + 1) + i] = _altura_local(-lado / 2.0 + i * passo, -lado / 2.0 + j * passo)
     var st := SurfaceTool.new()
     st.begin(Mesh.PRIMITIVE_TRIANGLES)
-    for j in DIVISOES + 1:
-        for i in DIVISOES + 1:
-            var h := alturas[j * (DIVISOES + 1) + i]
-            var he := alturas[j * (DIVISOES + 1) + maxi(i - 1, 0)]
-            var hd := alturas[j * (DIVISOES + 1) + mini(i + 1, DIVISOES)]
-            var hc := alturas[maxi(j - 1, 0) * (DIVISOES + 1) + i]
-            var hb := alturas[mini(j + 1, DIVISOES) * (DIVISOES + 1) + i]
+    for j in divisoes + 1:
+        for i in divisoes + 1:
+            var h := alturas[j * (divisoes + 1) + i]
+            var he := alturas[j * (divisoes + 1) + maxi(i - 1, 0)]
+            var hd := alturas[j * (divisoes + 1) + mini(i + 1, divisoes)]
+            var hc := alturas[maxi(j - 1, 0) * (divisoes + 1) + i]
+            var hb := alturas[mini(j + 1, divisoes) * (divisoes + 1) + i]
             var normal := Vector3(he - hd, 2.0 * passo, hc - hb).normalized()
             st.set_normal(normal)
-            st.add_vertex(Vector3(-LADO / 2.0 + i * passo, h, -LADO / 2.0 + j * passo))
-    for j in DIVISOES:
-        for i in DIVISOES:
-            var a := j * (DIVISOES + 1) + i
+            st.add_vertex(Vector3(-lado / 2.0 + i * passo, h, -lado / 2.0 + j * passo))
+    for j in divisoes:
+        for i in divisoes:
+            var a := j * (divisoes + 1) + i
             var b := a + 1
-            var c := a + DIVISOES + 1
+            var c := a + divisoes + 1
             var d := c + 1
             if maxf(maxf(alturas[a], alturas[b]), maxf(alturas[c], alturas[d])) < -6.0:
                 continue                                     # fundo que nunca aparece
@@ -363,11 +382,74 @@ func _criar_terreno() -> void:
     if ResourceLoader.exists("res://assets/texturas/ilha/barranco.png"):
         mat.set_shader_parameter("tex_barro", load("res://assets/texturas/ilha/barranco.png"))
         mat.set_shader_parameter("tem_barro", true)
+    _material_terreno = mat
+    _carregar_pintura()
+    if ResourceLoader.exists("res://assets/texturas/ilha/trilha.png"):
+        mat.set_shader_parameter("tex_terra", load("res://assets/texturas/ilha/trilha.png"))
     var malha := MeshInstance3D.new()
     malha.name = "Terreno"
     malha.mesh = st.commit()
     malha.material_override = mat
     add_child(malha)
+
+## ---- v0.5.8: pincel de terreno (Modo Construtor) ---------------------------------------------------------------
+## Uma imagem 256x256 cobre o quadrado do terreno: R = grama, G = terra, B = areia, A = quanto a pintura vale ali.
+## Fica em mundo["pintura"] (PNG em base64) e o shader do terreno mistura por cima das cores automáticas.
+const PINTURA_N := 256
+var _material_terreno: ShaderMaterial
+var _pintura_img: Image
+var _pintura_tex: ImageTexture
+
+func _carregar_pintura() -> void:
+    _pintura_img = null
+    var texto: String = str(mundo.get("pintura", ""))
+    if texto != "":
+        var img := Image.new()
+        if img.load_png_from_buffer(Marshalls.base64_to_raw(texto)) == OK:
+            img.convert(Image.FORMAT_RGBA8)
+            if img.get_width() != PINTURA_N:
+                img.resize(PINTURA_N, PINTURA_N)
+            _pintura_img = img
+    if _pintura_img == null:
+        _pintura_img = Image.create(PINTURA_N, PINTURA_N, false, Image.FORMAT_RGBA8)
+        _pintura_img.fill(Color(0, 0, 0, 0))
+    _pintura_tex = ImageTexture.create_from_image(_pintura_img)
+    if _material_terreno != null:
+        _material_terreno.set_shader_parameter("tex_pintura", _pintura_tex)
+        _material_terreno.set_shader_parameter("pintura_centro", Vector2(centro.x, centro.z))
+        _material_terreno.set_shader_parameter("pintura_lado", lado if (texto != "" or editavel) else 0.0)
+
+## Pinta (tipo 0 grama, 1 terra, 2 areia) ou apaga (tipo -1) um círculo em coordenadas LOCAIS. Borda macia.
+func pintar_terreno(local: Vector2, raio_m: float, tipo: int, forca: float = 0.35) -> void:
+    if _pintura_img == null:
+        return
+    var px_por_m: float = float(PINTURA_N) / lado
+    var c := (local + Vector2.ONE * lado * 0.5) * px_por_m
+    var r: float = maxf(1.0, raio_m * px_por_m)
+    var alvo := Color(1, 0, 0) if tipo == 0 else (Color(0, 1, 0) if tipo == 1 else Color(0, 0, 1))
+    for j in range(maxi(0, int(c.y - r)), mini(PINTURA_N, int(c.y + r) + 1)):
+        for i in range(maxi(0, int(c.x - r)), mini(PINTURA_N, int(c.x + r) + 1)):
+            var d: float = Vector2(float(i) + 0.5, float(j) + 0.5).distance_to(c) / r
+            if d >= 1.0:
+                continue
+            var w: float = forca * (1.0 - smoothstep(0.55, 1.0, d))
+            var atual: Color = _pintura_img.get_pixel(i, j)
+            if tipo < 0:
+                atual.a = maxf(0.0, atual.a - w * 1.6)
+            else:
+                atual.r = lerpf(atual.r, alvo.r, w)
+                atual.g = lerpf(atual.g, alvo.g, w)
+                atual.b = lerpf(atual.b, alvo.b, w)
+                atual.a = minf(1.0, atual.a + w)
+            _pintura_img.set_pixel(i, j, atual)
+    _pintura_tex.update(_pintura_img)
+    if _material_terreno != null:
+        _material_terreno.set_shader_parameter("pintura_lado", lado)
+
+func pintura_para_texto() -> String:
+    if _pintura_img == null or _pintura_img.is_invisible():
+        return ""
+    return Marshalls.raw_to_base64(_pintura_img.save_png_to_buffer())
 
 func _material(cor: Color, textura: String = "", repeticao: float = 0.5, relevo: String = "") -> StandardMaterial3D:
     var m := StandardMaterial3D.new()
@@ -415,6 +497,10 @@ func _criar_cais() -> void:
     var inicio: Vector2 = Vector2.ZERO
     var ponta: Vector2 = Vector2.ZERO
 
+    if not tem_cais:
+        cais_inicio = centro
+        cais_ponta = centro
+        return
     if com_vila:
         # Porto da vila: dentro da baía. Mantém a posição do cais da versão anterior.
         var eixo_baia: Vector2 = frente * 78.0 - lado * 16.0
@@ -425,10 +511,10 @@ func _criar_cais() -> void:
         inicio = eixo_baia - dir_cais * maxf(0.0, d - 4.5)
         ponta = inicio + dir_cais * COMPRIMENTO_CAIS
     else:
-        # Ilha Rata: cais tradicional curto, sem baía artificial e SEM dique.
-        # Antes, a mesma função também construía um muro na Ilha Rata.
+        # Ilha das Rocas: cais tradicional curto, sem baía artificial e SEM dique.
+        # Antes, a mesma função também construía um muro na Ilha das Rocas.
         var d_rata: float = 20.0
-        while d_rata < LADO * 0.5 and _altura_local(frente.x * d_rata, frente.y * d_rata) > 0.6:
+        while d_rata < self.lado * 0.5 and _altura_local(frente.x * d_rata, frente.y * d_rata) > 0.6:
             d_rata += 0.5
         inicio = frente * (d_rata - 5.0)
         ponta = inicio + frente * COMPRIMENTO_CAIS
@@ -823,12 +909,14 @@ func _criar_vila() -> void:
     var calcada := _material_trilha("res://assets/texturas/ilha/calcada.png", Color(1.0, 0.95, 0.84), 0.55)
 
     if not com_vila:
-        # Posto isolado de pescadores: a Ilha Rata não vira vila e não recebe farol.
-        var barracao := pe_do_cais - dir * 13.0 + lado * 8.0
-        var hs := _altura_local(barracao.x, barracao.y)
-        if hs > 0.5:
-            _casa(vila, Vector3(barracao.x, hs, barracao.y), virada, Vector3(6, 3.0, 6), cores[0], portas[0])
-            _ocupado.append(Vector3(barracao.x, barracao.y, 8.0))
+        # v0.5.8: ilha sem cais = deserta. Com cais: posto (Ilha das Rocas) ou vila pequena; tudo vem de "mundo" (editável).
+        if not tem_cais:
+            return
+        _padrao_simples()
+        _construir_ruas()
+        _construir_casas()
+        _construir_props()
+        _construir_postes()
         return
 
     if _usa_layout():
@@ -917,6 +1005,106 @@ func _criar_vila() -> void:
 
 ## A vila desenhada à mão (scripts/layout_principal.gd) vale só para a ilha principal.
 ## PESCADOR_VILA_ANTIGA=1 (teste) volta à grade antiga, para comparar.
+## Mundo padrão das ilhas sem a vila desenhada: o barracão do posto, ou a vila pequena ao pé do cais.
+func _padrao_simples() -> void:
+    var dir := Vector2(-centro.x, -centro.z).normalized()
+    var lado := Vector2(-dir.y, dir.x)
+    var pe := Vector2(cais_inicio.x - centro.x, cais_inicio.z - centro.z)
+    var rng := RandomNumberGenerator.new()
+    rng.seed = semente + 77
+    var olhar := func(q: Vector2, alvo: Vector2) -> float:
+        var v: Vector2 = alvo - q
+        return -atan2(v.y, v.x)
+    if not mundo.has("ruas"):
+        var ruas: Array = []
+        if vila_pequena:
+            var a: Vector2 = pe - dir * 2.0
+            var b: Vector2 = pe - dir * 46.0
+            var meio: Vector2 = pe - dir * 24.0
+            ruas.append({"tipo": "calcada", "pts": [[a.x, a.y], [meio.x, meio.y], [b.x, b.y]]})
+            var c1: Vector2 = meio + lado * 26.0
+            var c2: Vector2 = meio - lado * 24.0
+            ruas.append({"tipo": "areia", "pts": [[c2.x, c2.y], [meio.x, meio.y], [c1.x, c1.y]]})
+        mundo["ruas"] = ruas
+    if not mundo.has("casas"):
+        var casas: Array = []
+        if vila_pequena:
+            var n := 0
+            for k in [10.0, 19.0, 32.0, 40.0]:
+                for s in [-1.0, 1.0]:
+                    var na_rua: Vector2 = pe - dir * float(k)
+                    var q: Vector2 = na_rua + lado * float(s) * 7.6
+                    if _altura_local(q.x, q.y) < 1.2:
+                        continue
+                    casas.append({"tipo": "casa", "x": q.x, "z": q.y, "giro": olhar.call(q, na_rua),
+                            "w": rng.randf_range(5.0, 5.5), "h": rng.randf_range(3.0, 3.6), "d": rng.randf_range(5.8, 6.6),
+                            "cor": n % CORES_CASA.size(), "porta": n % CORES_PORTA.size()})
+                    n += 1
+            var meio2: Vector2 = pe - dir * 24.0
+            for s2 in [-1.0, 1.0]:
+                var na_cruz: Vector2 = meio2 + lado * float(s2) * 16.0
+                var q2: Vector2 = na_cruz - dir * 7.4
+                if _altura_local(q2.x, q2.y) > 1.2:
+                    casas.append({"tipo": "casa", "x": q2.x, "z": q2.y, "giro": olhar.call(q2, na_cruz),
+                            "w": 5.2, "h": 3.3, "d": 6.2, "cor": (n + 2) % CORES_CASA.size(), "porta": n % CORES_PORTA.size()})
+                    n += 1
+            var fim: Vector2 = pe - dir * 46.0
+            var capela: Vector2 = fim - dir * 7.0
+            if _altura_local(capela.x, capela.y) > 1.2:
+                casas.append({"tipo": "capela", "x": capela.x, "z": capela.y, "giro": olhar.call(capela, fim)})
+            var arm: Vector2 = pe - dir * 6.0 + lado * 15.0
+            if _altura_local(arm.x, arm.y) > 1.0:
+                casas.append({"tipo": "armazem", "x": arm.x, "z": arm.y, "giro": olhar.call(arm, pe - dir * 6.0)})
+        else:
+            var barracao: Vector2 = pe - dir * 13.0 + lado * 8.0
+            if _altura_local(barracao.x, barracao.y) > 0.5:
+                casas.append({"tipo": "casa", "x": barracao.x, "z": barracao.y, "giro": -atan2(dir.y, dir.x),
+                        "w": 6.0, "h": 3.0, "d": 6.0, "cor": 0, "porta": 0})
+        mundo["casas"] = casas
+    if not mundo.has("postes"):
+        var postes: Array = []
+        if vila_pequena:
+            for k in [6.0, 20.0, 34.0]:
+                var q3: Vector2 = pe - dir * float(k) + lado * 2.9
+                postes.append([q3.x, q3.y])
+        else:
+            for k in 2:
+                var q4: Vector2 = pe - dir * (6.0 + float(k) * 10.0) - lado * 3.0
+                if _altura_local(q4.x, q4.y) > 0.7:
+                    postes.append([q4.x, q4.y])
+        mundo["postes"] = postes
+    if not mundo.has("props"):
+        var props: Array = []
+        var g: float = -atan2(lado.y, lado.x)
+        for item in [["canoa", 0, 7.0, 4.5], ["canoa", 1, 9.0, -5.5], ["rede", 0, 15.0, -9.0], ["barril", 0, 4.0, -3.4], ["caixote", 1, 5.0, 3.6]]:
+            var q5: Vector2 = pe - dir * float(item[2]) + lado * float(item[3])
+            if _altura_local(q5.x, q5.y) > -0.5:
+                props.append({"tipo": item[0], "x": q5.x, "z": q5.y, "giro": g + rng.randf_range(-0.3, 0.3), "var": item[1]})
+        mundo["props"] = props
+    for c in mundo["casas"]:
+        _reservar(float(c["x"]), float(c["z"]), 5.0)
+
+## Pinheiros sorteados (ilhas sem a vila desenhada): em terra, longe da praia e das casas.
+func _gerar_pinheiros_soltos() -> Array:
+    if pinheiros_soltos <= 0:
+        return []
+    var rng := RandomNumberGenerator.new()
+    rng.seed = semente + 5151
+    var lista: Array = []
+    for k in 3000:
+        var p := Vector2(rng.randf_range(-raio, raio), rng.randf_range(-raio, raio))
+        var h := _altura_local(p.x, p.y)
+        if h < 2.4 or not _livre(p, 2.0):
+            continue
+        var mata: float = _ruido.get_noise_2d(p.x * 0.7 - 61.0, p.y * 0.7 + 18.0)
+        if rng.randf() > smoothstep(-0.30, 0.25, mata) * 0.85:
+            continue
+        lista.append([p.x, p.y, rng.randi()])
+        _ocupado.append(Vector3(p.x, p.y, 2.4))
+        if lista.size() >= pinheiros_soltos:
+            break
+    return lista
+
 func _usa_layout() -> bool:
     return com_vila and OS.get_environment("PESCADOR_VILA_ANTIGA") != "1"
 
@@ -1118,10 +1306,10 @@ func _malha_pinheiro() -> ArrayMesh:
 ## Os pinheiros do desenho (azul-escuro). Ficam fora do desbaste da qualidade Baixa: são poucos,
 ## baratos (cerca de 60 triângulos) e são a cara da serra.
 func _criar_pinheiros() -> void:
-    if not _usa_layout():
+    if not _usa_layout() and pinheiros_soltos <= 0 and not pode_editar:
         return
     if not mundo.has("pinheiros"):
-        mundo["pinheiros"] = _gerar_pinheiros()
+        mundo["pinheiros"] = _gerar_pinheiros() if _usa_layout() else _gerar_pinheiros_soltos()
     _construir_pinheiros()
 
 func _gerar_pinheiros() -> Array:
@@ -1684,6 +1872,8 @@ func _malha_arq(chave: String) -> Mesh:
                 _mats_arq[k] = Arq.varal_de_redes()
             "mirante":
                 _mats_arq[k] = Arq.mirante()
+            "vaso", "cerca", "fogueira", "ancora", "boias", "mesa", "carrinho":
+                _mats_arq[k] = Arq.decoracao(chave)
             _:
                 _mats_arq[k] = Arq.barril(Color(0.50, 0.36, 0.22))
     return _mats_arq[k]
@@ -1760,6 +1950,11 @@ func _construir_props() -> void:
                     _cilindro(no, 0.36, 0.33, 0.95, Vector3(p.x, h - 0.05, p.y), barril)
                     _cilindro(no, 0.375, 0.375, 0.07, Vector3(p.x, h + 0.2, p.y), aro)
                     _cilindro(no, 0.355, 0.355, 0.07, Vector3(p.x, h + 0.66, p.y), aro)
+            "monte_rede", "bobina", "pneus", "cabeco", "pilha_caixas", "barril_azul", "caixote_novo", "bomba", "vaso", "cerca", "fogueira", "ancora", "boias", "mesa", "carrinho":
+                var chave_m: String = {"monte_rede": "rede", "caixote_novo": "caixote"}.get(str(pr.get("tipo", "")), str(pr.get("tipo", "")))
+                var deco: MeshInstance3D = _instancia(no, _malha_arq(chave_m), _materiais_arq(Color.WHITE)["acab"], "Decoracao")
+                deco.position = Vector3(p.x, h - 0.03, p.y)
+                deco.rotation.y = giro
             "banco":
                 if props_novos:
                     var bc: MeshInstance3D = _instancia(no, _malha_arq("banco"), _materiais_arq(Color.WHITE)["acab"], "Banco")
@@ -2067,7 +2262,7 @@ func _gerar_pedras() -> Array:
     rng.seed = 33
     var lista: Array = []
     for k in 4000:
-        var p := Vector2(rng.randf_range(-LADO * 0.46, LADO * 0.46), rng.randf_range(-LADO * 0.46, LADO * 0.46))
+        var p := Vector2(rng.randf_range(-self.lado * 0.46, self.lado * 0.46), rng.randf_range(-self.lado * 0.46, self.lado * 0.46))
         var h := _altura_local(p.x, p.y)
         var na_beira := h > -1.6 and h < 0.9
         var na_encosta := h > 6.0 and absf(_altura_local(p.x + 2.0, p.y) - h) + absf(_altura_local(p.x, p.y + 2.0) - h) > 2.4
@@ -2103,6 +2298,8 @@ func _construir_pedras() -> void:
         var h: float = _altura_local(float(d[0]), float(d[1]))
         var r := _rng_de(int(d[2]))
         var e: float = r.randf_range(0.5, 1.9) * (1.5 if r.randf() < 0.12 else 1.0)
+        if d.size() >= 4:                                   # v0.5.8: tamanho escolhido no editor (0 pequena, 1 média, 2 grande)
+            e = [0.45, 1.1, 2.6][clampi(int(d[3]), 0, 2)] * r.randf_range(0.85, 1.15)
         var base := Basis.from_euler(Vector3(r.randf_range(-0.5, 0.5), r.randf_range(0.0, TAU), r.randf_range(-0.5, 0.5))).scaled(Vector3(e * r.randf_range(0.8, 1.5), e * r.randf_range(0.55, 1.0), e))
         mm.set_instance_transform(i, Transform3D(base, Vector3(float(d[0]), h + e * 0.1, float(d[1]))))
     var inst := MultiMeshInstance3D.new()
@@ -2172,13 +2369,55 @@ func ligar_ao_mar(oceano: MeshInstance3D, numero: int = 1) -> void:
     var img := Image.create(n, n, false, Image.FORMAT_L8)
     for j in n:
         for i in n:
-            var h := _altura_local((float(i) + 0.5) / n * LADO - LADO / 2.0, (float(j) + 0.5) / n * LADO - LADO / 2.0)
+            var h := _altura_local((float(i) + 0.5) / n * self.lado - self.lado / 2.0, (float(j) + 0.5) / n * self.lado - self.lado / 2.0)
             var v := clampf(inverse_lerp(FAIXA_COSTA.x, FAIXA_COSTA.y, h), 0.0, 1.0)
             img.set_pixel(i, j, Color(v, v, v))
     var sufixo := "" if numero == 1 else ("2" if numero == 2 else "3")
     mat.set_shader_parameter("tex_costa" + sufixo, ImageTexture.create_from_image(img))
     mat.set_shader_parameter("costa_centro" + sufixo, Vector2(centro.x, centro.z))
-    mat.set_shader_parameter("costa_lado" + sufixo, LADO)
+    mat.set_shader_parameter("costa_lado" + sufixo, self.lado)
+    mat.set_shader_parameter("costa_faixa", FAIXA_COSTA)
+
+## v0.5.8: um mapa de fundo único para o mundo todo (o mar aceitava só 3 ilhas). Cada ilha pinta o seu quadrado de 300 m
+## na mesma resolução de antes (1,56 m por pixel), guardando o mais raso onde dois quadrados se cruzam.
+static func ligar_todas_ao_mar(lista: Array, oceano: MeshInstance3D) -> void:
+    var mat := oceano.mesh.surface_get_material(0) as ShaderMaterial
+    if mat == null or lista.is_empty():
+        return
+    var passo: float = LADO / 192.0                    # 1,56 m por pixel, como antes
+    var mn := Vector2(INF, INF)
+    var mx := Vector2(-INF, -INF)
+    for il in lista:
+        mn = mn.min(Vector2(il.centro.x, il.centro.z) - Vector2.ONE * il.lado * 0.5)
+        mx = mx.max(Vector2(il.centro.x, il.centro.z) + Vector2.ONE * il.lado * 0.5)
+    var lado_m: float = maxf(mx.x - mn.x, mx.y - mn.y)
+    var n: int = mini(int(ceil(lado_m / passo)), 2048)
+    passo = lado_m / float(n)
+    var dados := PackedByteArray()
+    dados.resize(n * n)
+    dados.fill(0)
+    for il in lista:
+        var c := Vector2(il.centro.x, il.centro.z)
+        var i0: int = clampi(int((c.x - il.lado * 0.5 - mn.x) / passo), 0, n - 1)
+        var i1: int = clampi(int((c.x + il.lado * 0.5 - mn.x) / passo), 0, n - 1)
+        var j0: int = clampi(int((c.y - il.lado * 0.5 - mn.y) / passo), 0, n - 1)
+        var j1: int = clampi(int((c.y + il.lado * 0.5 - mn.y) / passo), 0, n - 1)
+        for j in range(j0, j1 + 1):
+            var z: float = mn.y + (float(j) + 0.5) * passo - c.y
+            for i in range(i0, i1 + 1):
+                var h: float = il._altura_local(mn.x + (float(i) + 0.5) * passo - c.x, z)
+                if h <= FAIXA_COSTA.x:
+                    continue
+                var v: int = int(clampf(inverse_lerp(FAIXA_COSTA.x, FAIXA_COSTA.y, h), 0.0, 1.0) * 255.0)
+                var k: int = j * n + i
+                if v > dados[k]:
+                    dados[k] = v
+    var img := Image.create_from_data(n, n, false, Image.FORMAT_L8, dados)
+    mat.set_shader_parameter("tex_costa", ImageTexture.create_from_image(img))
+    mat.set_shader_parameter("costa_centro", mn + Vector2.ONE * lado_m * 0.5)
+    mat.set_shader_parameter("costa_lado", lado_m)
+    mat.set_shader_parameter("costa_lado2", 0.0)
+    mat.set_shader_parameter("costa_lado3", 0.0)
     mat.set_shader_parameter("costa_faixa", FAIXA_COSTA)
 
 ## O barco não pode estar aqui? (terra, água rasa demais ou o cais)
@@ -2189,6 +2428,8 @@ func bloqueado(pos: Vector3) -> bool:
 
 ## Distância (m) do ponto até o segmento do cais.
 func _dist_cais(pos: Vector3) -> float:
+    if not tem_cais or cais_inicio.distance_squared_to(cais_ponta) < 0.01:
+        return 1.0e9
     var a := Vector2(cais_inicio.x, cais_inicio.z)
     var b := Vector2(cais_ponta.x, cais_ponta.z)
     var p := Vector2(pos.x, pos.z)
@@ -2196,10 +2437,12 @@ func _dist_cais(pos: Vector3) -> float:
     return p.distance_to(a + (b - a) * t)
 
 func distancia_do_cais(pos: Vector3) -> float:
+    if not tem_cais:
+        return 1.0e9
     return Vector2(pos.x - cais_ponta.x, pos.z - cais_ponta.z).length()
 
 func pode_atracar(pos: Vector3) -> bool:
-    return distancia_do_cais(pos) <= ALCANCE_CAIS
+    return tem_cais and distancia_do_cais(pos) <= ALCANCE_CAIS
 
 ## Onde o barco começa (e recomeça): encostado na plataforma da ponta do cais, de proa para o mar.
 ## Procura, nos dois lados, um ponto com fundo suficiente para todo o casco; se o lado for raso, avança para o mar.

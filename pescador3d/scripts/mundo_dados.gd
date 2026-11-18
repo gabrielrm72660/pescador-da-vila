@@ -18,31 +18,39 @@ const VERSAO := 1
 const ARQUIVO_USUARIO := "user://mundo_ilha_principal.json"
 const ARQUIVO_JOGO := "res://dados/mundo_ilha_principal.json"
 const CHAVES := ["ruas", "casas", "postes", "props", "pinheiros", "coqueiros", "arvores", "pedras", "moitas"]
+## v0.5.8: "pintura" é texto (PNG em base64, 256x256 RGBA: grama, terra, areia e força), pintado com o pincel de terreno.
+const CHAVES_TEXTO := ["pintura"]
 
-## Onde o Modo Construtor grava. PESCADOR_MUNDO_ARQUIVO troca o caminho (as sondas de teste usam isso).
-static func caminho_usuario() -> String:
+## Onde o Modo Construtor grava. Cada ilha tem o seu arquivo (v0.5.8): user://mundo_<chave>.json.
+## PESCADOR_MUNDO_ARQUIVO troca o caminho da ilha principal (as sondas de teste usam isso).
+static func caminho_usuario(chave: String = "ilha_principal") -> String:
     var outro: String = OS.get_environment("PESCADOR_MUNDO_ARQUIVO")
-    return outro if outro != "" else ARQUIVO_USUARIO
+    if chave == "ilha_principal":
+        return outro if outro != "" else ARQUIVO_USUARIO
+    return "user://mundo_%s.json" % chave
+
+static func caminho_jogo(chave: String = "ilha_principal") -> String:
+    return "res://dados/mundo_%s.json" % chave
 
 ## Devolve o mundo salvo, ou {} se não há (a ilha então gera o padrão).
 ## PESCADOR_MUNDO_PADRAO=1 ignora qualquer arquivo (comparação com o padrão).
-static func carregar() -> Dictionary:
+static func carregar(chave: String = "ilha_principal") -> Dictionary:
     if OS.get_environment("PESCADOR_MUNDO_PADRAO") == "1":
         return {}
-    for caminho in [caminho_usuario(), ARQUIVO_JOGO]:
+    for caminho in [caminho_usuario(chave), caminho_jogo(chave)]:
         var lido: Dictionary = _ler(caminho)
         if not lido.is_empty():
             return lido
     return {}
 
 ## Só o mundo publicado junto com o jogo (res://dados), sem olhar o que o jogador salvou. {} se não há.
-static func carregar_publicado() -> Dictionary:
+static func carregar_publicado(chave: String = "ilha_principal") -> Dictionary:
     if OS.get_environment("PESCADOR_MUNDO_PADRAO") == "1":
         return {}
-    return _ler(ARQUIVO_JOGO)
+    return _ler(caminho_jogo(chave))
 
-static func tem_publicado() -> bool:
-    return not carregar_publicado().is_empty()
+static func tem_publicado(chave: String = "ilha_principal") -> bool:
+    return not carregar_publicado(chave).is_empty()
 
 static func _ler(caminho: String) -> Dictionary:
     if not FileAccess.file_exists(caminho):
@@ -53,17 +61,20 @@ static func _ler(caminho: String) -> Dictionary:
         for chave in CHAVES:
             if dados.has(chave) and typeof(dados[chave]) == TYPE_ARRAY:
                 limpo[chave] = dados[chave]
+        for chave_t in CHAVES_TEXTO:
+            if dados.has(chave_t) and typeof(dados[chave_t]) == TYPE_STRING:
+                limpo[chave_t] = dados[chave_t]
         return limpo
     return {}
 
-static func existe_salvo() -> bool:
-    return FileAccess.file_exists(caminho_usuario())
+static func existe_salvo(chave_ilha: String = "ilha_principal") -> bool:
+    return FileAccess.file_exists(caminho_usuario(chave_ilha))
 
 static func salvar(mundo: Dictionary, caminho: String = "") -> bool:
     if caminho == "":
         caminho = caminho_usuario()
     var saida: Dictionary = {"versao": VERSAO}
-    for chave in CHAVES:
+    for chave in CHAVES + CHAVES_TEXTO:
         if mundo.has(chave):
             saida[chave] = mundo[chave]
     var arquivo := FileAccess.open(caminho, FileAccess.WRITE)
@@ -72,8 +83,8 @@ static func salvar(mundo: Dictionary, caminho: String = "") -> bool:
     arquivo.store_string(JSON.stringify(saida))
     return true
 
-static func apagar_salvo() -> void:
-    var caminho: String = caminho_usuario()
+static func apagar_salvo(chave_ilha: String = "ilha_principal") -> void:
+    var caminho: String = caminho_usuario(chave_ilha)
     if FileAccess.file_exists(caminho):
         DirAccess.remove_absolute(ProjectSettings.globalize_path(caminho) if caminho.begins_with("user://") else caminho)
 

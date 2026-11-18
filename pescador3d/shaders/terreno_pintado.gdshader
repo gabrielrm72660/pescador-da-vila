@@ -9,6 +9,11 @@ uniform sampler2D tex_rocha : source_color, repeat_enable, filter_linear_mipmap;
 uniform sampler2D tex_manchas : hint_default_white, repeat_enable, filter_linear_mipmap;
 uniform sampler2D tex_barro : source_color, repeat_enable, filter_linear_mipmap;   // v0.5.7: opcional (assets/texturas/ilha/barranco.png)
 uniform bool tem_barro = false;
+// v0.5.8: pintura do Modo Construtor (R grama, G terra, B areia, A força), cobrindo o quadrado do terreno da ilha
+uniform sampler2D tex_pintura : hint_default_transparent, filter_linear, repeat_disable;
+uniform sampler2D tex_terra : source_color, repeat_enable, filter_linear_mipmap;
+uniform vec2 pintura_centro = vec2(0.0);
+uniform float pintura_lado = 0.0;
 uniform float altura_grama = 2.2;        // m acima do mar onde a areia vira mato
 uniform float altura_pedra = 22.0;       // m onde o mato rareia e sobra pedra
 
@@ -69,6 +74,18 @@ void fragment() {
     cor = mix(cor, encosta, pedra);
     cor = mix(cor, rocha, alto_rocha);
     pedra = max(pedra, alto_rocha);
+    if (pintura_lado > 0.0) {
+        vec2 uvp = (pos_mundo.xz - pintura_centro) / pintura_lado + 0.5;
+        vec4 pt = texture(tex_pintura, uvp);
+        if (pt.a > 0.003) {
+            float soma = pt.r + pt.g + pt.b + 0.0001;
+            vec3 terra_c = texture(tex_terra, pos_mundo.xz * 0.09).rgb * vec3(0.92, 0.84, 0.74) * mix(0.9, 1.06, larga);
+            vec3 alvo = (grama * pt.r + terra_c * pt.g + areia * pt.b) / soma;
+            float vale = pt.a * smoothstep(-0.4, 0.3, h);
+            cor = mix(cor, alvo, vale);
+            pedra *= 1.0 - vale;
+        }
+    }
     // Reentrancias e sombra natural nas fendas; evita um morro liso e plastico.
     float cavidades = (1.0 - fina) * (0.5 + 0.5 * (1.0 - granito));
     cor *= 1.0 - cavidades * pedra * 0.16;

@@ -1389,3 +1389,74 @@ static func golfinho() -> ArrayMesh:
         lamina.call(Vector3(s * 0.28, -0.17, -0.98), Vector3(s * 0.27, -0.20, -0.72), Vector3(s * 0.74, -0.40, -0.45), Vector3(0, 0.04, 0.05), 0.035, dorso, Vector3(0, 1, 0))
         lamina.call(Vector3(s * 0.02, 0.03, 1.48), Vector3(s * 0.02, 0.03, 1.66), Vector3(s * 0.62, 0.03, 2.02), Vector3(0, 0.0, -0.10), 0.030, dorso.darkened(0.05), Vector3(0, 1, 0))   # caudal
     return m.malha()
+
+
+## ---- v0.5.8: decorações do Modo Construtor -----------------------------------------------------------------------
+## Origem no chão, comprimento ao longo de X. Uma superfície, cor nos vértices.
+static func decoracao(tipo: String) -> ArrayMesh:
+    var m := Malha.new()
+    var mad := Color(0.47, 0.32, 0.19)
+    var ferro := Color(0.17, 0.17, 0.18)
+    match tipo:
+        "vaso":                                                     # vaso de barro com flores (gerânios)
+            m.tronco(Vector3(0, 0, 0), 0.26, 0.36, 0.48, 12, Color(0.62, 0.32, 0.20), Color(0.72, 0.40, 0.25), true, Callable(), 2)
+            _toro(m, Vector3(0, 0.48, 0), 0.36, 0.035, Color(0.66, 0.36, 0.22), 14, 4)
+            _elipsoide(m, Vector3(0, 0.56, 0), Vector3(0.33, 0.16, 0.33), Color(0.22, 0.40, 0.18), 10, 5)
+            var cores := [Color(0.88, 0.20, 0.25), Color(0.95, 0.55, 0.70), Color(0.98, 0.90, 0.40)]
+            for k in 9:
+                var a: float = TAU * float(k) / 9.0 + 0.3
+                var r: float = 0.12 + 0.13 * float(k % 3) / 2.0
+                _elipsoide(m, Vector3(cos(a) * r, 0.68 + 0.05 * float(k % 2), sin(a) * r), Vector3(0.07, 0.05, 0.07), cores[k % 3], 6, 4)
+        "cerca":                                                    # trecho de cerca de madeira, 4 m
+            for k in 3:
+                var x: float = -1.9 + 1.9 * float(k)
+                m.tronco(Vector3(x, -0.3, 0), 0.07, 0.06, 1.45, 6, mad.darkened(0.2), mad, true)
+            for y in [0.45, 0.9]:
+                m.caixa(Vector3(0, y, 0), Vector3(4.0, 0.10, 0.05), mad.lightened(0.08), Basis(Vector3.FORWARD, 0.015 * (1.0 if y > 0.5 else -1.0)))
+        "fogueira":                                                 # roda de pedras com lenha e brasa
+            for k in 9:
+                var a2: float = TAU * float(k) / 9.0
+                _elipsoide(m, Vector3(cos(a2) * 0.62, 0.10, sin(a2) * 0.62), Vector3(0.17, 0.13, 0.15), Color(0.45, 0.43, 0.40).darkened(0.1 * float(k % 3)), 7, 4)
+            for k in 4:
+                var a3: float = TAU * float(k) / 4.0 + 0.4
+                _seg(m, Vector3(cos(a3) * 0.45, 0.06, sin(a3) * 0.45), Vector3(cos(a3) * -0.05, 0.38, sin(a3) * -0.05), 0.06, 0.05, Color(0.30, 0.20, 0.12), 6)
+            _elipsoide(m, Vector3(0, 0.05, 0), Vector3(0.36, 0.05, 0.36), Color(0.14, 0.12, 0.11), 10, 3)
+            _elipsoide(m, Vector3(0, 0.14, 0), Vector3(0.16, 0.10, 0.16), Color(0.95, 0.45, 0.12), 8, 4)
+        "ancora":                                                   # âncora velha encostada no chão
+            var ferrugem := Color(0.38, 0.22, 0.13)
+            _seg(m, Vector3(0, 0.12, -0.9), Vector3(0, 0.12, 0.9), 0.07, 0.07, ferrugem, 8)
+            _toro(m, Vector3(0, 0.12, -1.02), 0.13, 0.03, ferrugem, 12, 4, Basis(Vector3.FORWARD, PI * 0.5))
+            _seg(m, Vector3(-0.55, 0.12, -0.72), Vector3(0.55, 0.12, -0.72), 0.045, 0.045, ferrugem, 6)
+            var pts: Array = []
+            for k in 9:
+                var t: float = float(k) / 8.0
+                var a4: float = lerpf(-1.25, 1.25, t)
+                pts.append(Vector3(sin(a4) * 0.62, 0.12, 0.9 - (1.0 - cos(a4)) * 0.62 + 0.0))
+            _tubo(m, pts, 0.06, ferrugem, 6)
+            for s in [-1.0, 1.0]:
+                _elipsoide(m, Vector3(s * 0.60, 0.12, 0.60), Vector3(0.13, 0.05, 0.18), ferrugem.darkened(0.15), 6, 3)
+        "boias":                                                    # monte de bóias de isopor e uma de vidro
+            var cores_b := [Color(0.92, 0.45, 0.14), Color(0.93, 0.92, 0.86), Color(0.86, 0.22, 0.18), Color(0.20, 0.45, 0.62)]
+            for k in 7:
+                var a5: float = TAU * float(k) / 7.0
+                var r5: float = 0.0 if k == 0 else 0.42
+                var y5: float = 0.42 if k == 0 else 0.18
+                _elipsoide(m, Vector3(cos(a5) * r5, y5, sin(a5) * r5), Vector3(0.20, 0.18, 0.20), cores_b[k % cores_b.size()], 10, 6)
+            _tubo(m, [Vector3(-0.5, 0.05, 0.1), Vector3(-0.1, 0.32, 0.2), Vector3(0.3, 0.12, -0.3), Vector3(0.6, 0.03, -0.1)], 0.02, Color(0.78, 0.68, 0.45), 4)
+        "mesa":                                                     # mesa de tábuas com dois bancos (para limpar peixe)
+            m.caixa(Vector3(0, 0.78, 0), Vector3(1.8, 0.07, 0.8), mad.lightened(0.15))
+            for sx in [-1.0, 1.0]:
+                for sz in [-1.0, 1.0]:
+                    m.caixa(Vector3(sx * 0.78, 0.38, sz * 0.32), Vector3(0.08, 0.76, 0.08), mad)
+                m.caixa(Vector3(0, 0.44, sx * 0.72), Vector3(1.6, 0.05, 0.28), mad.lightened(0.05))
+                for lx in [-1.0, 1.0]:
+                    m.caixa(Vector3(lx * 0.65, 0.21, sx * 0.72), Vector3(0.06, 0.42, 0.22), mad.darkened(0.1))
+            _elipsoide(m, Vector3(0.3, 0.84, 0.05), Vector3(0.22, 0.05, 0.08), Color(0.62, 0.70, 0.74), 8, 4)    # um peixe na mesa
+            m.tronco(Vector3(-0.5, 0.815, -0.1), 0.15, 0.17, 0.22, 10, Color(0.25, 0.45, 0.60), Color(0.30, 0.52, 0.66), false)
+        "carrinho":                                                 # carrinho de mão
+            m.caixa(Vector3(0.1, 0.55, 0), Vector3(1.0, 0.30, 0.62), Color(0.32, 0.50, 0.38), Basis(Vector3.FORWARD, 0.10))
+            _toro(m, Vector3(-0.55, 0.22, 0), 0.20, 0.05, Color(0.12, 0.12, 0.12), 14, 5, Basis(Vector3.RIGHT, PI * 0.5))
+            for s in [-1.0, 1.0]:
+                _seg(m, Vector3(-0.55, 0.22, s * 0.08), Vector3(1.05, 0.62, s * 0.30), 0.03, 0.03, mad, 6)
+                _seg(m, Vector3(0.45, 0.45, s * 0.25), Vector3(0.45, 0.0, s * 0.27), 0.025, 0.025, ferro, 5)
+    return m.malha()

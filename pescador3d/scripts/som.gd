@@ -118,8 +118,8 @@ func alternar_mudo() -> bool:
 func _carregar_config() -> void:
     var cfg := ConfigFile.new()
     if cfg.load(ARQUIVO_CONFIG) == OK or cfg.load(ARQUIVO_ANTIGO) == OK:
-        var antigo = cfg.get_value("som", "ambiente", null)          # até a 0.5.5 mar, vento e chuva eram um só ("ambiente")
-        if typeof(antigo) in [TYPE_FLOAT, TYPE_INT] and not cfg.has_section_key("som", "mar"):
+        var antigo = cfg.get_value("som", "ambiente", -1.0) if cfg.has_section_key("som", "ambiente") else -1.0   # até a 0.5.5 era um só ("ambiente")
+        if typeof(antigo) in [TYPE_FLOAT, TYPE_INT] and float(antigo) >= 0.0 and not cfg.has_section_key("som", "mar"):
             for grupo in ["mar", "vento", "chuva"]:
                 volumes[grupo] = clampf(float(antigo), 0.0, 1.0)
         for grupo in GRUPOS:

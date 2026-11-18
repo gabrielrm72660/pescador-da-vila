@@ -18,6 +18,7 @@ signal encalhou                                # bateu na costa ou no cais
 signal bateu_em_barco(intensidade: float)      # outro barco bateu no seu (0..1)
 signal combustivel_baixo                       # passou para menos de 20%
 signal combustivel_acabou
+const VELOCIDADE_PORTO: float = 2.57          # m/s = 5 nós: o mínimo que o raso do porto deixa andar
 signal casco_avariado(perda: float, motivo: String)   # motivo: "tempestade", "costa" ou "barco"; perda em pontos de 0..100
 
 ## Saúde do casco (0 a 100). Tempestade desgasta devagar; batidas na costa e em outros barcos tiram mais.
@@ -180,8 +181,10 @@ func _physics_process(delta: float) -> void:
         if obstaculo != null and obstaculo.has_method("altura_terra"):
             var fundo: float = float(obstaculo.altura_terra(global_position))
             var profundidade_atual: float = maxf(0.0, -fundo)
-            if profundidade_atual < 5.0:
-                meta_velocidade *= clampf(inverse_lerp(0.9, 5.0, profundidade_atual), 0.28, 1.0)
+            if profundidade_atual < 5.0 and meta_velocidade > 0.0:
+                # v0.5.8: no raso do porto (depois da boia) o barco ainda anda a 5 nós; antes caía para ~3
+                var teto: float = lerpf(VELOCIDADE_PORTO, velocidade_maxima, clampf(inverse_lerp(0.9, 5.0, profundidade_atual), 0.0, 1.0))
+                meta_velocidade = minf(meta_velocidade, teto)
         var taxa: float = aceleracao if meta_velocidade != 0.0 else desaceleracao
         if Input.is_physical_key_pressed(KEY_SPACE):
             meta_velocidade = 0.0

@@ -46,6 +46,7 @@ var porao: Node
 
 const PRECO_DIESEL := 4          # R$ por litro
 const DINHEIRO_INICIAL := 30
+const VELOCIDADE_ATRACAR := 2.6  # m/s (5 nós): dá para atracar sem parar o barco antes (v0.5.8)
 const PRECO_REPARO := 3          # R$ por ponto de casco consertado no cais (100 pontos = R$ 300)
 const Idioma = preload("res://scripts/idioma.gd")
 var _avisou_avaria: int = 10     # última faixa de 10 pontos de casco já avisada
@@ -84,11 +85,12 @@ func _enter_tree() -> void:
     ilha = Ilha.new()                              # Vila do Porto: a ilha grande, com vila, loja e diesel barato
     ilha.name = "Ilha"
     ilha.raio = 128.0
+    ilha.arquipelago = "Arquipélago de São Paulo"
     ilha.rochedos = [[136.0, 84.0, 20.0, 8.2], [148.0, 61.0, 16.0, 7.0], [143.0, -53.0, -1.8, 14.0], [154.0, -68.0, 4.0, 6.4]]
     add_child(ilha)
-    var rata := Ilha.new()                         # Ilha Rata: pequena e deserta, só um posto que paga mais pelo peixe
+    var rata := Ilha.new()                         # Ilha das Rocas: pequena e deserta, só um posto que paga mais pelo peixe
     rata.name = "IlhaRata"
-    rata.nome = "Ilha Rata"
+    rata.nome = "Ilha das Rocas"
     rata.centro = Vector3(-380.0, 0.0, -430.0)
     rata.raio = 64.0
     rata.semente = 815
@@ -102,31 +104,87 @@ func _enter_tree() -> void:
     rata.bonus_venda = 1.3
     rata.preco_diesel = 6
     rata.tem_loja = false
+    rata.pode_editar = true
+    rata.chave_mundo = "ilha_das_rocas"
     add_child(rata)
-    # Terceiro porto pequeno: refúgio para expedições longas ao leste.
+    # v0.5.8: a Ilha das Conchas chegou para perto da Vila do Porto (canal estreito a leste) e ficou deserta (sem cais nem casa).
     var conchas := Ilha.new()
     conchas.name = "IlhaConchas"
     conchas.nome = "Ilha das Conchas"
-    conchas.centro = Vector3(620.0, 0.0, -370.0)
-    conchas.raio = 51.0
+    conchas.centro = Vector3(400.0, 0.0, -300.0)
+    conchas.raio = 46.0
     conchas.semente = 1931
-    conchas.pico = [-9.0, 5.0, 12.0, 18.0]
-    conchas.morro = [14.0, -18.0, 6.0, 16.0]
-    conchas.rochedos = [[64.0, 42.0, 9.0, 6.0]]
+    conchas.pico = [-8.0, 5.0, 11.0, 16.0]
+    conchas.morro = [12.0, -15.0, 5.0, 14.0]
+    conchas.rochedos = [[52.0, 38.0, 7.0, 5.0]]
     conchas.com_vila = false
+    conchas.tem_cais = false
     conchas.tem_farol = false
     conchas.relevo_detalhado = false
-    conchas.coqueiros = 28
-    conchas.bonus_venda = 1.18
-    conchas.preco_diesel = 5
-    conchas.tem_loja = false
+    conchas.coqueiros = 26
+    conchas.pinheiros_soltos = 10
+    conchas.lado = 220.0
+    conchas.arquipelago = "Arquipélago de São Paulo"
     add_child(conchas)
     ilhas = [ilha, rata, conchas]
+    # Três ilhotas desertas ao norte, só coqueiros e pinheiros.
+    for d in [["IlhotaAtobas", "Ilhota dos Atobás", Vector3(-147.0, 0.0, -598.0), 27.0, 4411],
+            ["IlhotaMeio", "Ilhota do Meio", Vector3(91.0, 0.0, -521.0), 23.0, 4523],
+            ["IlhotaGarcas", "Ilhota das Garças", Vector3(-133.0, 0.0, -441.0), 25.0, 4637]]:
+        ilhas.append(_ilhota(d[0], d[1], d[2], d[3], d[4]))
+    # Arquipélago de São Pedro, a oeste: uma ilha grande com cais e uma vila pequena, e dois ilhéus desertos.
+    var sao_pedro := Ilha.new()
+    sao_pedro.name = "IlhaSaoPedro"
+    sao_pedro.nome = "Ilha de São Pedro"
+    sao_pedro.centro = Vector3(-1263.0, 0.0, 151.0)
+    sao_pedro.raio = 92.0
+    sao_pedro.semente = 6107
+    sao_pedro.pico = [-28.0, 18.0, 24.0, 24.0]
+    sao_pedro.morro = [8.0, -34.0, 11.0, 20.0]
+    sao_pedro.rochedos = [[-104.0, -40.0, 12.0, 6.5], [-92.0, 70.0, 3.0, 9.0]]
+    sao_pedro.com_vila = false
+    sao_pedro.vila_pequena = true
+    sao_pedro.tem_farol = false
+    sao_pedro.relevo_detalhado = false
+    sao_pedro.coqueiros = 46
+    sao_pedro.pinheiros_soltos = 70
+    sao_pedro.bonus_venda = 1.25
+    sao_pedro.preco_diesel = 5
+    sao_pedro.tem_loja = false
+    sao_pedro.pode_editar = true
+    sao_pedro.chave_mundo = "ilha_sao_pedro"
+    sao_pedro.arquipelago = "Arquipélago de São Pedro"
+    add_child(sao_pedro)
+    ilhas.append(sao_pedro)
+    ilhas.append(_ilhota("IlheuCacao", "Ilhéu do Cação", Vector3(-1147.0, 0.0, 268.0), 26.0, 6233))
+    ilhas.append(_ilhota("IlheuAgulha", "Ilhéu da Agulha", Vector3(-975.0, 0.0, 280.0), 18.0, 6359))
+    for k in [ilhas.size() - 2, ilhas.size() - 1]:
+        ilhas[k].arquipelago = "Arquipélago de São Pedro"
+
+## Ilha pequena e deserta: sem cais, sem casas, só coqueiros e pinheiros.
+func _ilhota(no: String, nome_ilha: String, c: Vector3, r: float, sem: int) -> Node3D:
+    var il := Ilha.new()
+    il.name = no
+    il.nome = nome_ilha
+    il.centro = c
+    il.raio = r
+    il.semente = sem
+    il.pico = [r * 0.08, -r * 0.10, 3.5 + r * 0.12, r * 0.50]
+    il.morro = [-r * 0.25, r * 0.25, 2.0 + r * 0.05, r * 0.35]
+    il.rochedos = [[r * 1.35, -r * 0.6, 4.0, 3.2]]
+    il.com_vila = false
+    il.tem_cais = false
+    il.tem_farol = false
+    il.relevo_detalhado = false
+    il.coqueiros = int(r * 0.9)
+    il.lado = clampf(r * 4.6, 110.0, 300.0)
+    il.pinheiros_soltos = int(r * 0.35)
+    add_child(il)
+    return il
 
 func _ready() -> void:
     barco.obstaculo = self
-    for i in ilhas.size():
-        ilhas[i].ligar_ao_mar(oceano, i + 1)
+    Ilha.ligar_todas_ao_mar(ilhas, oceano)      # v0.5.8: um mapa de fundo só para o mundo todo (antes, 3 ilhas no máximo)
     oceano.configurar_costas(ilhas)
     oceano.tempestade_comecou.connect(func():
         interface.aviso("O céu fechou! Tempestade se aproximando. Procure abrigo perto das ilhas.")
@@ -168,9 +226,11 @@ func _ready() -> void:
     construtor = Construtor.new()
     construtor.name = "Construtor"
     add_child(construtor)
+    var editaveis: Array = []
     for i in ilhas:
         if i.editavel:
-            construtor.configurar(self, i)
+            editaveis.append(i)
+    construtor.configurar(self, editaveis[0] if not editaveis.is_empty() else null, editaveis)
     barco.encalhou.connect(func():
         som.tocar("estalo", -9.0, 0.62)
         interface.aviso("Batida na costa! Casco em %d%%. Dê ré (S) para sair." % floori(barco.saude)))
@@ -230,7 +290,7 @@ func _preparar_minimapa() -> void:
         dados.append({
             "centro": Vector2(i.centro.x, i.centro.z), "raio": i.raio,
             "raso": interface.mapa._contorno(i, -5.0), "linha": interface.mapa._contorno(i, 0.0), "alto": interface.mapa._contorno(i, 7.0),
-            "cais": [Vector2(i.cais_inicio.x, i.cais_inicio.z), Vector2(i.cais_ponta.x, i.cais_ponta.z)]})
+            "cais": [Vector2(i.cais_inicio.x, i.cais_inicio.z), Vector2(i.cais_ponta.x, i.cais_ponta.z)] if i.tem_cais else []})
     interface.hud.radar_ilhas = dados
     interface.hud.barco_ref = barco
     interface.hud.radar_boias = boias.dados_radar
@@ -360,7 +420,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.5.7] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.5.8] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:
@@ -484,6 +544,8 @@ func zona_ecologica(pos: Vector3) -> String:
 func _ilha_do_cais_mais_perto() -> Node3D:
     var melhor: Node3D = ilhas[0]
     for i in ilhas:
+        if not i.tem_cais:
+            continue
         if i.distancia_do_cais(barco.global_position) < melhor.distancia_do_cais(barco.global_position):
             melhor = i
     return melhor
@@ -514,7 +576,7 @@ func _missao_cumprida(m: Dictionary) -> void:
 # ------------------------------------------------------------------ cais: atracar, vender, abastecer
 
 func pode_atracar() -> bool:
-    return not atracado and ilha.pode_atracar(barco.global_position) and absf(barco.velocidade) <= pesca.VELOCIDADE_MAXIMA_PESCA
+    return not atracado and ilha.pode_atracar(barco.global_position) and absf(barco.velocidade) <= VELOCIDADE_ATRACAR
 
 func atracar() -> void:
     if atracado:
@@ -522,8 +584,8 @@ func atracar() -> void:
     if not ilha.pode_atracar(barco.global_position):
         interface.aviso("Chegue à ponta do cais para atracar (o radar mostra a âncora).")
         return
-    if absf(barco.velocidade) > pesca.VELOCIDADE_MAXIMA_PESCA:
-        interface.aviso("Devagar! Reduza para menos de 2 nós para atracar.")
+    if absf(barco.velocidade) > VELOCIDADE_ATRACAR:
+        interface.aviso("Devagar! Reduza para 5 nós ou menos para atracar.")
         return
     atracado = true
     barco.ativo = false

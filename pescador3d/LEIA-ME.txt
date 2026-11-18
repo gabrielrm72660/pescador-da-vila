@@ -1,3 +1,16 @@
+PESCADOR — Versão 0.5.8 (Godot 4.7)
+================================================
+NOVO NA 0.5.8 — CARTA NÁUTICA NOVA, DOIS ARQUIPÉLAGOS E EDITOR DE ILHAS (detalhes em docs/PESCADOR_v0.5.8_NOVIDADES.txt):
+- MUNDO: Arquipélago de São Paulo (Vila do Porto + Ilha das Conchas, que veio para perto e ficou sem cais e sem casa);
+  a Ilha da Rata virou ILHA DAS ROCAS; três ilhotas desabitadas (Atobás, Meio, Garças); a oeste, o ARQUIPÉLAGO DE SÃO PEDRO
+  (Ilha de São Pedro com cais e vila pequena + Ilhéu do Cação e Ilhéu da Agulha).
+- PORTO: depois da boia a velocidade máxima é 5 nós (antes 3).
+- CARTA NÁUTICA (M) no estilo DREDGE: papel, grade com letras e números (ex.: J-8), curvas de profundidade, casas, cais,
+  farol, recifes, nomes dos arquipélagos, rosa dos ventos, legenda; zoom pela roda em volta do cursor.
+- EDITOR (F9): escolher a ilha (Vila do Porto, Rocas, São Pedro), pincel de grama/terra/areia (T), remover qualquer coisa
+  com um clique (X), 15 decorações novas, pedras pequena/média/grande, giro antes de colocar (Shift+roda, Q/E, R).
+- O mirante ao lado do farol saiu.
+
 PESCADOR — Versão 0.5.7 (Godot 4.7)
 ================================================
 NOVO NA 0.5.7 — ILHA MAIS NATURAL, ESTRELA D'ALVA, PEIXES NO RADAR, GOLFINHOS (detalhes em docs/PESCADOR_v0.5.7_NOVIDADES.txt):
