@@ -1,0 +1,38 @@
+PESCADOR v0.5.3 — BANCADA DE GPU
+================================================
+
+POR QUE
+No seu PC (RX 6600, monitor de 100 Hz) o F3 mostrou, no Ultra: quadro 10,0 ms, GPU 8,4 ms, CPU 1,7 ms.
+A GPU gasta 8,4 dos 10,0 ms possíveis a 100 FPS, então sobra pouco para empilhar SDFGI, reflexos, névoa e filtro pintado.
+Antes de adicionar qualquer recurso do estilo "Life is Strange" é preciso saber ONDE vão esses 8,4 ms. A bancada responde isso na sua placa.
+
+COMO USAR
+1. Comece a viagem (saia do menu). Melhor navegando, não atracado (a vista 4 usa a câmera do jogo, com chuva).
+2. F10 -> botão "TESTE DE DESEMPENHO DA GPU" (ou a tecla F2). Não mexa em nada por ~2 minutos. Esc cancela.
+3. No fim aparece a tabela. O texto já foi copiado: cole (Ctrl+V) na conversa, ou tire um print da tela.
+   Também fica salvo em pescador_bancada.txt (a tela mostra o caminho completo).
+
+O QUE ELA FAZ
+- Liga V-Sync desligado e "Sem limite" durante o teste: a placa trabalha a toda, sem baixar o clock (com V-Sync a 100 Hz ela pode
+  estar abaixando a frequência e inflar os ms).
+- Congela a hora (16h; 17h na vista de chuva), o clima e a câmera, e esconde a interface.
+- 4 vistas: vila vista do mar, mar aberto, cais e casas de perto, e a câmera do jogo na chuva.
+- 15 configurações por vista, cada uma esperando 0,6 s para o renderizador se ajustar e medindo ~1 s (mediana dos quadros):
+    Ultra padrão · sem MSAA · MSAA 4x · sem SSAO · sem glow · sem sombras do sol · sombra com 2 faixas · atlas de sombra 4096
+    · sombra de filtro duro · vegetação nível 1 · vegetação nível 0 · mar nível Alta · Alta · Média · Baixa.
+- Tudo é restaurado no fim (qualidade, V-Sync, limite de FPS, clima, hora, câmera, interface).
+
+COMO LER A TABELA
+- Cada coluna de vista é o tempo de GPU em ms. "Média" é a média das vistas. "Δ Ultra" é quanto a configuração ganha (-) ou perde (+)
+  em relação ao Ultra padrão: é o CUSTO do recurso desligado. CPU e FPS são médias das vistas.
+- Orçamento: 60 FPS = 16,7 ms · 100 FPS = 10,0 ms · 144 FPS = 6,9 ms.
+- Se o renderizador não informar GPU, a tabela avisa e mostra o tempo de quadro.
+
+O QUE NÃO FOI TESTADO (HONESTIDADE)
+- Rodei o ciclo inteiro no meu ambiente de testes (renderizador de software, sem GPU real): a lógica, as 4 vistas, a tabela e a restauração
+  funcionam, mas os números de lá não significam nada. Os números reais só existem na sua RX 6600.
+- MSAA 8x, SSAO alto e sombras 8192 são do Forward+; só você consegue medir o custo verdadeiro deles.
+
+ARQUIVOS
+- scripts/bancada_gpu.gd (novo): a bancada.
+- scripts/opcoes_graficas.gd: "sobrepor" (ajustes avulsos por cima da qualidade, só usados pela bancada), botão no F10, tecla F2.

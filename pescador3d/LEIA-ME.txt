@@ -1,3 +1,13 @@
+PESCADOR — Versão 0.5.3 (Godot 4.7)
+================================================
+NOVO NA 0.5.3 — BANCADA DE GPU (detalhes em docs/PESCADOR_v0.5.3_NOVIDADES.txt):
+- Teste automático de desempenho: F10 -> botão "TESTE DE DESEMPENHO DA GPU" (ou a tecla F2 com o jogo rodando). Leva uns 2 minutos.
+- Ele passa por 4 vistas (vila vista do mar, mar aberto, cais de perto e a câmera do jogo na chuva) e liga/desliga cada recurso do Ultra
+  (MSAA, SSAO, glow, sombras do sol, vegetação, mar) medindo quantos ms de GPU cada um custa na SUA placa.
+- No fim mostra uma tabela e copia o texto (Ctrl+V). Tire um print dela ou cole na conversa. Também fica salvo em pescador_bancada.txt.
+- Antes de começar, comece a viagem (saia do menu), de preferência navegando e não atracado. Esc cancela e tudo volta como estava.
+- Sem mudança visual nesta versão: é a ferramenta para decidir o que cabe no estilo "Life is Strange" sem perder FPS.
+
 PESCADOR — Versão 0.5.2 (Godot 4.7)
 ================================================
 NOVO NA 0.5.2 — CAIS VIVO E MEDIDOR DE DESEMPENHO (detalhes em docs/PESCADOR_v0.5.2_NOVIDADES.txt):

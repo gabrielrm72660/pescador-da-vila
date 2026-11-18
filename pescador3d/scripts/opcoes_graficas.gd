@@ -4,6 +4,7 @@ extends CanvasLayer
 signal tela_mudou
 signal qualidade_ajustada(texto: String)
 const ARQUIVO := "user://pescador_graficos.json"
+const Bancada = preload("res://scripts/bancada_gpu.gd")
 static var modo_editor: bool = false     # Modo Construtor aberto: nada de vegetação desbastada (quem edita precisa ver tudo)
 const NOMES := ["Baixa", "Média", "Alta", "Ultra"]
 const QUALIDADE_MAX := 3
@@ -14,6 +15,11 @@ var fps_indice: int = 1
 var mostrar_fps: bool = false
 var vsync: bool = true           # trava o FPS na taxa do monitor; desligue (com "Sem limite") para medir a capacidade real
 var _vsync_opcao: CheckButton
+## Ajustes avulsos aplicados POR CIMA do nível de qualidade; só a bancada de GPU usa (mede o custo de cada recurso).
+## Chaves: msaa (0 = desligado, 1 = 2x, 2 = 4x, 3 = 8x), sem_ssao, sem_glow, sem_sombra, faixas (1, 2 ou 4), atlas (tamanho),
+## filtro_duro, detalhe (0 a 2, vegetação), mar (0 a 3).
+var sobrepor: Dictionary = {}
+var _bancada: Node
 var _soma_quadro: float = 0.0
 var _n_quadros: int = 0
 var _painel: Control
@@ -70,10 +76,14 @@ func alternar() -> void:
 func _input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
         if event.physical_keycode == KEY_F10:
-            alternar()
+            if _bancada == null:
+                alternar()
             get_viewport().set_input_as_handled()
         elif event.physical_keycode == KEY_F3:
             alternar_fps()
+            get_viewport().set_input_as_handled()
+        elif event.physical_keycode == KEY_F2:
+            iniciar_bancada()
             get_viewport().set_input_as_handled()
 
 func alternar_fps() -> void:
@@ -81,6 +91,16 @@ func alternar_fps() -> void:
     _fps_label.visible = mostrar_fps
     _medir(mostrar_fps)
     _salvar()
+
+## Bancada de GPU (F2 ou botão do painel): mede quanto cada recurso gráfico custa em ms de GPU. Leva ~2 min; Esc cancela.
+func iniciar_bancada() -> void:
+    if _bancada != null:
+        return
+    _bancada = Bancada.new()
+    _bancada.name = "Bancada"
+    add_child(_bancada)
+    _bancada.terminou.connect(func(): _bancada = null)
+    _bancada.iniciar(self)
 
 ## Liga/desliga a medição de tempo de GPU e CPU do quadro (só com o overlay F3 aberto, porque custa um pouco).
 func _medir(ligado: bool) -> void:
@@ -188,6 +208,11 @@ func _construir() -> void:
         aplicar()
         _salvar())
     coluna.add_child(_vsync_opcao)
+    var teste := Button.new()
+    teste.text = "TESTE DE DESEMPENHO DA GPU (≈2 min) [F2]"
+    teste.tooltip_text = "Mede em ms quanto cada recurso gráfico custa na sua placa. Esc cancela; ao fim mostra uma tabela."
+    teste.pressed.connect(iniciar_bancada)
+    coluna.add_child(teste)
     var fechar := Button.new()
     fechar.text = "VOLTAR AO JOGO [F10]"
     fechar.pressed.connect(alternar)
@@ -268,6 +293,42 @@ func aplicar() -> void:
         if not _original_particulas.has(chave):
             _original_particulas[chave] = efeito.amount
         efeito.amount = maxi(4, roundi(int(_original_particulas[chave]) * [0.35, 0.65, 1.0, 1.3][q]))
+    _aplicar_sobreposicoes()
+
+## Aplica `sobrepor` por cima do que o nível de qualidade acabou de definir (vazio fora da bancada de GPU).
+func _aplicar_sobreposicoes() -> void:
+    if sobrepor.is_empty():
+        return
+    var vp: Viewport = get_viewport()
+    if sobrepor.has("msaa"):
+        var nivel_msaa: int = clampi(int(sobrepor["msaa"]), 0, 3)
+        if nivel_msaa == 3 and not e_forward_plus():
+            nivel_msaa = 2
+        var tabela_msaa: Array = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_8X]
+        var msaa: Viewport.MSAA = tabela_msaa[nivel_msaa]
+        vp.msaa_3d = msaa
+    if _ambiente != null and _ambiente.environment != null:
+        if sobrepor.get("sem_ssao", false):
+            _ambiente.environment.ssao_enabled = false
+        if sobrepor.get("sem_glow", false):
+            _ambiente.environment.glow_enabled = false
+    if sobrepor.has("atlas"):
+        RenderingServer.directional_shadow_atlas_set_size(int(sobrepor["atlas"]), true)
+    if sobrepor.get("filtro_duro", false):
+        RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_HARD)
+        RenderingServer.positional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_HARD)
+    if _sol != null:
+        if sobrepor.get("sem_sombra", false):
+            _sol.shadow_enabled = false
+        if sobrepor.has("faixas"):
+            var faixas: int = int(sobrepor["faixas"])
+            _sol.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if faixas >= 4 else (DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if faixas == 2 else DirectionalLight3D.SHADOW_ORTHOGONAL)
+    if sobrepor.has("detalhe"):
+        for ilha in _ilhas:
+            if ilha.has_method("definir_detalhe"):
+                ilha.definir_detalhe(int(sobrepor["detalhe"]))
+    if sobrepor.has("mar") and _oceano != null and _oceano.has_method("definir_qualidade"):
+        _oceano.definir_qualidade(int(sobrepor["mar"]))
 
 func _process(delta: float) -> void:
     _ajuste_automatico(delta)
