@@ -1,0 +1,26 @@
+PESCADOR v0.5.11 — BOIAS DE SINALIZAÇÃO NOVAS
+================================================
+
+1) MODELO NOVO (scripts/boias.gd)
+- Flutuador de aço de 2 m (antes de ESCALA 1,45) com chanfro, fundo cônico e contrapeso submerso.
+- Defensa de borracha preta em volta, logo acima da linha d'água.
+- Convés galvanizado com três olhais de amarração.
+- Torre treliçada de 4 pernas com diagonais e dois aros, e uma faixa de chapas cheias na cor da boia
+  (é o que dá a cor de longe).
+- Três painéis solares inclinados, plataforma com cesto e tampa protegendo a lanterna.
+- Sinal de topo no mastro: cone vermelho (boreste), lata verde (bombordo); esfera e cruz para as outras marcas.
+- Número pintado em branco dos dois lados do flutuador (vermelhas pares, verdes ímpares: 2 e 1 na entrada do porto).
+- Lanterna menor, de vidro colorido, na altura nova (3,18 m antes da escala); o brilho noturno acompanha.
+- Continua sendo uma malha só por boia (uma chamada de desenho), mais os dois números.
+
+2) MATERIAL NOVO (shaders/boia.gdshader), procedural, sem textura e sem emendas
+- Tinta marítima desbotada e manchada; lascas mostrando primer cinza e ferrugem, mais nas quinas.
+- Escorridos de ferrugem descendo da borda do flutuador e da torre.
+- Linha d'água com limo verde-marrom de borda irregular e cracas; parte molhada mais brilhante.
+- Fezes de aves marinhas em cima (manchas e escorridos brancos) e no sinal de topo.
+- Sal esbranquiçado nas partes altas.
+- Borracha fosca com arranhões, aço galvanizado com óxido branco e ferrugem, painel solar azul-escuro com as células.
+- Cada boia tem uma "semente" diferente: o desgaste não se repete igual entre elas.
+
+NÃO TESTADO AQUI
+- Forward+ / RX 6600 (as fotos são gl_compatibility).
