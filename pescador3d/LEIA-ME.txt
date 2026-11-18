@@ -1,3 +1,12 @@
+PESCADOR — Versão 0.5.9 (Godot 4.7)
+================================================
+NOVO NA 0.5.9 (detalhes em docs/PESCADOR_v0.5.9_NOVIDADES.txt):
+- PESCA: peixes comuns mais fáceis no anel (ponteiro mais lento, faixas mais largas, erro custa menos);
+  o cardume fisgado não foge mais do barco (antes a linha soltava em ~10 s). Peixes grandes continuam difíceis.
+- ONDAS: corrigido o mar ficando muito rápido quando o clima muda (chuva, tempestade e a volta ao calmo).
+- FAROL no topo do morro da Ilha de São Pedro.
+- GRÁFICOS: opção Janela / Tela cheia (e Alt+Enter).
+
 PESCADOR — Versão 0.5.8 (Godot 4.7)
 ================================================
 NOVO NA 0.5.8 — CARTA NÁUTICA NOVA, DOIS ARQUIPÉLAGOS E EDITOR DE ILHAS (detalhes em docs/PESCADOR_v0.5.8_NOVIDADES.txt):

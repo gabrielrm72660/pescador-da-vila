@@ -64,6 +64,7 @@ var _mudo := false
 var _botoes_idioma: Dictionary = {}
 var _botoes_qualidade: Array = []
 var _botoes_fps: Array = []
+var _botoes_tela: Array = []
 var _botao_auto: Button
 var _botao_vsync: Button
 var _botao_fps_tela: Button
@@ -107,6 +108,7 @@ func _cartao_papel(cartao: PanelContainer, semente: float) -> void:
     Aq.fundo(cartao, esq["cor"], esq["cor2"], semente, esq["extra"], 12.0)
 
 ## Se a folha for mais alta que a tela, encolhe de leve em vez de cortar o rodapé (vale para qualquer resolução e texto).
+var _ajustes: Array = []
 func _encaixar(cartao: Control) -> void:
     var ajustar := func():
         if not cartao.is_inside_tree() or cartao.size.y < 1.0:
@@ -114,10 +116,23 @@ func _encaixar(cartao: Control) -> void:
         var area := cartao.get_viewport_rect().size
         var f := minf(1.0, minf((area.y - 20.0) / cartao.size.y, (area.x - 20.0) / cartao.size.x))
         cartao.pivot_offset = cartao.size * 0.5
+        if f < 0.999:
+            # v0.5.8: cartão mais alto que a tela: o CenterContainer o encosta no topo (não centraliza),
+            # então o pivô é calculado para o cartão encolhido ficar centrado de verdade (antes o pé saía da tela).
+            var alvo_topo: float = (area.y - cartao.size.y * f) * 0.5
+            cartao.pivot_offset.y = clampf((alvo_topo - cartao.position.y) / (1.0 - f), 0.0, cartao.size.y)
         cartao.scale = Vector2(f, f)
-    cartao.resized.connect(ajustar)
-    cartao.visibility_changed.connect(ajustar)
+    cartao.resized.connect(func(): ajustar.call_deferred())          # depois do CenterContainer reposicionar
+    cartao.visibility_changed.connect(func(): ajustar.call_deferred())
     ajustar.call_deferred()
+    _ajustes.append(ajustar)
+
+## v0.5.8: depois de trocar de página o cartão muda de altura no quadro seguinte; reencaixa quando o layout assentar.
+func _reencaixar() -> void:
+    for k in 2:
+        await get_tree().process_frame
+        for a in _ajustes:
+            a.call()
 
 func _botao_aq(texto: String, nome_esquema: String, semente: float, cor_texto: Color, tamanho: int, minimo: Vector2) -> Button:
     var b := BotaoAq.new()
@@ -315,6 +330,7 @@ func _ir_para(nome: String) -> void:
     _atualizar_cabecalho()
     if nome == "graficos":
         _atualizar_graficos()
+    _reencaixar()
 
 ## Título e subtítulo conforme a página e o estado (início ou pausa).
 func _atualizar_cabecalho() -> void:
@@ -389,6 +405,17 @@ func _construir_graficos(pag: VBoxContainer) -> void:
     _dica_graficos = _nova_label("", 16, COR_SUAVE, true)
     _dica_graficos.custom_minimum_size = Vector2(500, 0)
     pag.add_child(_dica_graficos)
+    # v0.5.8: modo de tela
+    pag.add_child(_t(_nova_label("", 22, COR_SECAO, false, true), "TELA"))
+    var fila_j := HBoxContainer.new()
+    fila_j.add_theme_constant_override("separation", 8)
+    pag.add_child(fila_j)
+    for i in 2:
+        var bj := _botao_aq("", "mar", 46.0 + float(i), Aq.CREME, 20, Vector2(200, 42))
+        bj.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _t(bj, ["Janela", "Tela cheia  (Alt+Enter)"][i], _graf.bind("tela", i))
+        fila_j.add_child(bj)
+        _botoes_tela.append(bj)
     _botao_auto = _botao_aq("", "mar", 45.0, Aq.CREME, 19, Vector2(440, 40))
     _botao_auto.pressed.connect(_graf.bind("auto", 0))
     pag.add_child(_botao_auto)
@@ -424,6 +451,7 @@ func _graf(o_que: String, n: int) -> void:
         "auto": graficos.definir_automatica(not graficos.automatica)
         "fps": graficos.definir_limite_fps(n)
         "vsync": graficos.definir_vsync(not graficos.vsync)
+        "tela": graficos.definir_tela_cheia(n == 1)
         "mostrar_fps": graficos.alternar_fps()
         "avancado":                                  # o menu sai da frente para ver a cena; volta quando o painel fechar
             graficos.abrir_avancado()
@@ -441,6 +469,8 @@ func _atualizar_graficos() -> void:
         _botoes_qualidade[i].marcar(i == int(graficos.qualidade))
     for i in _botoes_fps.size():
         _botoes_fps[i].marcar(i == int(graficos.fps_indice))
+    for i in _botoes_tela.size():
+        _botoes_tela[i].marcar(i == (1 if graficos.tela_cheia else 0))
     _dica_graficos.text = T.t(graficos.texto_dica())
     var lig := T.t("ligado")
     var des := T.t("desligado")

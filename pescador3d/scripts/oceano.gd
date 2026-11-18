@@ -42,6 +42,9 @@ var _ultima_pos_espuma: Vector2 = Vector2.ZERO
 var _tem_ultima_espuma: bool = false
 var _altura: float = 0.40
 var _velocidade: float = 0.80
+# v0.5.8: fase das ondas acumulada (fase += delta * velocidade). Antes era tempo * velocidade: quando o clima mudava,
+# a velocidade mudava e, com o tempo de jogo já grande, a fase disparava (ondas 8x mais rápidas na troca de clima).
+var fase_ondas: float = 0.0
 var _costas: Array = []  # [{"centro": Vector2, "raio": float}]
 var simulando: bool = false
 var tempestade_nivel: float = 0.0
@@ -181,15 +184,15 @@ func fator_onda_em(pos: Vector3) -> float:
     return lerpf(CALMA_COSTEIRA, FORCA_ALTO_MAR, smoothstep(INICIO_ALTO_MAR, FIM_ALTO_MAR, distancia))
 
 func altura_em(pos: Vector3) -> float:
-    return onda(Vector2(pos.x, pos.z), tempo * _velocidade, direcao_vento, agitacao) * _altura * fator_onda_em(pos)
+    return onda(Vector2(pos.x, pos.z), fase_ondas, direcao_vento, agitacao) * _altura * fator_onda_em(pos)
 
 ## Taxa vertical da superfície em metros/s. Mesmo campo temporal do shader.
 ## Evita estimar o impacto do casco apenas pela inclinação da onda.
 func velocidade_vertical_em(pos: Vector3) -> float:
     var xz := Vector2(pos.x, pos.z)
     var intervalo: float = 0.09
-    var futura: float = onda(xz, (tempo + intervalo) * _velocidade, direcao_vento, agitacao)
-    var passada: float = onda(xz, (tempo - intervalo) * _velocidade, direcao_vento, agitacao)
+    var futura: float = onda(xz, fase_ondas + intervalo * _velocidade, direcao_vento, agitacao)
+    var passada: float = onda(xz, fase_ondas - intervalo * _velocidade, direcao_vento, agitacao)
     return (futura - passada) * _altura * fator_onda_em(pos) / (intervalo * 2.0)
 
 func intensidade_em(pos: Vector3) -> float:
@@ -262,6 +265,7 @@ func resetar_mar() -> void:
     _espera_tempestade = randf_range(165.0, 270.0)
     _duracao_tempestade = 0.0
     tempo = 0.0
+    fase_ondas = 0.0
     _relogio_rastro = 0.0
     limpar_rastro()
     _atualizar_uniformes()
@@ -288,6 +292,7 @@ func _atualizar_uniformes() -> void:
     _material.set_shader_parameter("direcao_vento", direcao_vento)
     _material.set_shader_parameter("quantidade_espuma", lerpf(0.18, 0.49, agitacao))
     _material.set_shader_parameter("tempo_mar", tempo)
+    _material.set_shader_parameter("fase_ondas", fase_ondas)
     _material.set_shader_parameter("tempestade_nivel", tempestade_nivel)
 
 func _process(delta: float) -> void:
@@ -308,6 +313,7 @@ func _process(delta: float) -> void:
     # A tempestade sobrepõe-se ao perfil automático ou manual e decai suavemente.
     alvo = maxf(alvo, lerpf(alvo, 0.99, tempestade_nivel))
     agitacao = lerpf(agitacao, alvo, 1.0 - exp(-0.55 * delta))
+    fase_ondas += delta * lerpf(0.63, 1.05, agitacao)      # mesma velocidade que _atualizar_uniformes() usa
     direcao_vento = Vector2(cos(-0.57 + tempo * 0.00042), sin(-0.57 + tempo * 0.00042))
     _atualizar_uniformes()
 

@@ -917,6 +917,8 @@ func _criar_vila() -> void:
         _construir_casas()
         _construir_props()
         _construir_postes()
+        if tem_farol:
+            _criar_farol_no_cume(vila)         # v0.5.8: farol no alto do morro de São Pedro
         return
 
     if _usa_layout():

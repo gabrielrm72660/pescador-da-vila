@@ -17,6 +17,11 @@ const VELOCIDADE_MAXIMA_PESCA: float = 1.03  # m/s = 2 nós
 const PERDA_NO_ERRO: float = 0.10            # quanto da barra volta num aperto fora da faixa
 const TRAVA_NO_ERRO: float = 0.45            # s sem poder apertar depois de errar
 const PARTE_DOURADA: float = 0.30            # fração do meio da faixa que vale o dobro
+# v0.5.8: peixes comuns ficaram mais fáceis (o Gabriel achou o anel difícil demais).
+# Os peixes grandes, raros e de alto-mar continuam como estavam.
+const COMUNS := ["Sardinha", "Tainha", "Xaréu", "Cavala", "Barracuda", "Olho-de-cão", "Baiacu", "Peixe-voador", "Budião", "Robalo"]
+const FACIL := {"ponteiro": 0.85, "largura": 1.25, "acertos": 0, "espera": 0.75,
+        "perda": 0.05, "trava": 0.30, "tensao_erro": 0.10, "tensao_acerto": 0.75}
 
 enum Estado { PRONTO, PUXANDO }
 var estado: Estado = Estado.PRONTO
@@ -37,6 +42,7 @@ var ultimo_perfeito: bool = false
 var fator_vara: float = 1.0      # vara melhor (loja do cais) alarga as faixas verdes
 var _ganho: float = 0.34        # quanto cada acerto enche
 var _sozinho: float = 0.05      # quanto enche por segundo sem fazer nada
+var comum: bool = false         # o peixe da linha é comum (anel mais fácil)
 
 # Novo sistema de pesca: B troca a isca; N escolhe a camada do anzol.
 const ISCAS := ["Comum", "Camarão", "Lula"]
@@ -106,8 +112,13 @@ func comprar_iscas() -> void:
     iscas_camarao += 6
     iscas_lula += 3
 
+func _soltar_cardume() -> void:
+    if not alvo.is_empty():
+        alvo["fisgado"] = false
+
 func _romper_linha(motivo: String) -> void:
     estado = Estado.PRONTO
+    _soltar_cardume()
     tensao = 0.0
     _alerta_tensao = false
     mensagem.emit(motivo)
@@ -173,13 +184,15 @@ func _lancar() -> void:
         iscas_lula -= 1
     tensao = 0.0
     _alerta_tensao = false
-    voltas_por_s = float(dados.get("ponteiro", 0.5))
+    comum = COMUNS.has(String(alvo.especie))
+    voltas_por_s = float(dados.get("ponteiro", 0.5)) * (FACIL.ponteiro if comum else 1.0)
     var n: int = int(dados.get("faixas", 3))
-    var largura: float = deg_to_rad(float(dados.get("largura", 38))) * fator_vara * bonus_iscagem
-    _ganho = 1.0 / float(dados.get("acertos", 3)) + 0.01
+    var largura: float = deg_to_rad(float(dados.get("largura", 38))) * fator_vara * bonus_iscagem * (FACIL.largura if comum else 1.0)
+    var acertos: int = int(dados.get("acertos", 3)) + (int(FACIL.acertos) if comum else 0)
+    _ganho = 1.0 / float(maxi(2, acertos)) + 0.01
     limite_linha = 1.0 + linha_nivel * 0.15 - desgaste_linha * 0.20
     var espera: Array = dados.get("espera", [3.0, 6.0])
-    _sozinho = 1.0 / (randf_range(espera[0], espera[1]) * 3.0)      # sem acertar nada: de 8 a 24 s
+    _sozinho = 1.0 / (randf_range(espera[0], espera[1]) * 3.0 * (FACIL.espera if comum else 1.0))      # sem acertar nada: de 8 a 24 s
     faixas.clear()
     var inicio := randf_range(0.0, TAU)
     for i in n:                                                     # espalhadas pelo anel, sem encostar
@@ -190,11 +203,13 @@ func _lancar() -> void:
     trava = 0.0
     brilho = 0.0
     estado = Estado.PUXANDO
+    alvo["fisgado"] = true
     linha_lancada.emit()
     mensagem.emit("%s: %s / %s. F no verde; cuidado com a tensão!" % [String(alvo.especie), nome_isca(), nome_profundidade()])
 
 func _capturar() -> void:
     estado = Estado.PRONTO
+    _soltar_cardume()
     var especie: String = alvo.especie
     var peso: float = cardumes.sortear_peso(especie)
     ultima_qualidade = "Excepcional" if tensao < 0.28 and bonus_iscagem > 1.06 else ("Boa" if tensao < 0.58 else "Regular")
@@ -228,9 +243,9 @@ func acao() -> void:
         return
     var i := faixa_sob_ponteiro()
     if i == -1:
-        progresso = maxf(0.0, progresso - PERDA_NO_ERRO)
-        trava = TRAVA_NO_ERRO
-        tensao += 0.17
+        progresso = maxf(0.0, progresso - (FACIL.perda if comum else PERDA_NO_ERRO))
+        trava = FACIL.trava if comum else TRAVA_NO_ERRO
+        tensao += FACIL.tensao_erro if comum else 0.17
         errou.emit()
         return
     var f: Dictionary = faixas[i]
@@ -238,7 +253,7 @@ func acao() -> void:
     progresso += _ganho * (2.0 if ultimo_perfeito else 1.0) * bonus_iscagem
     var forca_tecnica: float = [0.77, 1.0, 1.25][tecnica]
     progresso += _ganho * ([0.0, 0.0, 0.22][tecnica])
-    tensao += (0.10 if ultimo_perfeito else 0.16) * (1.0 + voltas_por_s * 0.35) * forca_tecnica
+    tensao += (0.10 if ultimo_perfeito else 0.16) * (1.0 + voltas_por_s * 0.35) * forca_tecnica * (FACIL.tensao_acerto if comum else 1.0)
     desgaste_linha = clampf(desgaste_linha + 0.008 * forca_tecnica, 0.0, 1.0)
     brilho = 0.35
     f.usada = 0.9                                                   # a faixa apaga e reaparece noutro lugar
@@ -283,6 +298,7 @@ func status() -> String:
 
 func resetar() -> void:
     estado = Estado.PRONTO
+    _soltar_cardume()
     alvo = {}
     progresso = 0.0
     tensao = 0.0

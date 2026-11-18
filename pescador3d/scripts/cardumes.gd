@@ -47,6 +47,10 @@ const COR_BRILHO := Color(0.42, 0.86, 0.96)
 const INTERVALO := 4.5         # s entre nascimentos
 const DIST_FUGA_BARCO: float = 27.0
 const RECUPERACAO_FUGA: float = 8.0
+# v0.5.8: o cardume fisgado (linha na água) não foge mais do barco e nada bem devagar, para não "se afastar"
+# no meio do minijogo (o raio de fuga, 27 m, era maior que o alcance da linha, e a linha soltava em ~10 s).
+var segurar_fisgado := true
+const VEL_FISGADO := 0.15
 # Valores de locomocao: estilos proprios, independentes dos atributos da pesca.
 const NADO := {
     "Sardinha": {"vel": 1.2, "grupo": 1.35, "separa": 0.75, "muda": 0.28},
@@ -441,7 +445,10 @@ func _process(delta: float) -> void:
             candidato += sin(_tempo * 0.13 + float(c.fases[0]) * TAU) * 0.012 * dt
         var fuga: Vector2 = Vector2(c.centro.x - pos_barco.x, c.centro.z - pos_barco.z)
         var raio_fuga: float = DIST_FUGA_BARCO + clampf(absf(float(_barco.velocidade)) * 3.0, 0.0, 14.0)
-        if fuga.length() < raio_fuga:
+        var fisgado: bool = segurar_fisgado and bool(c.get("fisgado", false))
+        if fisgado:
+            c.fuga = 0.0
+        elif fuga.length() < raio_fuga:
             c.fuga = RECUPERACAO_FUGA
             if fuga.length() > 0.01:
                 candidato = lerp_angle(candidato, fuga.angle(), clampf(dt * 1.5, 0.0, 0.2))
@@ -451,6 +458,8 @@ func _process(delta: float) -> void:
         var velocidade_grupo: float = 0.48 + float(NADO[c.especie]["vel"]) * 0.18
         if float(c.fuga) > 0.0:
             velocidade_grupo *= 1.35
+        if fisgado:
+            velocidade_grupo *= VEL_FISGADO
         c.centro += Vector3(direcao_grupo.x, 0.0, direcao_grupo.y) * velocidade_grupo * dt
         if MOSTRAR_NA_AGUA:                                  # escondidos, os peixes não precisam nadar um por um
             _nadar_cardume(c, dt)

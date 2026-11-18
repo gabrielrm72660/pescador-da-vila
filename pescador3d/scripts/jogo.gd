@@ -144,7 +144,7 @@ func _enter_tree() -> void:
     sao_pedro.rochedos = [[-104.0, -40.0, 12.0, 6.5], [-92.0, 70.0, 3.0, 9.0]]
     sao_pedro.com_vila = false
     sao_pedro.vila_pequena = true
-    sao_pedro.tem_farol = false
+    sao_pedro.tem_farol = true            # v0.5.8: farol no topo do morro
     sao_pedro.relevo_detalhado = false
     sao_pedro.coqueiros = 46
     sao_pedro.pinheiros_soltos = 70
@@ -420,7 +420,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.5.8] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.5.9] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:

@@ -1,0 +1,43 @@
+PESCADOR v0.5.9 — PESCA MAIS FÁCIL, ONDAS CORRIGIDAS, FAROL EM SÃO PEDRO, JANELA/TELA CHEIA
+================================================
+
+1) MINIJOGO DE PESCA MAIS FÁCIL PARA PEIXES COMUNS (scripts/pesca.gd)
+- Peixes comuns: Sardinha, Tainha, Xaréu, Cavala, Barracuda, Olho-de-cão, Baiacu, Peixe-voador, Budião e Robalo.
+  Para eles: ponteiro 15% mais lento, faixas verdes 25% mais largas, peixe vem sozinho 25% mais depressa,
+  errar custa metade (perde 5% da barra em vez de 10%, trava 0,30 s em vez de 0,45 s, tensão +0,10 em vez de +0,17)
+  e cada acerto puxa 25% menos tensão. O número de acertos não mudou.
+- Peixes grandes, raros e de alto-mar (Atum, Dourado, Garoupa, Moreia, Arabaiana, Namorado, Peixe-anjo, Agulhão-vela)
+  continuam como estavam.
+
+2) O CARDUME FISGADO NÃO FOGE MAIS (scripts/cardumes.gd, pesca.gd) — vale para todos os peixes
+- Causa: o raio de fuga do cardume (27 m) era maior que o alcance da linha; com a linha na água o cardume fugia
+  do barco e em ~10 s a linha soltava ("O cardume se afastou"). Agora o cardume fisgado não foge e nada a 15%
+  da velocidade até a captura ou a linha soltar.
+
+   Simulação (60 tentativas por peixe; jogador que só aperta F depois de VER o ponteiro no verde, 0,15–0,25 s de reação):
+                antes                         agora
+   Tainha       60/60 em 7,9 s                60/60 em 1,6 s
+   Xaréu        17/60, 8 cardumes fugiram     60/60 em 3,1 s
+   Cavala        0/60, 11 fugiram             60/60 em 12,1 s
+   Robalo        0/60, 6 fugiram              18/60 (ainda pede antecipar o ponteiro)
+   Atum          0/60, 9 fugiram               0/60, nenhum fugiu (continua difícil, de propósito)
+
+3) ONDAS 8x MAIS RÁPIDAS NA TROCA DE CLIMA (scripts/oceano.gd, shaders/oceano_pintado.gdshader, construtor.gd)
+- Causa: a fase das ondas era calculada como tempo_de_jogo x velocidade. Quando o clima mudava, a velocidade das ondas
+  mudava aos poucos e, com o tempo de jogo já grande, a fase disparava.
+- Agora a fase é acumulada (fase += delta x velocidade), no script e no shader (uniform fase_ondas).
+- Medido com 25 min de jogo, calmo -> tempestade -> calmo: antes até 102x a velocidade normal; agora no máximo 1,3x
+  (a tempestade é de fato um pouco mais rápida que o mar calmo).
+
+4) FAROL NA ILHA DE SÃO PEDRO (scripts/ilha.gd, jogo.gd)
+- Torre no topo do morro (o mesmo farol da Vila do Porto), com lanterna, feixe giratório e brilho à noite; aparece na carta.
+
+5) JANELA OU TELA CHEIA (scripts/opcoes_graficas.gd, interface.gd, idioma.gd)
+- Opções > Gráficos > TELA: Janela / Tela cheia. Alt+Enter alterna a qualquer momento. Fica salvo.
+- Tela cheia sem borda (Alt+Tab sem piscar). Janela volta com 3/4 do monitor, centralizada.
+- Corrigido: cartões de menu mais altos que a tela (Gráficos) ficavam com o pé cortado; agora encolhem centralizados.
+
+NÃO TESTADO AQUI
+- Minijogo com gente de verdade: os números acima são de um jogador simulado.
+- Tela cheia no Windows (testado só no Linux virtual: modo muda para tela cheia e volta para janela 1440x810).
+- Forward+ / RX 6600.

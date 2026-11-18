@@ -14,6 +14,7 @@ var qualidade: int = 1
 var automatica: bool = true      # abaixa a qualidade sozinha se o jogo ficar lento (nunca sobe sozinha)
 var fps_indice: int = 1
 var mostrar_fps: bool = false
+var tela_cheia: bool = false     # v0.5.8: Opções > Gráficos > Tela (janela ou tela cheia)
 var vsync: bool = true           # trava o FPS na taxa do monitor; desligue (com "Sem limite") para medir a capacidade real
 var _vsync_opcao: CheckButton
 ## Ajustes avulsos aplicados POR CIMA do nível de qualidade; só a bancada de GPU usa (mede o custo de cada recurso).
@@ -57,6 +58,7 @@ func _ready() -> void:
         automatica = false
     if OS.get_environment("PESCADOR_QUALIDADE") != "":
         qualidade = clampi(int(OS.get_environment("PESCADOR_QUALIDADE")), 0, QUALIDADE_MAX)
+    _aplicar_janela()
     _construir()
     cinema = Cinema.new()
     cinema.name = "Cinema"
@@ -268,6 +270,36 @@ func definir_vsync(ligado: bool) -> void:
     aplicar()
     _salvar()
 
+func definir_tela_cheia(ligada: bool) -> void:
+    tela_cheia = ligada
+    _aplicar_janela()
+    _salvar()
+
+## Tela cheia sem borda (troca de janela com Alt+Tab sem piscar) ou janela com 3/4 do monitor, centralizada.
+func _aplicar_janela() -> void:
+    if DisplayServer.get_name() == "headless":
+        return
+    var modo: int = DisplayServer.window_get_mode()
+    var cheia_agora: bool = modo == DisplayServer.WINDOW_MODE_FULLSCREEN or modo == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
+    if tela_cheia == cheia_agora:
+        return
+    if tela_cheia:
+        DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+        return
+    DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+    var tela: int = DisplayServer.window_get_current_screen()
+    var area: Rect2i = DisplayServer.screen_get_usable_rect(tela)
+    var tamanho := Vector2i(maxi(1280, area.size.x * 3 / 4), maxi(720, area.size.y * 3 / 4))
+    tamanho = Vector2i(mini(tamanho.x, area.size.x), mini(tamanho.y, area.size.y))
+    DisplayServer.window_set_size(tamanho)
+    DisplayServer.window_set_position(area.position + (area.size - tamanho) / 2)
+
+func _unhandled_key_input(evento: InputEvent) -> void:
+    # Alt+Enter alterna janela e tela cheia (como na maioria dos jogos de PC)
+    if evento is InputEventKey and evento.pressed and not evento.echo and evento.alt_pressed and (evento.keycode == KEY_ENTER or evento.keycode == KEY_KP_ENTER):
+        definir_tela_cheia(not tela_cheia)
+        get_viewport().set_input_as_handled()
+
 func abrir_avancado() -> void:
     if not cinema.esta_aberto():
         cinema.alternar()
@@ -441,8 +473,9 @@ func _carregar() -> void:
     fps_indice = clampi(int(dados.get("fps", 1)), 0, 3)
     mostrar_fps = bool(dados.get("mostrar_fps", false))
     vsync = bool(dados.get("vsync", true))
+    tela_cheia = bool(dados.get("tela_cheia", false))
 
 func _salvar() -> void:
     var arquivo := FileAccess.open(ARQUIVO, FileAccess.WRITE)
     if arquivo != null:
-        arquivo.store_string(JSON.stringify({"qualidade": qualidade, "automatica": automatica, "fps": fps_indice, "mostrar_fps": mostrar_fps, "vsync": vsync}))
+        arquivo.store_string(JSON.stringify({"qualidade": qualidade, "automatica": automatica, "fps": fps_indice, "mostrar_fps": mostrar_fps, "vsync": vsync, "tela_cheia": tela_cheia}))

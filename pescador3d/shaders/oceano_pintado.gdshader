@@ -60,6 +60,7 @@ uniform float luz_propria = 1.0;                     // a agua se acende um pouc
 // Enviados por scripts/oceano.gd. O tempo vem do script (e nao de TIME) para o barco
 // calcular a mesma onda e subir e descer junto com a agua.
 uniform float tempo_mar = 0.0;
+uniform float fase_ondas = 0.0;              // v0.5.8: fase acumulada no script (sem salto quando a velocidade muda)
 uniform vec2 barco_pos = vec2(0.0);
 uniform vec2 barco_frente = vec2(0.0, -1.0);
 uniform float barco_vel = 0.0;                 // 0 parado ... 1 velocidade maxima
@@ -174,7 +175,7 @@ vec2 gotas_chuva(vec2 p, float tt, float celula) {
 
 void vertex() {
     vec2 p = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
-    float h = onda(p, tempo_mar * velocidade_ondas);
+    float h = onda(p, fase_ondas);
     coordenada_mundo = p;
     altura_crista = h;
     VERTEX.y += h * altura_ondas * fator_costeiro(p);
@@ -183,7 +184,7 @@ void vertex() {
 
 void fragment() {
     vec2 p = coordenada_mundo;
-    float t = tempo_mar * velocidade_ondas;
+    float t = fase_ondas;
     float distancia = length(VERTEX);                       // metros ate a camera
     float perto = 1.0 - smoothstep(40.0, 220.0, distancia);  // detalhe fino so perto: longe ele vira chuvisco
 

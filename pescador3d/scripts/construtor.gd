@@ -304,6 +304,8 @@ func _process(delta: float) -> void:
     if mar != null and mar.get("_material") != null:
         mar.tempo += delta
         mar._material.set_shader_parameter("tempo_mar", mar.tempo)
+        mar.fase_ondas += delta * mar._velocidade
+        mar._material.set_shader_parameter("fase_ondas", mar.fase_ondas)
     _estado_tempo -= delta
     if _estado_tempo <= 0.0 and _estado != null:
         _estado_tempo = 0.4
