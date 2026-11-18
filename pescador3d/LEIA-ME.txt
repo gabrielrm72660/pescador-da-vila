@@ -1,3 +1,10 @@
+PESCADOR — Versão 0.5.10 (Godot 4.7)
+================================================
+NOVO NA 0.5.10 — SONS NOVOS (detalhes em docs/PESCADOR_v0.5.10_NOVIDADES.txt):
+- Mar (laço de 96 s, estéreo, com ondas passando e água batendo no casco), 3 ondas quebrando na praia,
+  água no casco, motor diesel "tuc-tuc", alerta com sino de bordo e chuva no mar e na madeira do barco.
+- Geradores dos sons em ferramentas/sons/.
+
 PESCADOR — Versão 0.5.9 (Godot 4.7)
 ================================================
 NOVO NA 0.5.9 (detalhes em docs/PESCADOR_v0.5.9_NOVIDADES.txt):

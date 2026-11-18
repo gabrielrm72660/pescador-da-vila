@@ -1,0 +1,22 @@
+PESCADOR v0.5.10 — SONS NOVOS
+================================================
+
+Refeitos por síntese procedural (numpy), sem gravações de terceiros. Os geradores ficam em ferramentas/sons/
+(gerar_mar.py e gerar_sons.py). Cada som novo foi nivelado ao volume médio do antigo, para não desequilibrar a mixagem.
+
+1) MAR (assets/sons/mar.ogg): laço de 96 s (antes 18 s, quase mono e com chiado demais). Ondas passando a cada 6–12 s,
+   marulho grave, água no casco com "tum" de madeira, bolhas e gorgolejo, marolinhas e espuma ao longe, estéreo largo.
+   O "respiro" que o som.gd fazia por cima caiu de ±1,4 dB para ±0,5 dB, porque o arquivo já respira.
+2) ONDAS NA PRAIA (onda.ogg, onda_2.ogg, onda_3.ogg): três variações de 7,5 s (crescendo, estouro, espraiado e refluxo
+   chiando nas pedrinhas). O jogo sorteia uma a cada onda.
+3) ÁGUA NO CASCO (agua_casco.ogg): laço de 24 s. Rumor turbulento, a proa batendo nas marolas a cada 1,4–2,8 s
+   (irregular; antes era um "chuá" regular), borrifo e esteira de bolhas.
+4) MOTOR DIESEL (motor_diesel.ogg): laço de 12 s de um diesel de 2 cilindros em marcha lenta (~9 batidas por segundo),
+   cilindros um pouco desiguais (o "galope" do motor velho), escapamento borbulhando na água, batida de válvulas.
+   O jogo continua subindo o tom com a velocidade (0,88x a 1,30x).
+5) ALERTA (aviso.ogg): sino de bordo de latão, duas batidas (1,9 s), no lugar do bipe.
+6) CHUVA (chuva.ogg): laço de 30 s. Chiado das gotas no mar com o agudo das bolhinhas, pingos na madeira do convés e da
+   cabine, respingos maiores caindo da cobertura e rajadas lentas.
+
+NÃO TESTADO AQUI
+- Ninguém ouviu os sons aqui: foram ajustados por análise de espectro e nível. Ajustes finos dependem do ouvido.

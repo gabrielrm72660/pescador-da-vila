@@ -2,6 +2,8 @@ extends Node
 ## Som do jogo (seis volumes: geral, mar, vento, chuva, barco, efeitos): ressaca costeira, mar com respiracao lenta e vento em rajadas espaçadas; motor e água no casco conforme a velocidade; uma onda quebrando de vez
 ## em quando; efeitos da pesca. Volumes ajustados em Opções > Áudio e
 ## guardados em user://pescador.cfg. Os arquivos ficam em assets/sons/; se algum faltar, o jogo segue.
+## v0.5.10: mar, ondas (3 variações), água no casco, motor diesel, alerta (sino de bordo) e chuva refeitos
+## por síntese (ferramentas/sons/gerar_*.py). O mar.ogg já tem as ondas passando, então o "respiro" do código ficou leve.
 
 signal volumes_mudaram
 
@@ -49,6 +51,8 @@ func _ready() -> void:
     _chuva = _laco("chuva", -60.0, "chuva")
     _proximo_trovao = randf_range(18.0, 36.0)
     _guardar_avulso("onda", "mar")
+    _guardar_avulso("onda_2", "mar")
+    _guardar_avulso("onda_3", "mar")
     _guardar_avulso("trovao", "chuva")
     for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura"]:
         _guardar_avulso(nome, "efeitos")
@@ -153,7 +157,7 @@ func _process(delta: float) -> void:
     if _mar != null:
         # O respiro das ondas e lento; pertinho da praia o ambiente cresce um pouco.
         var ciclo: float = 0.68 * sin(_tempo_ambiente * 0.21) + 0.32 * sin(_tempo_ambiente * 0.37 + 1.2)
-        var alvo_mar: float = lerpf(-15.0, -10.0, mar_agitado) + 2.2 * proximidade_costa + 1.4 * ciclo
+        var alvo_mar: float = lerpf(-15.0, -10.0, mar_agitado) + 2.2 * proximidade_costa + 0.5 * ciclo
         _mar.volume_db = lerpf(_mar.volume_db, alvo_mar, suave)
     if _motor != null:                                       # marcha lenta baixinha, acelera com o barco
         var com_diesel: bool = barco == null or barco.combustivel > 0.0        # sem combustível o motor cala
@@ -213,4 +217,7 @@ func _process(delta: float) -> void:
         _prox_onda = randf_range(8.0, 17.0) * lerpf(1.0, 0.70, mar_agitado)
         if proximidade_costa > 0.13:
             var volume_onda: float = lerpf(-34.0, -21.0, proximidade_costa) + 2.0 * mar_agitado
-            tocar("onda", volume_onda + randf_range(-2.0, 1.0), randf_range(0.87, 1.04))
+            var qual: String = ["onda", "onda_2", "onda_3"][randi() % 3]
+            if not _avulsos.has(qual):
+                qual = "onda"
+            tocar(qual, volume_onda + randf_range(-2.0, 1.0), randf_range(0.90, 1.04))
