@@ -1,0 +1,41 @@
+PESCADOR v0.5.4 — PAINEL CINEMA
+================================================
+
+POR QUE
+A bancada da 0.5.3 mostrou que o Ultra gasta 6,3 ms de GPU em média (pior caso 8,2 ms na chuva) na RX 6600. A 60 FPS o quadro tem 16,7 ms:
+sobram ~8,5 ms sobre o pior Ultra (uns 5 ms com margem). É o orçamento do "Cinema" (aproximar do visual de Life is Strange). Como o ambiente de
+desenvolvimento não renderiza Forward+, o ajuste fino tem de ser feito AO VIVO no seu PC: este painel é essa ferramenta.
+
+COMO USAR
+1. Jogue com qualidade Ultra (F10). Aperte F11 (ou F10 -> PAINEL CINEMA). O painel abre na lateral e o jogo continua rodando atrás.
+2. No alto aparece "GPU x ms · cabe em N FPS": o custo ao vivo. Mexa e veja o custo mudar.
+3. Comece por um preset (Leve, Cheio ou Hora dourada) e ajuste. Mexeu em qualquer coisa, o Cinema liga sozinho. "Desligar" volta ao visual de sempre.
+4. "Copiar" copia a configuração (JSON) e "Salvar" grava user://pescador_cinema.json (carrega sozinho na próxima vez). Cole o texto na conversa
+   com um print do jogo, que eu transformo na configuração oficial.
+5. "Medir custo" roda a bancada em modo Cinema (~1,5 min): quanto cada recurso soma ao Ultra, nas 4 vistas, com os valores atuais do painel.
+
+RECURSOS
+- Luz global SDFGI (qualidade, célula, cascatas, força) · SSIL · SSAO (intensidade, raio) · SSR (passos): só no renderizador Forward+.
+- Névoa volumétrica (densidade, direção da luz, alcance, ambiente, céu) com raios de sol (força).
+- Profundidade de campo (foco até, transição, desfoque): o fundo longe fica macio, o barco e a ilha perto ficam nítidos.
+- Cor: curva de tom (Filmic atual, ACES, AgX, Reinhard), exposição, ponto branco, brilho, contraste, saturação, glow.
+- Luz do dia: força do sol, sol dourado, luz do ambiente, congelar a hora (hora dourada 17 a 18 h).
+- Pintura e filme: filtro Kuwahara (pinceladas), mistura com a imagem original, vinheta e grão. Fica abaixo da interface.
+Os padrões reproduzem o visual atual: ligar o Cinema sem mexer em nada não muda a imagem.
+
+COMO FUNCIONA POR DENTRO
+- scripts/cinema.gd (novo): painel e aplicação. Guarda os valores originais do Environment e devolve ao desligar.
+- shaders/pintura_pos.gdshader (novo): Kuwahara de 4 quadrantes + vinheta + grão em uma camada de tela (-1). Raio 0, vinheta 0 e grão 0 = camada oculta (custo zero).
+- scripts/clima.gd: multiplicadores estilo_sol, estilo_calor, estilo_ambiente e hora_congelada aplicados por cima do clima (neutro = 1/0/1/falso).
+- scripts/opcoes_graficas.gd: cria o painel, aplica o Cinema no fim de aplicar() e o botão no F10.
+- scripts/bancada_gpu.gd: modo "cinema" com 12 linhas (cada recurso somado ao Ultra, tudo ligado, e tudo ligado com MSAA/sombras/vegetação mais leves).
+- Com SDFGI ligado, o mar fica fora da luz global (gi_mode desligado) e o barco, cardumes, baleias e fauna viram "dinâmicos".
+
+O QUE NÃO FOI TESTADO (HONESTIDADE)
+- Testei no meu ambiente (renderizador de compatibilidade): painel, presets, aplicar/desfazer, JSON, o filtro pintura (fotos), tom/cor/glow/sol dourado
+  e o ciclo da bancada. As propriedades do Godot 4.7 foram conferidas pelo nome.
+- NÃO vi SDFGI, SSIL, SSR, névoa volumétrica e profundidade de campo funcionando: só existem no Forward+ da sua máquina. Os valores dos presets
+  são palpites meus para você ajustar. Pontos incertos: se o SDFGI enxerga as árvores (MultiMesh) e o mar, e se a névoa volumétrica combina com o
+  céu pintado e o mar. Se algo ficar estranho, mande um print.
+- Os custos em ms desses recursos só você consegue medir (botão "Medir custo").
+- Mexer em "SDFGI célula" ou "cascatas" recria a luz global (pequena pausa ao arrastar).

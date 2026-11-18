@@ -1,3 +1,13 @@
+PESCADOR — Versão 0.5.4 (Godot 4.7)
+================================================
+NOVO NA 0.5.4 — PAINEL CINEMA (detalhes em docs/PESCADOR_v0.5.4_NOVIDADES.txt):
+- F11 (ou F10 -> "PAINEL CINEMA"): painel ao vivo na lateral, com o custo de GPU em ms enquanto você mexe. Use com qualidade ULTRA.
+- Recursos: luz global SDFGI, SSIL, SSR (reflexos), SSAO, névoa volumétrica com raios de sol, profundidade de campo, curva de tom (Filmic/ACES/AgX),
+  brilho/contraste/saturação, glow, sol dourado, congelar a hora e o filtro "pintura" (pinceladas Kuwahara, vinheta, grão de filme).
+- Botões: Desligar, Leve, Cheio, Hora dourada (pontos de partida); Copiar (a configuração vai para a área de transferência: cole na conversa);
+  Salvar (pescador_cinema.json, carrega sozinho na próxima vez); Medir custo (bancada: quanto cada recurso soma ao Ultra, ~1,5 min).
+- Com tudo desligado ou "Desligar", o jogo fica exatamente como antes. O Ultra não foi alterado.
+
 PESCADOR — Versão 0.5.3 (Godot 4.7)
 ================================================
 NOVO NA 0.5.3 — BANCADA DE GPU (detalhes em docs/PESCADOR_v0.5.3_NOVIDADES.txt):

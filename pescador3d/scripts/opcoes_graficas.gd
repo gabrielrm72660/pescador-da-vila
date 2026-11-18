@@ -5,6 +5,7 @@ signal tela_mudou
 signal qualidade_ajustada(texto: String)
 const ARQUIVO := "user://pescador_graficos.json"
 const Bancada = preload("res://scripts/bancada_gpu.gd")
+const Cinema = preload("res://scripts/cinema.gd")
 static var modo_editor: bool = false     # Modo Construtor aberto: nada de vegetação desbastada (quem edita precisa ver tudo)
 const NOMES := ["Baixa", "Média", "Alta", "Ultra"]
 const QUALIDADE_MAX := 3
@@ -20,6 +21,7 @@ var _vsync_opcao: CheckButton
 ## filtro_duro, detalhe (0 a 2, vegetação), mar (0 a 3).
 var sobrepor: Dictionary = {}
 var _bancada: Node
+var cinema: Node                  # painel Cinema (F11): visual cinematográfico por cima da qualidade
 var _soma_quadro: float = 0.0
 var _n_quadros: int = 0
 var _painel: Control
@@ -56,6 +58,10 @@ func _ready() -> void:
     if OS.get_environment("PESCADOR_QUALIDADE") != "":
         qualidade = clampi(int(OS.get_environment("PESCADOR_QUALIDADE")), 0, QUALIDADE_MAX)
     _construir()
+    cinema = Cinema.new()
+    cinema.name = "Cinema"
+    add_child(cinema)
+    cinema.preparar(self)
     _medir(mostrar_fps)
 
 func configurar(ilhas: Array, sol: DirectionalLight3D, oceano: MeshInstance3D, ambiente: WorldEnvironment) -> void:
@@ -64,6 +70,7 @@ func configurar(ilhas: Array, sol: DirectionalLight3D, oceano: MeshInstance3D, a
     _oceano = oceano
     _ambiente = ambiente
     _camera = get_node_or_null("../Camera") as Camera3D
+    cinema.configurar(get_parent(), ambiente, sol, _camera)
     aplicar()
 
 func esta_aberto() -> bool:
@@ -93,14 +100,14 @@ func alternar_fps() -> void:
     _salvar()
 
 ## Bancada de GPU (F2 ou botão do painel): mede quanto cada recurso gráfico custa em ms de GPU. Leva ~2 min; Esc cancela.
-func iniciar_bancada() -> void:
+func iniciar_bancada(modo: String = "recursos") -> void:
     if _bancada != null:
         return
     _bancada = Bancada.new()
     _bancada.name = "Bancada"
     add_child(_bancada)
     _bancada.terminou.connect(func(): _bancada = null)
-    _bancada.iniciar(self)
+    _bancada.iniciar(self, modo)
 
 ## Liga/desliga a medição de tempo de GPU e CPU do quadro (só com o overlay F3 aberto, porque custa um pouco).
 func _medir(ligado: bool) -> void:
@@ -208,6 +215,12 @@ func _construir() -> void:
         aplicar()
         _salvar())
     coluna.add_child(_vsync_opcao)
+    var cinema_botao := Button.new()
+    cinema_botao.text = "PAINEL CINEMA (luz, névoa, reflexos, pintura) [F11]"
+    cinema_botao.pressed.connect(func():
+        alternar()
+        cinema.alternar())
+    coluna.add_child(cinema_botao)
     var teste := Button.new()
     teste.text = "TESTE DE DESEMPENHO DA GPU (≈2 min) [F2]"
     teste.tooltip_text = "Mede em ms quanto cada recurso gráfico custa na sua placa. Esc cancela; ao fim mostra uma tabela."
@@ -294,6 +307,8 @@ func aplicar() -> void:
             _original_particulas[chave] = efeito.amount
         efeito.amount = maxi(4, roundi(int(_original_particulas[chave]) * [0.35, 0.65, 1.0, 1.3][q]))
     _aplicar_sobreposicoes()
+    if cinema != null:
+        cinema.aplicar()
 
 ## Aplica `sobrepor` por cima do que o nível de qualidade acabou de definir (vazio fora da bancada de GPU).
 func _aplicar_sobreposicoes() -> void:

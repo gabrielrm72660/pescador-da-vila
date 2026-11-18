@@ -29,6 +29,23 @@ const CONFIGS := [
     {"nome": "Baixa", "base": 0, "sobrepor": {}},
 ]
 
+## Bancada do painel Cinema: o custo de cada recurso SOMADO ao Ultra, com os valores atuais do painel Cinema.
+## "cinema": ligado + recursos (lista de chaves, "todos" ou "painel" = como o painel está).
+const CONFIGS_CINEMA := [
+    {"nome": "Ultra (sem Cinema)", "base": 3, "sobrepor": {}, "cinema": {"ligado": false}},
+    {"nome": "Cinema só cor/glow/SSAO", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": []}},
+    {"nome": "+ pintura (Kuwahara)", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": ["pintura"]}},
+    {"nome": "+ profundidade de campo", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": ["dof"]}},
+    {"nome": "+ SSIL", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": ["ssil"]}},
+    {"nome": "+ SSR (reflexos)", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": ["ssr"]}},
+    {"nome": "+ névoa volumétrica", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": ["nevoa_vol"]}},
+    {"nome": "+ SDFGI", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": ["sdfgi"]}},
+    {"nome": "Cinema completo (tudo ligado)", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": "todos"}},
+    {"nome": "Cinema como está no painel", "base": 3, "sobrepor": {}, "cinema": {"ligado": true, "recursos": "painel"}},
+    {"nome": "Completo + MSAA 4x, sombra 2 f., veg. 1", "base": 3, "sobrepor": {"msaa": 2, "faixas": 2, "detalhe": 1}, "cinema": {"ligado": true, "recursos": "todos"}},
+    {"nome": "Completo + MSAA 2x, sombra 2 f., veg. 0", "base": 3, "sobrepor": {"msaa": 1, "faixas": 2, "detalhe": 0}, "cinema": {"ligado": true, "recursos": "todos"}},
+]
+
 const ARQUIVO := "user://pescador_bancada.txt"
 
 var espera_vista: float = 1.2
@@ -36,6 +53,8 @@ var espera_config: float = 0.6
 var janela: float = 0.9
 var min_amostras: int = 30
 
+var modo: String = "recursos"   # "recursos" (o que o Ultra custa) ou "cinema" (o que o Cinema soma)
+var _configs: Array = CONFIGS
 var _opcoes                     # OpcoesGraficas (CanvasLayer pai)
 var _jogo: Node
 var _camera: Camera3D
@@ -65,8 +84,10 @@ var _salvo_hora: float
 var _salvo_clima: int
 var _salvo_hud: bool
 
-func iniciar(opcoes) -> bool:
+func iniciar(opcoes, modo_teste: String = "recursos") -> bool:
     _opcoes = opcoes
+    modo = modo_teste
+    _configs = CONFIGS_CINEMA if modo == "cinema" else CONFIGS
     _jogo = opcoes.get_parent()
     _camera = _jogo.get_node_or_null("Camera") as Camera3D
     if not _jogo.iniciado or _camera == null:
@@ -144,6 +165,7 @@ func _comecar_vista() -> void:
     _jogo.clima.pular_transicoes()
     _camera.global_transform = v["tr"]
     _opcoes.sobrepor = {}
+    _opcoes.cinema.teste = {"ligado": false}
     _opcoes.qualidade = 3
     _opcoes.aplicar()
     _fase = Fase.VISTA
@@ -151,8 +173,9 @@ func _comecar_vista() -> void:
     _ci = 0
 
 func _comecar_config() -> void:
-    var c: Dictionary = CONFIGS[_ci]
+    var c: Dictionary = _configs[_ci]
     _opcoes.sobrepor = c["sobrepor"]
+    _opcoes.cinema.teste = c.get("cinema", {"ligado": false})      # sem "cinema" = Cinema desligado (comparação justa)
     _opcoes.qualidade = int(c["base"])
     _opcoes.aplicar()
     _fase = Fase.CONFIG
@@ -165,9 +188,9 @@ func _process(delta: float) -> void:
     # congela a hora e a câmera: o relógio do jogo e a câmera de popa não podem mexer na cena durante a medida
     _jogo.clima.hora = float(v["hora"])
     _camera.global_transform = v["tr"]
-    var feito: int = _vi * CONFIGS.size() + _ci
+    var feito: int = _vi * _configs.size() + _ci
     _etq_progresso.text = "BANCADA DE GPU  %d%%  ·  vista %d/%d (%s)  ·  %s  ·  Esc cancela, não mexa em nada" % [
-        roundi(100.0 * feito / float(_vistas.size() * CONFIGS.size())), _vi + 1, _vistas.size(), v["curto"], CONFIGS[_ci]["nome"]]
+        roundi(100.0 * feito / float(_vistas.size() * _configs.size())), _vi + 1, _vistas.size(), v["curto"], _configs[_ci]["nome"]]
     _t += delta
     match _fase:
         Fase.VISTA:
@@ -194,7 +217,7 @@ func _fechar_config() -> void:
         _gpu_medido = true
     _resultados[_vi].append({"gpu": gpu, "cpu": _mediana(_cpu), "quadro": _mediana(_dt)})
     _ci += 1
-    if _ci >= CONFIGS.size():
+    if _ci >= _configs.size():
         _vi += 1
         if _vi >= _vistas.size():
             _terminar()
@@ -227,6 +250,7 @@ func _input(event: InputEvent) -> void:
 
 func _restaurar() -> void:
     _opcoes.sobrepor = {}
+    _opcoes.cinema.teste = {}
     _opcoes.qualidade = _salvo_qualidade
     _opcoes.automatica = _salvo_auto
     _opcoes.vsync = _salvo_vsync
@@ -247,32 +271,36 @@ func _restaurar() -> void:
 func _terminar() -> void:
     _restaurar()
     var texto: String = _relatorio()
-    var arq := FileAccess.open(ARQUIVO, FileAccess.WRITE)
+    var arq := FileAccess.open(_arquivo(), FileAccess.WRITE)
     if arq != null:
         arq.store_string(texto)
     DisplayServer.clipboard_set(texto)
     print(texto)
     _mostrar_resultado(texto)
 
+func _arquivo() -> String:
+    return ARQUIVO.replace(".txt", "_cinema.txt") if modo == "cinema" else ARQUIVO
+
 func _relatorio() -> String:
     var nv: int = _vistas.size()
     var usa_gpu: bool = _gpu_medido
     var L: PackedStringArray = []
-    L.append("%s — bancada de GPU" % str(ProjectSettings.get_setting("application/config/name", "Pescador")))
+    L.append("%s — bancada de GPU%s" % [str(ProjectSettings.get_setting("application/config/name", "Pescador")), " (custo do Cinema)" if modo == "cinema" else ""])
     L.append("Placa: %s  |  renderizador: %s  |  janela: %s" % [RenderingServer.get_video_adapter_name(), _opcoes.metodo_render(), str(DisplayServer.window_get_size())])
     L.append("Medido com V-Sync desligado e sem limite de FPS. Cada número é a mediana de ~1 s de quadros.")
     if not usa_gpu:
         L.append("ATENÇÃO: o renderizador não informou tempo de GPU; as colunas mostram o tempo de quadro (ms).")
     L.append("")
-    var cab: String = "%-26s" % ("GPU (ms)" if usa_gpu else "Quadro (ms)")
+    var largura: int = 42 if modo == "cinema" else 26
+    var cab: String = ("%-" + str(largura) + "s") % ("GPU (ms)" if usa_gpu else "Quadro (ms)")
     for v in _vistas:
         cab += "%7s" % v["curto"]
     cab += "%8s%8s%7s%7s" % ["Média", "Δ Ultra", "CPU", "FPS"]
     L.append(cab)
     L.append("-".repeat(cab.length()))
     var base_media: float = 0.0
-    for ci in CONFIGS.size():
-        var linha: String = "%-26s" % CONFIGS[ci]["nome"]
+    for ci in _configs.size():
+        var linha: String = ("%-" + str(largura) + "s") % _configs[ci]["nome"]
         var soma: float = 0.0
         var soma_cpu: float = 0.0
         var soma_q: float = 0.0
@@ -289,7 +317,11 @@ func _relatorio() -> String:
         linha += "%8.1f%8s%7.1f%7d" % [media, "—" if ci == 0 else "%+.1f" % (media - base_media), soma_cpu / float(nv), roundi(1000.0 / maxf(0.01, soma_q / float(nv)))]
         L.append(linha)
     L.append("")
-    L.append("Δ Ultra: quanto a configuração ganha (−) ou perde (+) de ms por quadro em relação ao Ultra padrão.")
+    if modo == "cinema":
+        L.append("Δ Ultra: custo (+) que a linha soma ao Ultra sem Cinema, em ms por quadro, com os valores que estão no painel Cinema.")
+        L.append("As linhas \"+ recurso\" ligam só aquele recurso (mais cor/glow/SSAO do painel). \"Cinema como está\" usa as chaves do painel.")
+    else:
+        L.append("Δ Ultra: quanto a configuração ganha (−) ou perde (+) de ms por quadro em relação ao Ultra padrão.")
     L.append("CPU = tempo de preparo do quadro (média das vistas); FPS = médio das vistas.")
     L.append("Orçamento por quadro: 60 FPS = 16,7 ms · 100 FPS = 10,0 ms · 144 FPS = 6,9 ms.")
     return "\n".join(L)
@@ -319,7 +351,7 @@ func _mostrar_resultado(texto: String) -> void:
     tabela.add_theme_font_size_override("font_size", 15)
     coluna.add_child(tabela)
     var caminho := Label.new()
-    caminho.text = "Salvo em: %s" % ProjectSettings.globalize_path(ARQUIVO)
+    caminho.text = "Salvo em: %s" % ProjectSettings.globalize_path(_arquivo())
     caminho.add_theme_font_size_override("font_size", 13)
     caminho.add_theme_color_override("font_color", Color(0.60, 0.81, 0.82))
     coluna.add_child(caminho)

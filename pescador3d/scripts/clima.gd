@@ -66,6 +66,10 @@ var _oceano: MeshInstance3D
 var _barco: Node3D
 var _chuva: CPUParticles3D
 var _chuva_mar: float = 0.0          # 0..1: quanto a chuva está batendo na água (sobe e desce devagar)
+var estilo_sol: float = 1.0          # painel Cinema: multiplicadores aplicados POR CIMA do clima (neutro = 1; calor = 0)
+var estilo_calor: float = 0.0        # 0..1: puxa a cor do sol para o dourado
+var estilo_ambiente: float = 1.0
+var hora_congelada: bool = false     # o painel Cinema pode parar o relógio para ajustar a luz com calma
 var vento_forca: float = 0.25        # 0..1: calmaria ... temporal (vem da agitação do mar; alimenta o vento das folhagens)
 
 func configurar(ceu: WorldEnvironment, sol: DirectionalLight3D, oceano: MeshInstance3D) -> void:
@@ -97,7 +101,7 @@ func _process(delta: float) -> void:
         if _chuva.amount != qtd:
             _chuva.amount = qtd
     _chuva_mar = move_toward(_chuva_mar, _chuva_alvo(), delta * 0.30)
-    if correndo:
+    if correndo and not hora_congelada:
         hora = fposmod(hora + delta * 24.0 / DURACAO_DIA, 24.0)
     _relogio += delta
     if _relogio >= 0.2:                              # cinco vezes por segundo basta: o céu muda devagar
@@ -223,7 +227,7 @@ func atualizar() -> void:
         escurecer = maxf(escurecer, 0.85)
     var env := _ceu.environment
     env.ambient_light_color = a.ambiente_cor
-    env.ambient_light_energy = float(a.ambiente_energia) * (1.0 - 0.35 * escurecer)
+    env.ambient_light_energy = float(a.ambiente_energia) * (1.0 - 0.35 * escurecer) * estilo_ambiente
     env.fog_light_color = a.nevoa_cor
     # a neblina da noite respira: fecha e abre bem devagar
     env.fog_density = float(a.nevoa_densidade) * (1.0 + 0.22 * noite() * sin(_tempo * 0.17)) + 0.0028 * escurecer
@@ -239,8 +243,11 @@ func atualizar() -> void:
         var desde := fposmod(hora - POR, 24.0)
         var ate := fposmod(NASCER - hora, 24.0)
         forca = smoothstep(0.0, 0.6, desde) * smoothstep(0.0, 0.6, ate)
-    _sol.light_color = a.sol_cor
-    _sol.light_energy = float(a.sol_energia) * forca * (1.0 - 0.72 * escurecer)
+    var cor_sol: Color = a.sol_cor
+    if estilo_calor > 0.0:
+        cor_sol = cor_sol.lerp(cor_sol * Color(1.0, 0.80, 0.58), estilo_calor)
+    _sol.light_color = cor_sol
+    _sol.light_energy = float(a.sol_energia) * forca * (1.0 - 0.72 * escurecer) * estilo_sol
     for chave in a.ceu:
         _mat_ceu.set_shader_parameter(chave, a.ceu[chave])
     var nuvens: float = lerpf(0.53, 0.94, escurecer)
