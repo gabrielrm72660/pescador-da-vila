@@ -51,6 +51,10 @@ func configurar(ilhas: Array) -> void:
 func definir_jogador(barco: Node3D) -> void:
     fisica.jogador = barco
 
+## v0.5.12: as boias entram na física dos NPC (desvio e batida).
+func definir_boias(boias: Node) -> void:
+    fisica.boias = boias
+
 func _ao_bater(intensidade: float, ponto: Vector3, com_jogador: bool) -> void:
     if com_jogador:
         bateu_no_jogador.emit(intensidade, ponto)
@@ -84,10 +88,22 @@ func _criar() -> void:
             add_child(barco)
             var vel: float = float(VELOCIDADE[k % VELOCIDADE.size()])
             var casco = fisica.novo_casco(barco, rota.centro, float(rota.raio), sentido, vel, float(contador) * 2.1)
+            casco.casa = Vector2(ilha.centro.x, ilha.centro.z)
+            casco.casa_raio = float(ilha.raio)
+            casco.sorte.seed = 7919 * (contador + 1)
             _barcos.append(casco)
             fisica.animar(casco, 0.0, 1.0, false)
             contador += 1
         _criar_pescadores(ilha)
+    # v0.5.12: cada barco começa indo para um pesqueiro (os primeiros já pescando, para o mar não começar vazio)
+    for i in _barcos.size():
+        var c = _barcos[i]
+        if i % 2 == 0:
+            c.alvo = c.centro
+            c.estado = "corrico"
+            c.tempo_estado = c.sorte.randf_range(20.0, 90.0)
+        else:
+            fisica.novo_destino(c)
 
 ## Procura um circuito de água livre ao largo do cais (e fora do canal de entrada, por onde o jogador passa).
 func _rota_livre(ilha: Node3D, k: int) -> Dictionary:

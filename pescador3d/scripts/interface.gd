@@ -611,14 +611,14 @@ func esconder_porto() -> void:
     porto.visible = false
 
 ## Volumes: um controle por canal (scripts/som.gd aplica e guarda) e o botão de silenciar.
-const NOMES_VOLUME := {"geral": "Geral", "mar": "Mar e ondas", "vento": "Vento", "chuva": "Chuva e trovões", "barco": "Motor e casco", "efeitos": "Efeitos"}
+const NOMES_VOLUME := {"geral": "Geral", "musica": "Música", "mar": "Mar e ondas", "vento": "Vento", "chuva": "Chuva e trovões", "barco": "Motor e casco", "efeitos": "Efeitos"}
 func _construir_volume(col: VBoxContainer) -> void:
     var grade := GridContainer.new()
     grade.columns = 3
     grade.add_theme_constant_override("h_separation", 14)
     grade.add_theme_constant_override("v_separation", 8)
     col.add_child(grade)
-    for grupo in ["geral", "mar", "vento", "chuva", "barco", "efeitos"]:
+    for grupo in ["geral", "musica", "mar", "vento", "chuva", "barco", "efeitos"]:
         var rotulo := _nova_label(T.t(NOMES_VOLUME[grupo]), 21, COR_TEXTO)
         rotulo.custom_minimum_size = Vector2(170, 0)
         grade.add_child(rotulo)

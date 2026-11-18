@@ -10,14 +10,14 @@ signal volumes_mudaram
 const PASTA := "res://assets/sons/"
 const ARQUIVO_CONFIG := "user://pescador.cfg"
 const ARQUIVO_ANTIGO := "user://mar_aberto.cfg"      # de quando o jogo se chamava Mar Aberto
-const GRUPOS := ["geral", "mar", "vento", "chuva", "barco", "efeitos"]
-const NOME_GRUPO := {"geral": "Geral", "mar": "Mar e ondas", "vento": "Vento", "chuva": "Chuva e trovões", "barco": "Motor e casco", "efeitos": "Efeitos"}
-const CANAL := {"geral": "Master", "mar": "Mar", "vento": "Vento", "chuva": "Chuva", "barco": "Barco", "efeitos": "Efeitos"}
+const GRUPOS := ["geral", "musica", "mar", "vento", "chuva", "barco", "efeitos"]
+const NOME_GRUPO := {"geral": "Geral", "musica": "Música", "mar": "Mar e ondas", "vento": "Vento", "chuva": "Chuva e trovões", "barco": "Motor e casco", "efeitos": "Efeitos"}
+const CANAL := {"geral": "Master", "musica": "Musica", "mar": "Mar", "vento": "Vento", "chuva": "Chuva", "barco": "Barco", "efeitos": "Efeitos"}
 
 var barco: Node3D
 var oceano: Node3D
 var navegando: bool = false          # falso no menu e na pausa: o motor cala
-var volumes: Dictionary = {"geral": 1.0, "mar": 0.7, "vento": 0.35, "chuva": 0.35, "barco": 0.8, "efeitos": 0.8}   # v0.5.12: padrões do Gabriel
+var volumes: Dictionary = {"geral": 1.0, "musica": 0.7, "mar": 0.7, "vento": 0.35, "chuva": 0.35, "barco": 0.8, "efeitos": 0.8}   # v0.5.12: padrões do Gabriel
 var _mar: AudioStreamPlayer
 var _vento: AudioStreamPlayer
 var _agua: AudioStreamPlayer
@@ -26,6 +26,16 @@ var _chuva: AudioStreamPlayer
 var _avulsos: Dictionary = {}
 var _proximo_trovao: float = 19.0
 var _prox_onda: float = 9.0
+# v0.5.13: trilhas de fundo (bem baixas). Uma por período do dia; toca inteira, descansa uns minutos, toca de novo.
+const MUSICAS := {"tarde": "musica_tarde", "final": "musica_final_do_dia", "noite": "musica_noite"}
+const MUSICA_DB := -17.0                    # já é baixo; o controle "Música" em Opções > Áudio ajusta por cima
+const MUSICA_PAUSA := [60.0, 150.0]         # s de silêncio entre uma vez e outra (o dia do jogo passa em ~16 min)
+var _musica: AudioStreamPlayer
+var _musica_streams: Dictionary = {}
+var _musica_atual: String = ""
+var _musica_espera: float = 25.0            # primeira vez: meio minuto depois de entrar no jogo
+var _musica_saindo: bool = false
+var _periodo_ant: String = ""
 var _tempo_ambiente: float = 0.0  # ciclo lento, evita volume de ambiente mecanicamente constante
 # O arquivo vento.ogg roda em laco, mas fica inaudivel entre rajadas.
 # Dessa maneira nao ha corte seco no meio do arquivo e o vento deixa de dominar o som.
@@ -51,6 +61,17 @@ func _ready() -> void:
     _chuva = _laco("chuva", -60.0, "chuva")
     _proximo_trovao = randf_range(18.0, 36.0)
     _guardar_avulso("onda", "mar")
+    _musica = AudioStreamPlayer.new()
+    _musica.bus = CANAL["musica"]
+    _musica.volume_db = -60.0
+    add_child(_musica)
+    for periodo in MUSICAS:
+        var caminho: String = PASTA + String(MUSICAS[periodo]) + ".ogg"
+        if ResourceLoader.exists(caminho):
+            var st: AudioStream = load(caminho)
+            if st is AudioStreamOggVorbis:
+                st.loop = false
+            _musica_streams[periodo] = st
     _guardar_avulso("onda_2", "mar")
     _guardar_avulso("onda_3", "mar")
     _guardar_avulso("trovao", "chuva")
@@ -89,6 +110,53 @@ func tocar(nome: String, db: float = -8.0, tom: float = 1.0) -> void:
         p.volume_db = db
         p.pitch_scale = tom
         p.play()
+
+## Período do dia pela hora do jogo: tarde 13h–16h30, fim de tarde 16h30–18h45, noite 19h–5h. Manhã: sem música.
+static func periodo_musical(hora: float) -> String:
+    if hora >= 13.0 and hora < 16.5:
+        return "tarde"
+    if hora >= 16.5 and hora < 18.75:
+        return "final"
+    if hora >= 19.0 or hora < 5.0:
+        return "noite"
+    return ""
+
+func _tocar_musica(delta: float, clima: Node, chuva_forca: float) -> void:
+    if _musica == null or _musica_streams.is_empty():
+        return
+    var hora: float = float(clima.hora) if clima != null else 15.0
+    var periodo: String = periodo_musical(hora)
+    var temporal: bool = chuva_forca > 0.7                   # no temporal a música sai: o mar manda
+    if periodo != _periodo_ant:
+        _periodo_ant = periodo
+        if not _musica.playing and periodo != "":
+            _musica_espera = minf(_musica_espera, 8.0)         # começou a tarde / o fim de tarde / a noite: a trilha entra
+    if _musica.playing:
+        # a trilha toca até o fim mesmo se o período virar (termina no próprio fade); só o temporal a tira antes
+        if temporal and not _musica_saindo:
+            _musica_saindo = true
+        var alvo: float = -60.0 if _musica_saindo else MUSICA_DB
+        var veloc: float = 0.18 if _musica_saindo else 0.12             # entra e sai devagar (~8 s)
+        _musica.volume_db = lerpf(_musica.volume_db, alvo, 1.0 - exp(-veloc * 6.0 * delta))
+        if _musica_saindo and _musica.volume_db < -45.0:
+            _musica.stop()
+            _musica_saindo = false
+            _musica_atual = ""
+            _musica_espera = 20.0                              # trocou o período: a do novo entra logo
+        return
+    if _musica_atual != "" and not _musica_saindo and _musica_espera <= 0.0:
+        # acabou de terminar sozinha (o arquivo tem o próprio fade): descansa antes de tocar de novo
+        _musica_espera = randf_range(MUSICA_PAUSA[0], MUSICA_PAUSA[1])
+        _musica_atual = ""
+        return
+    _musica_espera -= delta
+    if _musica_espera > 0.0 or periodo == "" or temporal or not _musica_streams.has(periodo):
+        return
+    _musica.stream = _musica_streams[periodo]
+    _musica.volume_db = -40.0
+    _musica.play()
+    _musica_atual = periodo
+    _musica_saindo = false
 
 # ------------------------------------------------------------------ volumes
 
@@ -210,6 +278,8 @@ func _process(delta: float) -> void:
             _proximo_trovao = randf_range(18.0, 42.0)
     else:
         _proximo_trovao = maxf(_proximo_trovao, 10.0)
+
+    _tocar_musica(delta, clima, chuva_forca)
 
     _prox_onda -= delta
     if _prox_onda <= 0.0:

@@ -54,6 +54,14 @@ class Casco:
     var fuga_t: float = 0.0                  # tempo restante saindo de um beco (encalhado numa costa)
     var fuga_dir: Vector2 = Vector2.ZERO
     var vira_mem: float = 0.0                # desvio em curso (rad, + a boreste): dura ~2 s depois que o perigo passa
+    # v0.5.12: rotina de pescador. "navegar" até um pesqueiro em água livre, "corrico" (pesca andando devagar em
+    # círculos) ou "parado" (pesca parado, à deriva); depois escolhe outro pesqueiro.
+    var estado: String = "navegar"
+    var alvo: Vector2 = Vector2.ZERO
+    var tempo_estado: float = 0.0
+    var casa: Vector2 = Vector2.ZERO          # centro da ilha de onde o barco é
+    var casa_raio: float = 100.0
+    var sorte := RandomNumberGenerator.new()
 
 var cascos: Array = []
 var ilhas: Array = []
@@ -61,6 +69,11 @@ var oceano: Node = null
 var jogador: Node3D = null
 var batidas_total: int = 0
 var evitar: bool = true                      # desligue só para comparar nos testes
+var boias: Node = null                       # v0.5.12: Boias (scripts/boias.gd): os NPC desviam e batem nelas
+const PESCA_TEMPO := [45.0, 130.0]           # s pescando em cada pesqueiro
+const PESCA_LONGE := [70.0, 380.0]           # m além da costa da ilha de casa
+const RAIO_CORRICO := 22.0
+const VEL_CORRICO := 0.9
 var _cooldown: float = 0.0
 
 static func frente(rumo: float) -> Vector2:
@@ -85,6 +98,38 @@ func novo_casco(no: Node3D, centro: Vector3, raio: float, sentido: float, cruzei
     c.u = cruzeiro
     cascos.append(c)
     return c
+
+## Pesqueiro novo: água livre (um círculo de 30 m sem terra), longe das boias e dos pesqueiros dos outros barcos.
+func novo_destino(c: Casco) -> void:
+    for tentativa in 24:
+        var ang: float = c.sorte.randf() * TAU
+        var dist: float = c.casa_raio + c.sorte.randf_range(PESCA_LONGE[0], PESCA_LONGE[1])
+        var p: Vector2 = c.casa + Vector2(cos(ang), sin(ang)) * dist
+        var ok: bool = not _bloqueado(p)
+        if ok:
+            for i in 10:
+                var a: float = TAU * float(i) / 10.0
+                if _bloqueado(p + Vector2(cos(a), sin(a)) * 30.0):
+                    ok = false
+                    break
+        if ok and boias != null:
+            for b in boias.call("lista_posicoes"):
+                if (b as Vector2).distance_to(p) < 70.0:
+                    ok = false
+                    break
+        if ok:
+            for o in cascos:
+                if o != c and o.alvo.distance_to(p) < 60.0:
+                    ok = false
+                    break
+        if ok:
+            c.alvo = p
+            c.estado = "navegar"
+            c.tempo_estado = 240.0            # se não chegar em 4 min (caminho ruim), escolhe outro
+            return
+    c.alvo = c.centro
+    c.estado = "navegar"
+    c.tempo_estado = 240.0
 
 func _bloqueado(p: Vector2) -> bool:
     var p3 := Vector3(p.x, 0.0, p.y)
@@ -113,6 +158,38 @@ func passo(dt: float) -> void:
             _colidir(cascos[i], cascos[j])
         if jog != null:
             _colidir_jogador(cascos[i], jog)
+        if boias != null:
+            _colidir_boias(cascos[i])
+
+## Casco NPC contra a defensa das boias: os dois se afastam; a boia (presa na corrente) leva o empurrão maior.
+func _colidir_boias(c: Casco) -> void:
+    var lista: Array = boias.call("lista_posicoes")
+    var r_boia: float = float(boias.RAIO_CONTATO)
+    var f: Vector2 = frente(c.rumo)
+    for i in lista.size():
+        var pb: Vector2 = lista[i]
+        if pb.distance_squared_to(c.pos) > 64.0:
+            continue
+        var melhor: float = 0.0
+        var n: Vector2 = Vector2.ZERO
+        var ponto: Vector2 = Vector2.ZERO
+        for o in DESLOCAMENTOS:
+            var cc: Vector2 = c.pos + f * float(o)
+            var dv: Vector2 = cc - pb
+            var dist: float = dv.length()
+            var prof: float = RAIO_CIRCULO + r_boia - dist
+            if prof > melhor and dist > 0.0001:
+                melhor = prof
+                n = dv / dist
+                ponto = pb + n * r_boia
+        if melhor <= 0.0:
+            continue
+        _empurrar(c, n * melhor * 0.35)
+        var vc: Vector2 = frente(c.rumo) * c.u + direita(c.rumo) * c.v
+        var vn: float = vc.dot(n)                 # < 0: indo contra a boia
+        boias.call("empurrar", i, -n, melhor * 0.65, maxf(0.0, -vn))
+        if vn < 0.0:
+            _aplicar(c, -n * vn * (1.0 + RESTITUICAO) * 0.3, ponto)
 
 func _estado_jogador():
     if jogador == null or not is_instance_valid(jogador):
@@ -168,12 +245,33 @@ func _integrar(c: Casco, dt: float, jog) -> void:
     var d: Vector2 = direita(c.rumo)
     var vel: Vector2 = f * c.u + d * c.v
     # 1) objetivo: um ponto à frente na rota (a "cenoura" anda na circunferência e o barco corre atrás dela)
+    var cruzeiro: float = c.cruzeiro
+    c.tempo_estado -= dt
+    if c.estado == "navegar":
+        c.centro = c.alvo
+        var dist_alvo: float = c.pos.distance_to(c.alvo)
+        if c.tempo_estado <= 0.0:
+            novo_destino(c)
+        elif dist_alvo < RAIO_CORRICO:
+            c.estado = "corrico" if c.sorte.randf() < 0.55 else "parado"
+            c.tempo_estado = c.sorte.randf_range(PESCA_TEMPO[0], PESCA_TEMPO[1])
+            c.raio = RAIO_CORRICO
+        cruzeiro = c.cruzeiro * clampf(dist_alvo / 45.0, 0.4, 1.0)                   # chega devagar no pesqueiro
+    elif c.tempo_estado <= 0.0:
+        novo_destino(c)
+    if c.estado == "corrico":
+        cruzeiro = VEL_CORRICO
     var rel: Vector2 = c.pos - c.centro
     var ang: float = atan2(rel.y, rel.x)
     var adiante_rota: float = c.sentido * clampf(18.0 / c.raio, 0.25, 0.75)
     var alvo: Vector2 = c.centro + Vector2(cos(ang + adiante_rota), sin(ang + adiante_rota)) * c.raio
+    if c.estado == "navegar":
+        alvo = c.alvo
     var desejado: Vector2 = (alvo - c.pos).normalized()
-    var vel_alvo: float = c.cruzeiro
+    if c.estado == "parado":
+        desejado = f                                                                  # mantém a proa, à deriva
+        cruzeiro = 0.0
+    var vel_alvo: float = cruzeiro
     # 2) outros barcos: previsão de aproximação máxima; cede passagem virando a boreste e reduzindo
     var vira: float = 0.0                           # + vira a boreste, - a bombordo
     var freio: float = 0.0
@@ -188,6 +286,10 @@ func _integrar(c: Casco, dt: float, jog) -> void:
                 riscos.append([_risco(c, f, d, vel, o.pos, vo, 0.0), o.pos, vo.length() < 0.6])
         if jog != null:
             riscos.append([_risco(c, f, d, vel, jog["pos"], jog["vel"], 3.0), jog["pos"], (jog["vel"] as Vector2).length() < 0.6])
+        if boias != null:                                     # boias: obstáculos parados, contornados por fora
+            for pb in boias.call("lista_posicoes"):
+                if (pb as Vector2).distance_squared_to(c.pos) < ATENCAO * ATENCAO:
+                    riscos.append([_risco(c, f, d, vel, pb, Vector2.ZERO, -4.0), pb, true])
         for par in riscos:
             var r: Vector3 = par[0]
             if r.x <= 0.0:
@@ -235,11 +337,13 @@ func _integrar(c: Casco, dt: float, jog) -> void:
             c.terra_lado = 1.0 if (c.centro - c.pos).dot(d) >= 0.0 else -1.0
             c.terra_freio = 0.3
     desejado = desejado.rotated(vira + c.terra_lado * deg_to_rad(65.0))
-    vel_alvo = c.cruzeiro * (1.0 - 0.85 * freio + 0.35 * fuga) * (1.0 - c.terra_freio)
+    vel_alvo = cruzeiro * (1.0 - 0.85 * freio + 0.35 * fuga) * (1.0 - c.terra_freio)
+    if c.estado == "parado" and maior > 0.2:
+        vel_alvo = maxf(vel_alvo, 1.2)                     # parado no caminho de alguém: sai da frente
     # preso (menos de 4 m em 4 s, sem perigo por perto): vira para o lado livre e sai devagar
     c.ref_t += dt
     if c.ref_t >= 4.0:
-        if c.fuga_t <= 0.0 and c.pos.distance_to(c.ref_pos) < 4.0 and maior < 0.25:
+        if c.fuga_t <= 0.0 and c.estado == "navegar" and c.pos.distance_to(c.ref_pos) < 4.0 and maior < 0.25:
             c.fuga_t = 6.0
             c.fuga_dir = _lado_livre(c)
         c.ref_pos = c.pos

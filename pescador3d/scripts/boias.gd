@@ -151,6 +151,25 @@ func _process(delta: float) -> void:
     if pisca:
         _acumulado = 0.0
 
+## Posições atuais (x, z) das boias: os barcos NPC usam para desviar e bater.
+func lista_posicoes() -> Array:
+    var saida: Array = []
+    for b in _boias:
+        var no: Node3D = b["no"]
+        saida.append(Vector2(no.position.x, no.position.z))
+    return saida
+
+## Um barco NPC empurrou a boia i na direção dir (unitária), afundando "pen" m, a "aproxima" m/s.
+func empurrar(i: int, dir: Vector2, pen: float, aproxima: float) -> void:
+    if i < 0 or i >= _boias.size():
+        return
+    var b: Dictionary = _boias[i]
+    var desl: Vector2 = b["desl"]
+    if (desl + dir * pen).length() < FOLGA_CORRENTE * 1.2:
+        b["desl"] = desl + dir * pen
+    b["vel"] = (b["vel"] as Vector2) + dir * aproxima * 0.9
+    b["vinc"] = (b["vinc"] as Vector2) + dir * clampf(aproxima * 0.3, 0.0, 0.7)
+
 func _physics_process(delta: float) -> void:
     if delta <= 0.0:
         return

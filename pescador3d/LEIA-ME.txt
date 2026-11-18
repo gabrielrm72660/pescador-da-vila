@@ -1,3 +1,10 @@
+PESCADOR — Versão 0.5.13 (Godot 4.7)
+================================================
+NOVO NA 0.5.13 (detalhes em docs/PESCADOR_v0.5.13_NOVIDADES.txt):
+- 60 FPS como padrão.
+- BARCOS NPC: navegam até pesqueiros, pescam (em círculos lentos ou parados) e seguem para outro; desviam das boias e das ilhas.
+- TRILHAS de fundo bem baixas (tarde, fim de tarde e noite), com controle "Música" em Opções > Áudio.
+
 PESCADOR — Versão 0.5.12 (Godot 4.7)
 ================================================
 NOVO NA 0.5.12 (detalhes em docs/PESCADOR_v0.5.12_NOVIDADES.txt):

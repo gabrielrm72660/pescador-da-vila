@@ -69,6 +69,7 @@ const TABELA := {
     "Cada som tem o seu volume.": ["Cada sonido tiene su volumen.", "Each sound has its own volume."],
     "Geral": ["General", "Master"],
     "Mar e ondas": ["Mar y olas", "Sea and waves"],
+    "Música": ["Música", "Music"],
     "Vento": ["Viento", "Wind"],
     "Chuva e trovões": ["Lluvia y truenos", "Rain and thunder"],
     "Motor e casco": ["Motor y casco", "Engine and hull"],

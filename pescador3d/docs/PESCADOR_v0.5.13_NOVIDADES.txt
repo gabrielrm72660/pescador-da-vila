@@ -1,0 +1,28 @@
+PESCADOR v0.5.13 — 60 FPS, BARCOS NPC PESCANDO DE VERDADE E TRILHAS DE FUNDO
+================================================
+
+1) LIMITE DE FPS PADRÃO: 60 (scripts/opcoes_graficas.gd). Continua dando para mudar em Opções > Gráficos.
+
+2) BARCOS NPC (scripts/fisica_barcos.gd, vida_portuaria.gd, boias.gd, jogo.gd)
+- Rotina de pescador: navega até um pesqueiro em água livre (70 a 380 m além da costa da ilha de casa, longe das
+  boias e dos pesqueiros dos outros), pesca 45 a 130 s ("corrico": círculos lentos a 0,9 m/s; ou parado à deriva)
+  e vai para outro. Chega devagar no pesqueiro. Se não chegar em 4 min, escolhe outro.
+- Desviam das boias como obstáculos parados (contornam a ~10 m) e, se encostarem, batem de verdade: a boia cede
+  presa na corrente e o casco do NPC recua.
+- Parado pescando no caminho de alguém, sai da frente. O detector de "preso" só vale navegando (não confunde a
+  pesca lenta com encalhe).
+- Continuam desviando da costa, uns dos outros e do jogador, e batendo de verdade (física da v0.5.x).
+- Simulação de 15 min com os 6 barcos: 0 passos em terra, 0 batidas, menor distância entre NPCs 9 m, menor
+  distância de uma boia 28 m; 32 pesqueiros visitados; 65% do tempo navegando, 34% pescando.
+  Barco mandado de propósito contra a boia: desvia a 8,7 m; com o desvio desligado, encosta e não atravessa.
+
+3) TRILHAS DE FUNDO (scripts/som.gd, interface.gd, idioma.gd; assets/sons/musica_*.ogg; ferramentas/musica/compor.py)
+- Versão acústica: Tarde (13h–16h30), Fim de tarde (16h30–18h45) e Noite (19h–5h). De manhã, sem música.
+- Bem baixa: -17 dB no tocador e o controle novo "Música" em Opções > Áudio (padrão 70%).
+- Entra devagar quando começa o período, toca inteira (termina no próprio fade), descansa 1 a 2,5 min e toca de novo.
+  Se o período virar no meio, ela termina; a do período novo vem na próxima vez.
+- No temporal (chuva forte) a música sai devagar e não volta até ele passar.
+
+NÃO TESTADO AQUI
+- Ouvir a mistura música + mar no jogo de verdade (no servidor o áudio é mudo).
+- Os NPC jogando de verdade (testado por simulação).
