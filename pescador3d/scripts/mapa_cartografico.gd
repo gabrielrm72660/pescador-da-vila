@@ -350,7 +350,7 @@ func _barco(area: Rect2) -> void:
     draw_circle(p, 18.0, Color(0.95, 0.85, 0.68, 0.65))
     draw_colored_polygon(tri, Color(0.82, 0.27, 0.18))
     _linha_fechada(tri, Color(0.35, 0.18, 0.15), 1.4)
-    _escrever("PE-3476", p + Vector2(15.0, -13.0), 13, Color(0.18, 0.24, 0.28))
+    _escrever("Estrela d'Alva", p + Vector2(15.0, -13.0), 13, Color(0.18, 0.24, 0.28))
 
 func _draw() -> void:
     if not visible or size.x < 420.0 or size.y < 350.0:

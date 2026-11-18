@@ -12,13 +12,14 @@ func _ready() -> void:
     _barco = get_node_or_null("../Barco") as Node3D
     _oceano = get_node_or_null("../Oceano") as Node3D
     _mundo = get_parent()
-    for especie in ["golfinho", "tartaruga", "ave", "ave", "ave"]:
+    for especie in ["golfinho", "golfinho", "tartaruga", "ave", "ave", "ave"]:     # dois golfinhos: um par nadando
         var modelo: Node3D = _modelo(especie)
         add_child(modelo)
         _animais.append({"especie": especie, "no": modelo, "rumo": randf_range(0.0, TAU), "vel": randf_range(0.7, 1.7), "fase": randf() * TAU})
     reiniciar()
 
 const Mesclador = preload("res://scripts/mesclador.gd")
+const Arq = preload("res://scripts/arquitetura_malhas.gd")
 
 ## Todos os bichos usam um material só, com a cor gravada nos vértices; cada um é uma malha (a ave tem as asas à parte, que batem).
 var _material_bicho: StandardMaterial3D
@@ -41,20 +42,18 @@ func _malha_no(pai: Node3D, nome: String, pecas: Array, posicao: Vector3 = Vecto
 func _modelo(especie: String) -> Node3D:
     var grupo := Node3D.new()
     grupo.name = especie.capitalize()
-    if especie == "golfinho":
-        var cinza := Color(0.38, 0.53, 0.60)
-        var claro := Color(0.80, 0.86, 0.87)
-        _malha_no(grupo, "Corpo", [
-            Mesclador.elipsoide(Vector3(0, 0, 0), Vector3(0.62, 0.42, 1.75), cinza),
-            Mesclador.elipsoide(Vector3(0, -0.16, 0.05), Vector3(0.55, 0.30, 1.55), claro),
-            Mesclador.elipsoide(Vector3(0, -0.06, -1.72), Vector3(0.17, 0.14, 0.62), cinza),          # rostro
-            Mesclador.elipsoide(Vector3(0, 0.10, -1.30), Vector3(0.30, 0.26, 0.42), cinza),           # testa
-            Mesclador.elipsoide(Vector3(0, 0.46, 0.15), Vector3(0.08, 0.40, 0.30), cinza, Vector3(26, 0, 0)),   # dorsal inclinada para trás
-            Mesclador.elipsoide(Vector3(-0.50, -0.20, -0.55), Vector3(0.38, 0.05, 0.18), cinza, Vector3(0, 0, 30)),   # peitorais
-            Mesclador.elipsoide(Vector3(0.50, -0.20, -0.55), Vector3(0.38, 0.05, 0.18), cinza, Vector3(0, 0, -30)),
-            Mesclador.elipsoide(Vector3(0, 0.02, 1.55), Vector3(0.20, 0.20, 0.65), cinza),            # pedúnculo da cauda
-            Mesclador.elipsoide(Vector3(0, 0.03, 2.22), Vector3(0.78, 0.055, 0.25), cinza),           # nadadeira caudal
-        ])
+    if especie == "golfinho":                                      # v0.5.7: malha por seções (scripts/arquitetura_malhas.gd)
+        if _material_bicho == null:
+            _material_bicho = StandardMaterial3D.new()
+            _material_bicho.vertex_color_use_as_albedo = true
+            _material_bicho.roughness = 0.82
+        var corpo := MeshInstance3D.new()
+        corpo.name = "Corpo"
+        corpo.mesh = Arq.golfinho()
+        corpo.material_override = _material_bicho
+        corpo.visibility_range_end = 420.0
+        corpo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        grupo.add_child(corpo)
     elif especie == "tartaruga":
         var casco := Color(0.28, 0.38, 0.21)
         var placas := Color(0.42, 0.51, 0.27)

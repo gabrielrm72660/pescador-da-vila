@@ -1,5 +1,5 @@
 extends Node3D
-## PE-3476: navegação com inércia lateral, resposta ao swell e amortecimento do casco.
+## Estrela d'Alva (antes PE-3476): navegação com inércia lateral, resposta ao swell e amortecimento do casco.
 ## O modelo GLB original veio com Z para cima e eixo longitudinal X.
 ## A cena o gira para Y-cima e proa voltada a -Z.
 
@@ -84,8 +84,17 @@ func _criar_respingos_bordo(nome: String, sinal: float) -> CPUParticles3D:
     balanceio.add_child(efeito)
     return efeito
 
-## Acabamento da pintura do barco: textura nítida em ângulo rasante e um leve contorno de luz
-## nas bordas, que ajuda o casco a se destacar da água.
+## v0.5.7: o barco do jogador é um pesqueiro USADO. As peças com textura ganham shaders/barco_usado.gdshader por cima da
+## pintura do modelo (desbotado, lascas, ferrugem escorrendo, limo na linha d'água, sal). Vidro, luzes e bandeira ficam
+## como estão (só o vidro escurece um pouco). A placa de nome vira "Estrela d'Alva".
+const SHADER_USADO := preload("res://shaders/barco_usado.gdshader")
+const PLACA_NOME := "res://assets/barco/estrela_dalva_nome.png"
+const TIPO_DESGASTE := {
+    "casco_vermelho": 0, "casco_branco": 0, "pintura_azul": 0, "pintura_creme": 0, "pintura_laranja": 0, "pintura_amarela": 0,
+    "pintura_vermelha": 0, "madeira_escura": 1, "conves": 1, "metal": 2, "preto": 2, "corda": 3, "rede": 3, "lona": 3,
+    "plastico_branco": 4, "plastico_azul": 4, "boia_laranja": 4}
+@export var desgaste: float = 1.0          # 0 = barco novo, 1 = usado
+
 func _refinar_materiais(no: Node) -> void:
     for filho in no.get_children():
         _refinar_materiais(filho)
@@ -96,6 +105,22 @@ func _refinar_materiais(no: Node) -> void:
         var original := malha.mesh.surface_get_material(i) as BaseMaterial3D
         if original == null:
             continue
+        var nome: String = original.resource_name
+        if TIPO_DESGASTE.has(nome) and desgaste > 0.0:
+            var sm := ShaderMaterial.new()
+            sm.shader = SHADER_USADO
+            sm.set_shader_parameter("cor", original.albedo_color)
+            sm.set_shader_parameter("tem_textura", original.albedo_texture != null)
+            if original.albedo_texture != null:
+                sm.set_shader_parameter("tex_albedo", original.albedo_texture)
+            sm.set_shader_parameter("tem_normal", original.normal_enabled and original.normal_texture != null)
+            if original.normal_texture != null:
+                sm.set_shader_parameter("tex_normal", original.normal_texture)
+            sm.set_shader_parameter("tipo", float(TIPO_DESGASTE[nome]))
+            sm.set_shader_parameter("desgaste", desgaste)
+            sm.set_shader_parameter("semente", float(i) * 1.37)
+            malha.set_surface_override_material(i, sm)
+            continue
         var mat: BaseMaterial3D = original.duplicate()
         mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
         mat.roughness = 0.96                       # tinta fosca, como pintura
@@ -104,6 +129,11 @@ func _refinar_materiais(no: Node) -> void:
         mat.rim_enabled = true
         mat.rim = 0.12
         mat.rim_tint = 0.55
+        if nome == "matricula" and ResourceLoader.exists(PLACA_NOME):
+            mat.albedo_texture = load(PLACA_NOME)
+        elif nome == "vidro":
+            mat.albedo_color = mat.albedo_color.darkened(0.25 * desgaste)      # vidro encardido de sal
+            mat.roughness = 0.6
         malha.set_surface_override_material(i, mat)
 
 func _physics_process(delta: float) -> void:

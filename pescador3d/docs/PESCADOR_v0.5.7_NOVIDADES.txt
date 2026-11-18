@@ -1,0 +1,40 @@
+PESCADOR v0.5.7 — ILHA MAIS NATURAL, ESTRELA D'ALVA, PEIXES NO RADAR, GOLFINHOS
+================================================
+
+1) TERRENO (scripts/ilha.gd, shaders/terreno_pintado.gdshader)
+- _barranco(): em setores da costa escolhidos por ruído no ângulo (e longe da baía/acesso), o terreno forma um patamar de 3 a 7 m
+  que cai quase a prumo no mar (~4 m de largura). Vale para a ilha principal e as menores.
+- Contorno com mais um ruído fino no ângulo: pequenas enseadas e pontas.
+- Shader: areia só onde é baixo E plano (declividade < ~0,1); faixa estreita de areia grossa na linha d'água das rampas;
+  encosta baixa = barro avermelhado em estratos (escuro em cima, salgado embaixo); encosta alta e topo = rocha.
+- Entrada opcional assets/texturas/ilha/barranco.png (projetada de lado) para a textura que virá da outra IA.
+- Árvores, coqueiros e moitas que ficaram na água ou no pé do barranco são filtrados (_em_terra), sem mexer no mundo salvo.
+
+2) CARDUMES SÓ NO RADAR (scripts/cardumes.gd, hud.gd)
+- MOSTRAR_NA_AGUA = false: sombras, brilho noturno e o nado peixe a peixe ficam desligados (menos custo). A pesca e o anel não mudam.
+- Nascimento por nota: 18 candidatos de 60 a 270 m; nota por distância dos outros cardumes, distância da costa (punição forte
+  abaixo de 55 m), recife/banco (+0,55) e sorte. MAXIMO 8, somem a 400 m.
+- Medido (5 posições x 40 rodadas x 6 cardumes): mediana da distância à costa 100 m -> 161 m; a menos de 60 m 26% -> 1%;
+  8 setores de direção todos ocupados.
+- Radar: _peixe_radar() com silhueta (corpo afinado, cauda em forquilha, peitorais, dorso claro, olho, contorno de tinta),
+  orientada pelo rumo do cardume, pulso de sonar; dourado = grande; 2 companheiros se restam 4+ capturas.
+
+3) ESTRELA D'ALVA (scripts/barco.gd, shaders/barco_usado.gdshader, assets/barco/estrela_dalva_nome.png)
+- Nome no HUD, carta náutica, menus (3 idiomas) e placa no casco (letra de pincel, com falhas de tinta).
+- shaders/barco_usado.gdshader por cima das texturas do modelo: desbotado, pátina, sujeira, lascas mostrando madeira,
+  escorridos de ferrugem, limo na linha d'água (y ~0,03), sal no alto. barco.desgaste (0 novo .. 1 usado).
+- Vidro escurecido; luzes, bandeira e placa ficam no material antigo. Os barcos NPC não mudaram.
+
+4) GOLFINHOS E PESCADORES (scripts/arquitetura_malhas.gd, fauna_costeira.gd)
+- Arq.golfinho(): corpo por seções (Catmull-Rom) com bico, melão e pedúnculo; contra-sombreado; nadadeiras em lâmina dupla
+  (dorsal em foice, peitorais, caudal). 2.640 triângulos. Agora são dois golfinhos.
+- Arq.pescador(): tronco por seções em superelipse (quadril, cintura, peito, ombros, pescoço) com dobras de tecido; braços
+  mais finos; canela aparecendo abaixo da bermuda. Vale para o cais e a tripulação dos barcos NPC.
+
+PROMPT DE TEXTURAS: o arquivo PROMPT_TEXTURAS_v0.5.7.md (entregue à parte) descreve terreno (com o barranco novo),
+o barco usado e a placa de nome, com os nomes exatos dos arquivos.
+
+NÃO TESTADO
+- Tudo no meu ambiente (compatibilidade). Forward+ e sombras da RX 6600 podem mudar o tom do barranco e do barco.
+- Desgaste do barco: se ficar forte ou fraco demais, mude "desgaste" no nó Barco (0 a 1,5) ou me diga.
+- Quando chegarem as texturas "usadas" do barco, o shader vai envelhecer por cima delas: aí baixo o desgaste para ~0,4.

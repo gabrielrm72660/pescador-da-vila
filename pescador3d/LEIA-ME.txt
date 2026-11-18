@@ -1,3 +1,18 @@
+PESCADOR — Versão 0.5.7 (Godot 4.7)
+================================================
+NOVO NA 0.5.7 — ILHA MAIS NATURAL, ESTRELA D'ALVA, PEIXES NO RADAR, GOLFINHOS (detalhes em docs/PESCADOR_v0.5.7_NOVIDADES.txt):
+- TERRENO: barrancos de terra caindo no mar em trechos da costa (fora da baía da vila), costa com mais enseadas e pontas, e
+  areia só onde a praia é baixa e quase plana (encosta vira mato; barranco vira terra avermelhada em camadas; alto vira rocha).
+- PEIXES: os cardumes não aparecem mais na água, só no radar. Nascem espalhados em volta do barco, mais em mar aberto,
+  recifes e bancos, quase nunca colados na ilha (antes 26% nasciam a menos de 60 m da costa; agora 1%).
+- RADAR: peixe novo, desenhado com nadadeiras, olho e cauda, virado para onde o cardume nada, com pulso de sonar.
+  Dourado = peixe grande; cardume farto aparece com companheiros.
+- BARCO: agora se chama ESTRELA D'ALVA (nome pintado à mão no costado e no HUD). Aspecto de pesqueiro usado: tinta desbotada,
+  lascas, ferrugem escorrida, limo na linha d'água e sal.
+- GOLFINHOS refeitos (forma de golfinho de verdade, com bico, nadadeiras finas e barriga clara; agora são dois) e PESCADORES
+  com corpo de gente (ombros, cintura, pernas) em vez de bolas.
+- Para comparar com o visual antigo: PESCADOR_CASA_SIMPLES=1 (não afeta terreno nem barco).
+
 PESCADOR — Versão 0.5.6 (Godot 4.7)
 ================================================
 NOVO NA 0.5.6 — CASCO, ATALHOS E MENU DE OPÇÕES (detalhes em docs/PESCADOR_v0.5.6_NOVIDADES.txt):

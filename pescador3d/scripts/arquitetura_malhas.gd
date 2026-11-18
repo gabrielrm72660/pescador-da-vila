@@ -1015,12 +1015,21 @@ static func pescador(jaqueta: Color, bermuda: Color, balde: bool = false) -> Arr
         var x: float = float(s) * 0.095
         _elipsoide(m, Vector3(x, 0.07, -0.035), Vector3(0.082, 0.07, 0.15), bota, 10, 6)
         _seg(m, Vector3(x, 0.09, 0.0), Vector3(x, 0.28, 0.0), 0.076, 0.07, bota, 8)
-        _seg(m, Vector3(x, 0.26, 0.0), Vector3(x, 0.66, 0.0), 0.075, 0.095, bermuda, 8)
-    _elipsoide(m, Vector3(0, 0.69, 0), Vector3(0.20, 0.13, 0.145), bermuda, 12, 6)
-    _elipsoide(m, Vector3(0, 0.83, -0.005), Vector3(0.205, 0.17, 0.15), jaqueta, 12, 7)
-    _elipsoide(m, Vector3(0, 1.02, 0), Vector3(0.22, 0.24, 0.145), jaqueta, 12, 8)
-    _elipsoide(m, Vector3(0, 1.17, 0), Vector3(0.26, 0.10, 0.13), jaqueta, 12, 6)
-    _elipsoide(m, Vector3(0, 0.76, -0.002), Vector3(0.200, 0.034, 0.150), cinto, 14, 4)
+        _seg(m, Vector3(x, 0.26, 0.0), Vector3(x, 0.47, 0.0), 0.058, 0.066, pele, 8)          # canela (bermuda acima do joelho)
+        _seg(m, Vector3(x, 0.45, 0.0), Vector3(x, 0.66, 0.0), 0.078, 0.088, bermuda, 8)
+    # v0.5.7: tronco por seções (quadril, cintura, peito, ombros, pescoço) em vez de bolas: corpo de gente, não de bexiga
+    var secoes: Array = [
+        [0.62, 0.165, 0.105, 0.0], [0.70, 0.168, 0.108, 0.0], [0.77, 0.158, 0.100, -0.004], [0.90, 0.165, 0.106, -0.008],
+        [1.03, 0.188, 0.118, -0.012], [1.12, 0.208, 0.112, -0.006], [1.18, 0.200, 0.098, 0.0], [1.225, 0.125, 0.075, 0.0],
+        [1.255, 0.062, 0.055, 0.0]]
+    var cor_corpo := func(_u: float, _v: float, p: Vector3) -> Color:
+        if p.y < 0.735:
+            return bermuda.darkened(0.06 * sin(p.x * 40.0))
+        if p.y < 0.775:
+            return cinto
+        var dobra: float = 0.05 * sin(p.y * 46.0 + p.x * 9.0) + 0.04 * sin(p.x * 31.0)    # dobras do tecido
+        return jaqueta.darkened(clampf(0.04 + dobra, 0.0, 0.2)) if p.y < 1.19 else jaqueta.darkened(0.16)
+    _loft_corpo(m, secoes, 18, cor_corpo, 2.6)
     _seg(m, Vector3(0, 1.22, 0), Vector3(0, 1.33, 0), 0.062, 0.058, pele, 8)
     _toro(m, Vector3(0, 1.23, 0), 0.075, 0.022, jaqueta.darkened(0.18), 12, 4)
     # cabeça
@@ -1044,8 +1053,8 @@ static func pescador(jaqueta: Color, bermuda: Color, balde: bool = false) -> Arr
     m.tronco(Vector3(0, 1.495, 0), 0.118, 0.098, 0.115, 14, palha.darkened(0.04), palha.lightened(0.06), true, Callable(), 2)
     m.tronco(Vector3(0, 1.505, 0), 0.121, 0.116, 0.028, 14, Color(0.60, 0.20, 0.16), Color(0.60, 0.20, 0.16), false)
     # braços e mãos segurando a vara (mão de trás perto do corpo, mão da frente mais adiante)
-    var ombro_d := Vector3(0.265, 1.15, 0.0)
-    var ombro_e := Vector3(-0.265, 1.15, 0.0)
+    var ombro_d := Vector3(0.235, 1.15, 0.0)
+    var ombro_e := Vector3(-0.235, 1.15, 0.0)
     var cotovelo_d := Vector3(0.30, 0.93, -0.17)
     var cotovelo_e := Vector3(-0.30, 0.95, -0.21)
     var mao_d := Vector3(0.025, 1.00, -0.33)
@@ -1054,11 +1063,11 @@ static func pescador(jaqueta: Color, bermuda: Color, balde: bool = false) -> Arr
         var o: Vector3 = par[0]
         var co: Vector3 = par[1]
         var ma: Vector3 = par[2]
-        _elipsoide(m, o, Vector3(0.085, 0.085, 0.085), jaqueta, 8, 5)
-        _seg(m, o, co, 0.074, 0.062, jaqueta, 8)
-        _elipsoide(m, co, Vector3(0.063, 0.063, 0.063), jaqueta, 8, 5)
+        _elipsoide(m, o, Vector3(0.066, 0.068, 0.066), jaqueta, 8, 5)
+        _seg(m, o, co, 0.060, 0.050, jaqueta, 8)
+        _elipsoide(m, co, Vector3(0.050, 0.050, 0.050), jaqueta, 8, 5)
         var punho: Vector3 = co.lerp(ma, 0.78)
-        _seg(m, co, punho, 0.062, 0.052, jaqueta, 8)
+        _seg(m, co, punho, 0.050, 0.042, jaqueta, 8)
         _seg(m, punho, ma, 0.046, 0.040, pele, 8)
         _elipsoide(m, ma, Vector3(0.046, 0.042, 0.050), pele, 8, 5)
     # vara com cabo de cortiça, carretel, linha e boia
@@ -1294,3 +1303,89 @@ static func tripulacao(jaqueta_a: Color, bermuda_a: Color, jaqueta_b: Color, ber
     partes.append([pescador(jaqueta_b, bermuda_b, true), Transform3D(Basis(Vector3.UP, PI), Vector3(-0.38 * lado, conves, 3.72))])
     partes.append([rede_pilha(), Transform3D(Basis(Vector3.UP, 0.6), Vector3(0.52 * lado, conves, 3.80))])
     return _fundir(partes)
+
+
+## Corpo por seções horizontais (superelipse): cada seção é [y, meia largura, meia profundidade, deslocamento em z].
+## Interpola suave entre as seções (Catmull-Rom). "expoente" > 2 deixa a seção mais quadrada (ombros, quadril).
+static func _loft_corpo(m: Malha, secoes: Array, lados: int, cor_fn: Callable, expoente: float = 2.4) -> void:
+    var n: int = secoes.size()
+    var amostra := func(t: float, k: int) -> float:
+        var f: float = t * float(n - 1)
+        var i: int = clampi(int(floor(f)), 0, n - 2)
+        var u: float = f - float(i)
+        var p0: float = float(secoes[maxi(i - 1, 0)][k])
+        var p1: float = float(secoes[i][k])
+        var p2: float = float(secoes[i + 1][k])
+        var p3: float = float(secoes[mini(i + 2, n - 1)][k])
+        return 0.5 * ((2.0 * p1) + (-p0 + p2) * u + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * u * u + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * u * u * u)
+    var e: float = 2.0 / expoente
+    var f := func(uu: float, vv: float) -> Vector3:
+        var ang: float = uu * TAU
+        var c: float = cos(ang)
+        var sn: float = sin(ang)
+        var y: float = amostra.call(vv, 0)
+        var hw: float = amostra.call(vv, 1)
+        var hd: float = amostra.call(vv, 2)
+        var z0: float = amostra.call(vv, 3)
+        return Vector3(signf(c) * pow(absf(c), e) * hw, y, z0 + signf(sn) * pow(absf(sn), e) * hd)
+    var centro_y: float = (float(secoes[0][0]) + float(secoes[n - 1][0])) * 0.5
+    m.superficie(f, lados, (n - 1) * 3, cor_fn, Callable(), Vector3(0, centro_y, 0))
+
+
+## Golfinho-rotador (v0.5.7), ~3 m, bico em -Z. Corpo por seções com bico, melão e pedúnculo achatado de lado;
+## contra-sombreado (dorso cinza-azulado escuro, faixa clara no flanco, barriga clara); nadadeiras finas e curvas
+## (dorsal em foice, peitorais, caudal com chanfro no meio). Uma superfície, cor nos vértices.
+static func golfinho() -> ArrayMesh:
+    var m := Malha.new()
+    var dorso := Color(0.27, 0.34, 0.40)
+    var flanco := Color(0.52, 0.58, 0.62)
+    var barriga := Color(0.86, 0.86, 0.84)
+    # [z, meia largura, meia altura, centro y]
+    var secoes: Array = [
+        [-1.95, 0.025, 0.025, -0.06], [-1.80, 0.065, 0.055, -0.07], [-1.62, 0.10, 0.09, -0.07], [-1.52, 0.15, 0.17, -0.02],
+        [-1.30, 0.25, 0.27, 0.02], [-1.00, 0.33, 0.35, 0.02], [-0.55, 0.38, 0.40, 0.01], [-0.05, 0.36, 0.39, 0.0],
+        [0.45, 0.29, 0.33, 0.0], [0.90, 0.18, 0.25, 0.02], [1.25, 0.09, 0.17, 0.03], [1.50, 0.05, 0.09, 0.03], [1.62, 0.03, 0.04, 0.03]]
+    var n: int = secoes.size()
+    var amostra := func(t: float, k: int) -> float:
+        var fpos: float = t * float(n - 1)
+        var i: int = clampi(int(floor(fpos)), 0, n - 2)
+        var u: float = fpos - float(i)
+        var p0: float = float(secoes[maxi(i - 1, 0)][k])
+        var p1: float = float(secoes[i][k])
+        var p2: float = float(secoes[i + 1][k])
+        var p3: float = float(secoes[mini(i + 2, n - 1)][k])
+        return maxf(0.0 if (k == 1 or k == 2) else -99.0, 0.5 * ((2.0 * p1) + (-p0 + p2) * u + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * u * u + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * u * u * u))
+    var corpo := func(uu: float, vv: float) -> Vector3:
+        var ang: float = uu * TAU
+        var z: float = amostra.call(vv, 0)
+        var hw: float = amostra.call(vv, 1)
+        var hh: float = amostra.call(vv, 2)
+        var yc: float = amostra.call(vv, 3)
+        return Vector3(cos(ang) * hw, yc + sin(ang) * hh, z)
+    var cor_corpo := func(uu: float, _vv: float, p: Vector3) -> Color:
+        var alto: float = sin(uu * TAU)                         # 1 no dorso, -1 na barriga
+        var onda: float = 0.12 * sin(p.z * 3.1) + 0.06 * sin(p.z * 7.0)
+        var c: Color = barriga.lerp(flanco, smoothstep(-0.55, -0.25, alto + onda))
+        c = c.lerp(dorso, smoothstep(0.05, 0.40, alto - onda * 0.8))
+        if p.z < -1.55:
+            c = c.darkened(0.12)                                 # bico mais escuro
+        return c
+    m.superficie(corpo, 22, 40, cor_corpo, Callable(), Vector3(0, 0, -0.2))
+    # olhos
+    for s in [-1.0, 1.0]:
+        _elipsoide(m, Vector3(s * 0.205, 0.035, -1.43), Vector3(0.022, 0.028, 0.034), Color(0.06, 0.07, 0.08), 8, 5)
+    # nadadeiras: lâminas finas (duas faces), da raiz até a ponta
+    var lamina := func(raiz_a: Vector3, raiz_b: Vector3, ponta: Vector3, curva: Vector3, espessura: float, cor: Color, eixo_esp: Vector3) -> void:
+        for lado_f in [-1.0, 1.0]:
+            var f := func(uu: float, vv: float) -> Vector3:
+                var base: Vector3 = raiz_a.lerp(raiz_b, uu)
+                var meio: Vector3 = base.lerp(ponta, vv) + curva * sin(PI * vv) * (0.4 + 0.6 * uu)
+                var e: float = espessura * (1.0 - vv * 0.85) * sin(PI * clampf(uu, 0.02, 0.98))
+                return meio + eixo_esp * e * lado_f
+            var centro: Vector3 = (raiz_a + raiz_b + ponta) / 3.0 - eixo_esp * lado_f * 2.0
+            m.superficie(f, 6, 6, Callable(), Callable(), centro, cor)
+    lamina.call(Vector3(0, 0.36, -0.30), Vector3(0, 0.33, 0.30), Vector3(0, 0.88, 0.48), Vector3(0, 0.0, -0.10), 0.045, dorso.darkened(0.08), Vector3(1, 0, 0))   # dorsal em foice
+    for s in [-1.0, 1.0]:
+        lamina.call(Vector3(s * 0.28, -0.17, -0.98), Vector3(s * 0.27, -0.20, -0.72), Vector3(s * 0.74, -0.40, -0.45), Vector3(0, 0.04, 0.05), 0.035, dorso, Vector3(0, 1, 0))
+        lamina.call(Vector3(s * 0.02, 0.03, 1.48), Vector3(s * 0.02, 0.03, 1.66), Vector3(s * 0.62, 0.03, 2.02), Vector3(0, 0.0, -0.10), 0.030, dorso.darkened(0.05), Vector3(0, 1, 0))   # caudal
+    return m.malha()

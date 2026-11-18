@@ -164,6 +164,7 @@ func _altura_local(x: float, z: float) -> float:
 
     # Contorno-base da ilha: recortes orgânicos, mas com uma enseada protegida para a vila.
     var contorno := 1.0 + 0.15 * _ruido.get_noise_2d(cos(ang) * 90.0, sin(ang) * 90.0) + 0.07 * sin(ang * 2.0 + 0.8)
+    contorno += 0.045 * _ruido.get_noise_2d(cos(ang) * 210.0 + 40.0, sin(ang) * 210.0)     # v0.5.7: pequenas enseadas e pontas
     if com_vila:
         var enseada := exp(-(pow((along - raio * 0.62) / (raio * 0.22), 2.0) + pow(across / (raio * 0.34), 2.0)))
         var alarga_costas := exp(-(pow((along + raio * 0.12) / (raio * 0.55), 2.0) + pow((across + raio * 0.03) / (raio * 0.72), 2.0)))
@@ -208,6 +209,8 @@ func _altura_local(x: float, z: float) -> float:
 
     if r > 1.0:
         h = minf(h, lerpf(h, -9.0, smoothstep(1.0, 1.6, r)))
+    var dir_p: Vector2 = plano.normalized() if d > 0.01 else Vector2.ZERO
+    h = _barranco(h, x, z, r, raio * contorno, 1.0 - smoothstep(0.25, 0.70, dir_p.dot(acesso)))
     for rc in rochedos:                                              # os rochedos saem do mar, fora da praia
         var dr := Vector2((x - float(rc[0])) * 1.35, z - float(rc[1])).length()
         dr *= 1.0 + 0.35 * _ruido.get_noise_2d(x * 5.0 + 11.0, z * 5.0)
@@ -231,7 +234,8 @@ func _altura_principal(x: float, z: float) -> float:
 
     # Ilha maior, com duas pontas avançando e uma baía interna ampla e protegida.
     var sinuoso := _ruido.get_noise_2d(cos(a) * 76.0, sin(a) * 76.0)
-    var costa := raio * (1.0 + 0.080 * sinuoso + 0.060 * sin(a * 3.0 + 0.2) + 0.040 * sin(a * 5.0 - 0.8))
+    var costa := raio * (1.0 + 0.080 * sinuoso + 0.060 * sin(a * 3.0 + 0.2) + 0.040 * sin(a * 5.0 - 0.8)
+            + 0.032 * _ruido.get_noise_2d(cos(a) * 190.0 + 40.0, sin(a) * 190.0))      # v0.5.7: pequenas enseadas e pontas
     var forca_frente := clampf((p.normalized().dot(frente) if d > 0.01 else 0.0), -1.0, 1.0)
     var ponta_norte := 15.0 * exp(-pow((l - 95.0) / 36.0, 2.0) - pow((t - 46.0) / 27.0, 2.0))
     var ponta_sul := 12.0 * exp(-pow((l - 92.0) / 34.0, 2.0) - pow((t + 56.0) / 30.0, 2.0))
@@ -287,6 +291,7 @@ func _altura_principal(x: float, z: float) -> float:
 
     if r > 1.0:
         h = minf(h, lerpf(h, -11.5, smoothstep(1.0, 1.58, r)))
+    h = _barranco(h, x, z, r, costa, 1.0 - smoothstep(0.10, 0.50, forca_frente))     # a face da baía (vila e cais) fica de praia
 
     for rc in rochedos:
         var dr := Vector2((x - float(rc[0])) * 1.30, z - float(rc[1])).length()
@@ -294,6 +299,29 @@ func _altura_principal(x: float, z: float) -> float:
         var corpo := exp(-pow(dr / float(rc[3]), 2.2))
         h = maxf(h, -9.0 + (float(rc[2]) + 9.0) * corpo)
     return h
+
+## v0.5.7: barrancos. Em trechos da costa escolhidos por ruído no ângulo (e só onde "livre" > 0: fora da baía e do acesso),
+## o terreno sobe num patamar de 3 a 7 m perto da beira e cai quase a prumo no mar (uns 4 m de largura), em vez da rampa
+## de areia. A areia fica para as praias de verdade (ver shaders/terreno_pintado.gdshader: areia só onde é plano).
+## Tira da lista o que ficou na água ou no pé do barranco (o terreno mudou na 0.5.7; o mundo salvo não precisa mudar).
+func _em_terra(lista: Array, minimo: float) -> Array:
+    return lista.filter(func(d): return _altura_local(float(d[0]), float(d[1])) >= minimo)
+
+func _barranco(h: float, x: float, z: float, r: float, raio_costa: float, livre: float) -> float:
+    if livre <= 0.001 or r < 0.70 or r > 1.3:
+        return h
+    var a := atan2(z, x)
+    var setor := _ruido.get_noise_2d(cos(a) * 55.0 + 300.0, sin(a) * 55.0 - 140.0)
+    var mascara := smoothstep(-0.08, 0.18, setor) * livre
+    if mascara <= 0.001:
+        return h
+    var rb := r + 0.020 * _ruido.get_noise_2d(x * 3.1 + 55.0, z * 3.1 - 9.0)
+    var largura: float = clampf(4.2 / maxf(raio_costa, 1.0), 0.02, 0.09)     # a queda tem ~4 m em qualquer ilha
+    var alto := 3.2 + 3.8 * (0.5 + 0.5 * _ruido.get_noise_2d(x * 1.1 - 70.0, z * 1.1 + 33.0))
+    var terra := maxf(h, lerpf(h, alto, smoothstep(1.0 - largura * 6.0, 1.0 - largura * 1.5, rb)))
+    var mar := minf(h, -2.6 - 3.2 * smoothstep(1.0, 1.0 + largura * 4.0, rb))
+    var f := lerpf(mar, terra, 1.0 - smoothstep(1.0 - largura * 0.7, 1.0 + largura * 0.3, rb))
+    return lerpf(h, f, mascara)
 
 func _criar_terreno() -> void:
     var passo := LADO / DIVISOES
@@ -332,6 +360,9 @@ func _criar_terreno() -> void:
             mat.set_shader_parameter(par[0], load(arquivo))
         else:
             push_warning("Textura da ilha não encontrada: " + arquivo)
+    if ResourceLoader.exists("res://assets/texturas/ilha/barranco.png"):
+        mat.set_shader_parameter("tex_barro", load("res://assets/texturas/ilha/barranco.png"))
+        mat.set_shader_parameter("tem_barro", true)
     var malha := MeshInstance3D.new()
     malha.name = "Terreno"
     malha.mesh = st.commit()
@@ -1109,7 +1140,7 @@ func _gerar_pinheiros() -> Array:
 
 func _construir_pinheiros() -> void:
     _limpar_no("Pinheiros")
-    var lista: Array = mundo["pinheiros"]
+    var lista: Array = _em_terra(mundo["pinheiros"], 1.0)
     var mm := MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
     mm.mesh = malha_para("pinheiro", nivel_detalhe)
@@ -1917,7 +1948,7 @@ func _construir_coqueiros() -> void:
     for tipo in 3:
         _limpar_no("CoqueirosVar%d" % tipo)
     var por_tipo: Array = [[], [], []]
-    for d in mundo["coqueiros"]:
+    for d in _em_terra(mundo["coqueiros"], 1.0):
         por_tipo[clampi(int(d[3]), 0, 2)].append(d)
     for tipo in 3:
         var itens: Array = por_tipo[tipo]
@@ -2006,7 +2037,7 @@ func _gerar_arvores_nativas() -> Array:
 
 func _construir_arvores_nativas() -> void:
     _limpar_no("ArvoresNativas")
-    var lista: Array = mundo["arvores"]
+    var lista: Array = _em_terra(mundo["arvores"], 1.0)
     var mm := MultiMesh.new()
     mm.transform_format = MultiMesh.TRANSFORM_3D
     mm.mesh = malha_para("arvore", nivel_detalhe)
@@ -2083,7 +2114,7 @@ func _construir_pedras() -> void:
 ## Moitas no mato.
 func _construir_moitas() -> void:
     _limpar_no("Moitas")
-    var lista: Array = mundo["moitas"]
+    var lista: Array = _em_terra(mundo["moitas"], 0.6)
     var mb := MultiMesh.new()
     mb.transform_format = MultiMesh.TRANSFORM_3D
     mb.use_colors = true

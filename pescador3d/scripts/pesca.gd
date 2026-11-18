@@ -214,7 +214,7 @@ func acao() -> void:
             return
         alvo = cardumes.ao_alcance(barco.global_position) if cardumes != null else {}
         if alvo.is_empty():
-            mensagem.emit("Nenhum cardume ao alcance. Procure as sombras na água: o radar mostra onde estão.")
+            mensagem.emit("Nenhum cardume ao alcance. O radar mostra onde estão os peixes.")
             return
         if porao != null and not porao.cabe(alvo.especie):
             mensagem.emit("Não há espaço no porão para %s. Arrume o porão ou venda no cais." % alvo.especie.to_lower())

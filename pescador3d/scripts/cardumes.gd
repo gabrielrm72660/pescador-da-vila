@@ -30,10 +30,13 @@ const ESPECIES := {
     "Namorado": {"preco": 16, "peso": [3.0, 16.0], "peixes": 3, "tam": 1.15, "chance": 4, "capturas": [2, 3], "espera": [5.0, 8.5], "ponteiro": 0.80, "faixas": 2, "largura": 27, "acertos": 5},
     "Agulhão-vela": {"preco": 11, "peso": [18.0, 48.0], "peixes": 3, "tam": 1.65, "chance": 4, "capturas": [1, 1], "espera": [7.0, 10.0], "ponteiro": 1.00, "faixas": 2, "largura": 20, "acertos": 7, "alto_mar": true, "so_dia": true},
 }
-const MAXIMO := 7
-const NASCE_MIN := 58.0        # m do barco
-const NASCE_MAX := 225.0
-const SOME := 340.0            # m: além disso o cardume é esquecido
+const MAXIMO := 8
+const NASCE_MIN := 60.0        # m do barco
+const NASCE_MAX := 270.0
+const SOME := 400.0            # m: além disso o cardume é esquecido
+## v0.5.7: os cardumes não aparecem mais na água: só o radar mostra onde estão (o peixe fisgado continua no anel de pesca).
+## Ponha true para voltar a ver as sombras e o brilho noturno.
+const MOSTRAR_NA_AGUA := false
 const ALTO_MAR := 300.0         # m da costa mais próxima a partir de onde aparecem os peixes de alto-mar
 const ALCANCE := 17.0          # m do centro do cardume até onde a linha alcança
 const VISUAL := 2.05           # legíveis do barco, sem virar círculos gigantes sobre a água
@@ -227,6 +230,7 @@ func criar(centro: Vector3, especie: String = "") -> Dictionary:
     inst.material_override = _material_da_especie(especie).duplicate()
     inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     inst.extra_cull_margin = 30.0
+    inst.visible = MOSTRAR_NA_AGUA
     add_child(inst)
     var brilho := MeshInstance3D.new()
     brilho.mesh = _malha_brilho
@@ -271,15 +275,15 @@ func _colorir(c: Dictionary) -> void:
     if mat != null and mat.albedo_texture != null:
         mat.albedo_color = COR_NOITE if noite else COR_DIA
     if is_instance_valid(c.brilho):
-        c.brilho.visible = noite
+        c.brilho.visible = noite and MOSTRAR_NA_AGUA
 
 ## O brilho acompanha o centro do cardume, pulsa devagar e some junto com ele.
 func _atualizar_brilho(c: Dictionary) -> void:
     var b: MeshInstance3D = c.brilho
     if not is_instance_valid(b):
         return
-    b.visible = noite
-    if not noite:
+    b.visible = noite and MOSTRAR_NA_AGUA
+    if not b.visible:
         return
     var p: Vector3 = c.centro
     p.y = (_oceano.altura_em(p) if _oceano != null else 0.0) + 0.85    # acima das ondas, senão a crista corta o disco
@@ -339,39 +343,55 @@ func _atualizar_descanso(delta: float) -> void:
         if float(reg.restante) <= 0.0:
             _areas_descanso.erase(reg)
 
-## As tentativas percorrem locais distintos; nenhum peixe aparece em terra,
-## encalhado ou imediatamente no mesmo trecho já esgotado.
+## v0.5.7: 18 candidatos em volta do barco, cada um com nota; nasce o melhor. A nota gosta de: lugares longe dos outros
+## cardumes (espalha em todas as direções), mar aberto e plataforma (não só a beira da ilha), recifes e bancos (pesqueiros),
+## e um pouco de sorte. Nada nasce em terra, no raso ou num trecho recém-esgotado.
 func _nascer() -> void:
     if _barco == null:
         return
     var mundo := get_parent()
-    for tentativa in 16:
+    var melhor_p := Vector3.INF
+    var melhor_nota := -INF
+    var melhor_info: Array = []
+    for tentativa in 18:
         var ang: float = randf_range(0.0, TAU)
-        var dist: float = randf_range(NASCE_MIN, NASCE_MAX)
+        var dist: float = lerpf(NASCE_MIN, NASCE_MAX, sqrt(randf()))       # mais candidatos longe que perto
         var p: Vector3 = _barco.global_position + Vector3(cos(ang), 0.0, sin(ang)) * dist
-        _alto_mar = true
-        _distancia_costeira = 9999.0
+        var costa: float = 9999.0
+        var zona := "alto_mar"
         if mundo != null and mundo.has_method("altura_terra"):
             if mundo.altura_terra(p) > -7.0:
                 continue
-            _distancia_costeira = mundo.distancia_da_costa(p)
-            _alto_mar = _distancia_costeira > ALTO_MAR
-            _zona_local = mundo.zona_ecologica(p) if mundo.has_method("zona_ecologica") else "costeiro"
-        var ocupado := false
+            costa = mundo.distancia_da_costa(p)
+            zona = mundo.zona_ecologica(p) if mundo.has_method("zona_ecologica") else "costeiro"
+        var perto_demais := false
+        var vizinho := 400.0
         for c in lista:
-            if c.centro.distance_to(p) < 47.0:
-                ocupado = true
-                break
-        if ocupado:
-            continue
+            var dc: float = Vector2(c.centro.x - p.x, c.centro.z - p.z).length()
+            vizinho = minf(vizinho, dc)
+            if dc < 55.0:
+                perto_demais = true
         for reg in _areas_descanso:
             if Vector2(p.x, p.z).distance_to(reg.p) < 49.0:
-                ocupado = true
-                break
-        if ocupado:
+                perto_demais = true
+        if perto_demais:
             continue
-        criar(p)
+        var nota: float = randf() * 0.8
+        nota += clampf(vizinho / 160.0, 0.0, 1.0) * 0.9                   # espalhar
+        nota += 0.6 * smoothstep(40.0, 140.0, costa)                         # sair da beira da ilha
+        nota -= 0.5 * (1.0 - smoothstep(25.0, 55.0, costa))                  # colado na costa, quase nunca
+        if zona == "recife" or zona == "banco":
+            nota += 0.55
+        if nota > melhor_nota:
+            melhor_nota = nota
+            melhor_p = p
+            melhor_info = [costa, zona]
+    if melhor_p == Vector3.INF:
         return
+    _distancia_costeira = float(melhor_info[0])
+    _alto_mar = _distancia_costeira > ALTO_MAR
+    _zona_local = String(melhor_info[1])
+    criar(melhor_p)
 
 func _process(delta: float) -> void:
     if not simulando:
@@ -432,7 +452,8 @@ func _process(delta: float) -> void:
         if float(c.fuga) > 0.0:
             velocidade_grupo *= 1.35
         c.centro += Vector3(direcao_grupo.x, 0.0, direcao_grupo.y) * velocidade_grupo * dt
-        _nadar_cardume(c, dt)
+        if MOSTRAR_NA_AGUA:                                  # escondidos, os peixes não precisam nadar um por um
+            _nadar_cardume(c, dt)
         _atualizar_brilho(c)
     _relogio += delta
     if _relogio >= INTERVALO:
@@ -582,7 +603,8 @@ func relativos(barco: Node3D) -> Array:
         if c.some >= 0.0:
             continue
         var d: Vector3 = c.centro - barco.global_position
-        saida.append({"pos": Vector2(d.dot(direita), d.dot(frente)), "mundo": Vector2(c.centro.x, c.centro.z), "especie": c.especie, "grande": float(ESPECIES[c.especie].tam) > 0.8})
+        saida.append({"pos": Vector2(d.dot(direita), d.dot(frente)), "mundo": Vector2(c.centro.x, c.centro.z), "especie": c.especie, "grande": float(ESPECIES[c.especie].tam) > 0.8,
+                "rumo": float(c.rumo), "restantes": int(c.restantes), "fase": float(c.fases[0])})
     return saida
 
 

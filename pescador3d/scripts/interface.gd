@@ -321,7 +321,7 @@ func _atualizar_cabecalho() -> void:
     match pagina_atual:
         "principal":
             titulo_menu.text = T.t("PAUSA") if _pausa else "PESCADOR"
-            subtitulo_menu.text = T.t("O oceano continua esperando por você.") if _pausa else T.t("Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do PE-3476.")
+            subtitulo_menu.text = T.t("O oceano continua esperando por você.") if _pausa else T.t("Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do Estrela d'Alva.")
             if _pausa:
                 botao_principal.text = T.t("VOLTAR A NAVEGAR")
             else:

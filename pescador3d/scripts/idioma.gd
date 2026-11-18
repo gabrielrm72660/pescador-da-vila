@@ -43,7 +43,7 @@ const TABELA := {
     # menu principal
     "PAUSA": ["PAUSA", "PAUSED"],
     "O oceano continua esperando por você.": ["El océano te sigue esperando.", "The ocean is still waiting for you."],
-    "Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do PE-3476.": ["Una aventura de pesca en el Atlántico brasileño.\nToma el mando del PE-3476.", "A fishing adventure in the Brazilian Atlantic.\nTake command of the PE-3476."],
+    "Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do Estrela d'Alva.": ["Una aventura de pesca en el Atlántico brasileño.\nToma el mando del Estrela d'Alva.", "A fishing adventure in the Brazilian Atlantic.\nTake command of the Estrela d'Alva."],
     "VOLTAR A NAVEGAR": ["VOLVER A NAVEGAR", "BACK TO SAILING"],
     "CONTINUAR A VIAGEM": ["CONTINUAR EL VIAJE", "CONTINUE VOYAGE"],
     "COMEÇAR A VIAGEM": ["EMPEZAR EL VIAJE", "START VOYAGE"],

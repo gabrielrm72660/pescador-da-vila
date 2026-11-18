@@ -24,7 +24,7 @@ const PONTOS := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 ## Cada bloco encolhe em direção ao seu canto.
 @export_range(0.4, 1.2, 0.01) var escala: float = 0.62
 
-var nome_barco := "PE-3476"
+var nome_barco := "Estrela d'Alva"
 var rumo := 0.0                 # graus, 0 = norte
 var nos := 0.0
 var fracao_motor := 0.0         # 0..1: quanto do motor está em uso (velocímetro)
@@ -264,10 +264,10 @@ func _barra(r: Rect2, fracao: float, cor: Color) -> void:
         _traco(Vector2(x0, y - meia * 0.28), Vector2(maxf(x0 + 2.0, fim - meia * 0.3), y - meia * 0.28), maxf(2.0, r.size.y * 0.24), Color(1, 1, 1, 0.26), sem + 9.0)   # reflexo: papel aparecendo
 
 func _placa_barco() -> void:
-    _pincelada(Rect2(46, 30, 330, 58), 11)
+    _pincelada(Rect2(46, 30, 380, 58), 11)
     _pincelada(Rect2(46, 96, 300, 44), 12)
     _icone_barco(Vector2(118, 66), 1.0, CREME)
-    _texto(Vector2(206, 78), nome_barco, 40, CREME, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+    _texto(Vector2(196, 77), nome_barco, 34, CREME, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     # saúde do casco: boia salva-vidas, barra que vai do verde ao vermelho e o número
     var cor_saude: Color = VERDE if saude >= 60.0 else (DOURADO if saude >= 30.0 else Color(0.95, 0.36, 0.28))
     var pisca: bool = saude < 30.0 and fmod(Time.get_ticks_msec() / 1000.0, 1.0) < 0.5
@@ -422,7 +422,11 @@ func _radar() -> void:
             var dir := p.normalized()
             draw_line(c + dir * (raio - 11.0), c + dir * (raio - 3.0), Color(CREME, 0.6), 3.0)
         else:
-            _icone_peixe(c + p, 1.35 if alvo.get("grande", false) else 1.0, Color(0.75, 0.93, 0.95))
+            var dir_tela := Vector2.RIGHT
+            if barco_ref != null and alvo.has("mundo") and alvo.has("rumo"):
+                var adiante: Vector2 = _rel_barco(alvo.mundo + Vector2.from_angle(float(alvo.rumo))) - rel
+                dir_tela = Vector2(adiante.x, -adiante.y)
+            _peixe_radar(c + p, dir_tela, bool(alvo.get("grande", false)), int(alvo.get("restantes", 1)), float(alvo.get("fase", 0.0)))
     if cais_rel != Vector2.INF:                                # o cais: âncora dourada; longe, uma seta na borda
         var rel_cais: Vector2 = cais_rel
         if barco_ref != null and cais_mundo != Vector2.INF:
@@ -810,6 +814,47 @@ func _icone_peixe(c: Vector2, escala: float, cor: Color) -> void:
     draw_colored_polygon(PackedVector2Array([c + Vector2(-9, 0) * s, c + Vector2(-3, -4.5) * s, c + Vector2(5, -3) * s,
             c + Vector2(8, 0) * s, c + Vector2(5, 3) * s, c + Vector2(-3, 4.5) * s]), cor)
     draw_colored_polygon(PackedVector2Array([c + Vector2(7, 0) * s, c + Vector2(13, -5) * s, c + Vector2(13, 5) * s]), cor)
+
+## Peixe do radar (v0.5.7): silhueta vista de cima apontando para onde o cardume nada, com cauda em forquilha,
+## nadadeiras, olho e contorno de tinta; pulso de sonar em volta. Dourado = peixe grande; cardume farto leva dois companheiros.
+func _peixe_radar(c: Vector2, dir: Vector2, grande: bool, restantes: int, fase: float) -> void:
+    var t: float = fmod(Time.get_ticks_msec() / 1000.0 * 0.55 + fase, 1.0)
+    var cor: Color = Color(0.98, 0.80, 0.40) if grande else Color(0.60, 0.93, 0.95)
+    draw_arc(c, 7.0 + 15.0 * t, 0.0, TAU, 24, Color(cor, 0.42 * (1.0 - t)), 2.0, true)
+    var f: Vector2 = dir.normalized() if dir.length() > 0.001 else Vector2.RIGHT
+    if restantes >= 4:
+        var lado := f.orthogonal()
+        _silhueta_peixe(c - f * 11.0 + lado * 8.0, f, 0.55, cor.darkened(0.12))
+        _silhueta_peixe(c - f * 9.0 - lado * 9.0, f, 0.50, cor.darkened(0.18))
+    _silhueta_peixe(c, f, 1.3 if grande else 1.0, cor)
+
+func _silhueta_peixe(c: Vector2, f: Vector2, s: float, cor: Color) -> void:
+    var lado := f.orthogonal()
+    var comp := 8.0 * s
+    var larg := 3.6 * s
+    var corpo := PackedVector2Array()
+    for i in 16:
+        var a := TAU * float(i) / 16.0
+        var afina: float = 0.70 + 0.30 * cos(a)                 # mais gordo na frente, fino no pedúnculo
+        corpo.append(c + f * cos(a) * comp + lado * sin(a) * larg * afina)
+    var base := c - f * comp * 0.82
+    var cauda := PackedVector2Array([base + lado * larg * 0.25, c - f * comp * 1.55 + lado * larg * 1.05,
+            c - f * comp * 1.22, c - f * comp * 1.55 - lado * larg * 1.05, base - lado * larg * 0.25])
+    var escuro := Color(0.03, 0.08, 0.12, 0.85)
+    # sombra/contorno: o mesmo desenho um pouco maior, em tinta escura
+    var contorno := PackedVector2Array()
+    for q in corpo:
+        contorno.append(c + (q - c) * 1.22)
+    draw_colored_polygon(contorno, escuro)
+    draw_colored_polygon(cauda, escuro)
+    draw_colored_polygon(cauda, cor.darkened(0.15))
+    draw_colored_polygon(corpo, cor)
+    # nadadeiras peitorais e o dorso mais claro
+    for sinal in [-1.0, 1.0]:
+        draw_colored_polygon(PackedVector2Array([c + f * comp * 0.25 + lado * larg * 0.75 * sinal,
+                c - f * comp * 0.15 + lado * larg * 1.55 * sinal, c - f * comp * 0.05 + lado * larg * 0.7 * sinal]), cor.darkened(0.2))
+    draw_line(c - f * comp * 0.55, c + f * comp * 0.55, cor.lightened(0.45), maxf(1.0, 1.3 * s), true)
+    draw_circle(c + f * comp * 0.58 + lado * larg * 0.38, maxf(0.9, 1.1 * s), escuro)
 
 func _icone_barco(c: Vector2, escala: float, cor: Color) -> void:
     var s := escala
