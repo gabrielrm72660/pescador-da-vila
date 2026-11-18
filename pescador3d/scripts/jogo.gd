@@ -46,6 +46,9 @@ var porao: Node
 
 const PRECO_DIESEL := 4          # R$ por litro
 const DINHEIRO_INICIAL := 30
+const PRECO_REPARO := 3          # R$ por ponto de casco consertado no cais (100 pontos = R$ 300)
+const Idioma = preload("res://scripts/idioma.gd")
+var _avisou_avaria: int = 10     # última faixa de 10 pontos de casco já avisada
 var dinheiro: int = DINHEIRO_INICIAL
 var atracado: bool = false
 var ja_vendeu: bool = false
@@ -168,11 +171,19 @@ func _ready() -> void:
     for i in ilhas:
         if i.editavel:
             construtor.configurar(self, i)
-    barco.encalhou.connect(func(): interface.aviso("Cuidado com a costa! Dê ré (S) para sair."))
+    barco.encalhou.connect(func():
+        som.tocar("estalo", -9.0, 0.62)
+        interface.aviso("Batida na costa! Casco em %d%%. Dê ré (S) para sair." % floori(barco.saude)))
     vida_portuaria.definir_jogador(barco)
     barco.bateu_em_barco.connect(func(forca: float):
         som.tocar("estalo", lerpf(-16.0, -7.0, forca), randf_range(0.7, 0.85))
-        interface.aviso("Barco batendo no seu! Cuidado."))
+        interface.aviso("Barco batendo no seu! Casco em %d%%." % floori(barco.saude)))
+    barco.casco_avariado.connect(_casco_avariado)
+    interface.graficos = graficos
+    interface._atualizar_graficos()
+    interface.idioma_mudou.connect(atualizar_interface)
+    interface.consertar_pressed.connect(consertar)
+    interface.sair_pressed.connect(sair_do_jogo)
     interface.vender_pressed.connect(vender)
     interface.volume_mudou.connect(func(grupo, valor): som.definir_volume(grupo, valor))
     interface.mudo_pressed.connect(func(): som.alternar_mudo())
@@ -275,21 +286,31 @@ func _unhandled_input(event: InputEvent) -> void:
                 KEY_0: comprar("radar")
                 KEY_Q: comprar_iscas()
                 KEY_U: melhorar_linha()
+                KEY_R: consertar()
                 KEY_M:
                     interface.aviso("Carta náutica aberta. [M] fecha." if interface.alternar_mapa() else "Carta náutica fechada.")
                 KEY_L:
                     alternar_luz()
                 KEY_K:
                     interface.aviso("Clima: %s. [K] alternar" % clima.alternar_clima())
-                KEY_E, KEY_ESCAPE: zarpar()
+                KEY_F, KEY_E, KEY_ESCAPE: zarpar()
             return
         match event.physical_keycode:
             KEY_E:
                 if not em_pausa:
                     atracar()
-            KEY_F:
+            KEY_F:                                       # F pesca; na ponta do cais, atraca
                 if not em_pausa:
-                    pesca.acao()
+                    if pesca.estado == pesca.Estado.PRONTO and ilha.pode_atracar(barco.global_position):
+                        atracar()
+                    else:
+                        pesca.acao()
+            KEY_I:
+                if not em_pausa:
+                    interface.alternar_painel("porao")
+            KEY_TAB:
+                if not em_pausa:
+                    interface.alternar_painel("diario")
             KEY_C:
                 if not em_pausa:
                     camera_barco.alternar()
@@ -339,7 +360,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[PESCADOR v0.5.5] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[PESCADOR v0.5.6] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:
@@ -359,6 +380,7 @@ func iniciar_ou_retomar() -> void:
     var continuou := false
     if not iniciado:
         continuou = Salvamento.carregar(self)
+        _avisou_avaria = ceili(barco.saude / 10.0)
         cardumes.semear()
         oceano.limpar_rastro()
     iniciado = true
@@ -388,6 +410,7 @@ func reiniciar() -> void:
     melhorias.zerar()
     melhorias.aplicar(barco, porao, pesca, interface.hud)
     barco.zerar()
+    _avisou_avaria = 10
     posicionar_no_cais()
     interface.limpar_partida()
     porao.esvaziar()
@@ -537,6 +560,7 @@ func _atualizar_porto() -> void:
             "pode_comprar_iscas": dinheiro >= PRECO_KIT_ISCAS,
             "preco_linha": pesca.preco_linha(), "nivel_linha": pesca.linha_nivel,
             "tem_oficina": ilha.tem_loja,
+            "saude": barco.saude, "preco_reparo": PRECO_REPARO,
             "contrato": economia.texto_contrato(porao),
             "nota": "\nEste posto paga %d%% a mais pelo peixe." % roundi((ilha.bonus_venda - 1.0) * 100.0) if ilha.bonus_venda > 1.0 else ""})
 
@@ -618,6 +642,42 @@ func comprar(id: String) -> void:
     interface.aviso("%s melhorado: %s." % [melhorias.TABELA[id].nome, melhorias.TABELA[id].descricao[melhorias.nivel[id]]])
     _atualizar_porto()
 
+## Conserto do casco no cais: R$ por ponto; se o dinheiro não der, conserta o que der.
+func consertar() -> void:
+    if not atracado:
+        return
+    var pontos: float = minf(ceilf(100.0 - barco.saude - 0.001), floorf(float(dinheiro) / float(PRECO_REPARO)))
+    if 100.0 - barco.saude < 0.01:
+        interface.aviso("O casco está em ordem.")
+        return
+    if pontos < 1.0:
+        interface.aviso("Sem dinheiro para o conserto (R$ %d por ponto)." % PRECO_REPARO)
+        return
+    barco.consertar(pontos)
+    dinheiro -= roundi(pontos) * PRECO_REPARO
+    _avisou_avaria = ceili(barco.saude / 10.0)
+    som.tocar("estalo", -14.0, 1.3)
+    interface.aviso("Casco consertado: %d%%." % floori(barco.saude))
+    _atualizar_porto()
+    salvar()
+
+## Avisos da avaria: a cada 10 pontos perdidos na tempestade, e sempre ao cruzar a metade e o zero.
+func _casco_avariado(_perda: float, motivo: String) -> void:
+    var faixa: int = ceili(barco.saude / 10.0)        # 10 = 91..100, 9 = 81..90...
+    if barco.saude <= 0.0:
+        som.tocar("aviso", -4.0)
+        interface.aviso("O casco está fazendo água! O barco só se arrasta: volte ao cais para consertar.")
+    elif barco.saude < 50.0 and _avisou_avaria > 5:
+        som.tocar("aviso", -6.0)
+        interface.aviso("Casco avariado (%d%%): o motor perde força. Conserte no cais [R]." % floori(barco.saude))
+    elif motivo == "tempestade" and faixa < _avisou_avaria:
+        interface.aviso("A tempestade castiga o casco: %d%%. Procure abrigo ou volte ao cais." % floori(barco.saude))
+    _avisou_avaria = mini(_avisou_avaria, faixa)
+
+func sair_do_jogo() -> void:
+    salvar()
+    get_tree().quit()
+
 func _ao_pescar(especie: String, peso: float) -> void:
     if not porao.guardar(especie, peso, pesca.ultima_qualidade):
         pesca.num_peixes -= 1
@@ -648,10 +708,11 @@ func atualizar_interface() -> void:
     interface.hud.cais_mundo = Vector2(ilha.cais_ponta.x, ilha.cais_ponta.z)
     interface.hud.cais_dist = ilha.distancia_do_cais(barco.global_position)
     interface.hud.dinheiro = dinheiro
-    interface.hud.dica = ("E: atracar em %s" % ilha.nome) if (iniciado and not em_pausa and pode_atracar()) else ""
+    interface.hud.dica = (Idioma.t("F: atracar em %s") % ilha.nome) if (iniciado and not em_pausa and pode_atracar()) else ""
+    interface.hud.saude = barco.saude
     if interface.hud.dica == "" and interface.mapa.tem_marcador:
         var destino_distancia: float = interface.mapa.distancia_ate_destino()
-        interface.hud.dica = "Destino marcado: %.0f m  [M]" % destino_distancia
+        interface.hud.dica = Idioma.t("Destino marcado: %.0f m  [M]") % destino_distancia
     interface.hud.missao_titulo = missoes.titulo()
     interface.hud.missao_texto = missoes.texto()
     interface.hud.missao_feita = missoes.terminou()

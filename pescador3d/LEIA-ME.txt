@@ -1,3 +1,15 @@
+PESCADOR — Versão 0.5.6 (Godot 4.7)
+================================================
+NOVO NA 0.5.6 — CASCO, ATALHOS E MENU DE OPÇÕES (detalhes em docs/PESCADOR_v0.5.6_NOVIDADES.txt):
+- DANO NO BARCO: tempestade desgasta pouco (uns 5 a 10 pontos num temporal de 2 minutos), batida na costa tira de 2 a 8 e batida de barco de 2 a 9.
+  Abaixo de 50% o motor perde força (até 60%); em 0% o casco faz água e o barco só se arrasta. Conserto no cais: R$ 3 por ponto (tecla R).
+- A barra ao lado da boia (acima do dinheiro) agora é a SAÚDE DO CASCO (verde, amarela, vermelha piscando). A velocidade continua no velocímetro.
+- ATALHOS: F pesca e, na ponta do cais, atraca (no cais, F zarpa) · I inventário (porão) · TAB diário de bordo · ESC menu.
+  A engrenagem da barra de baixo saiu (a pausa é o ESC). O Modo Construtor passou para o F9 (o TAB agora é o diário).
+- MENU (ESC): Voltar a navegar, Novo jogo (pede confirmação), Opções, Sair do jogo; atalhos no pé da página.
+- OPÇÕES: Geral (idioma: Português, Español, English), Áudio (Geral, Mar e ondas, Vento, Chuva e trovões, Motor e casco, Efeitos),
+  Gráficos (o mesmo do F10 + botão AVANÇADO, que abre o painel do F11) e Voltar ao menu. ESC volta uma página.
+
 PESCADOR — Versão 0.5.5 (Godot 4.7)
 ================================================
 NOVO NA 0.5.5 — BARCOS COM FÍSICA, INTERFACE EM AQUARELA E MALHAS NOVAS (detalhes em docs/PESCADOR_v0.5.5_NOVIDADES.txt):

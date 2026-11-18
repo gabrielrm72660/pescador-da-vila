@@ -1,6 +1,6 @@
 extends RefCounted
 ## Dados do mundo editável (ilha principal): ruas, casas, postes, props e vegetação.
-## É o que o Modo Construtor (Tab) edita. Ordem de leitura:
+## É o que o Modo Construtor (F9) edita. Ordem de leitura:
 ##   1. user://mundo_ilha_principal.json   (o que o jogador salvou no Modo Construtor)
 ##   2. res://dados/mundo_ilha_principal.json   (um mundo publicado junto com o jogo)
 ##   3. nada disso: a ilha gera o padrão (o desenho de scripts/layout_principal.gd + vegetação sorteada).

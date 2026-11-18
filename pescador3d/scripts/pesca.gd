@@ -272,13 +272,14 @@ func estoque() -> String:
     return "Alto" if r >= 4 else ("Médio" if r >= 2 else "Baixo")
 
 func status() -> String:
+    var T = load("res://scripts/idioma.gd")
     if estado == Estado.PUXANDO:
-        return "PUXANDO · %s · tensão %d%% · [J] técnica" % [TECNICAS[tecnica], roundi(tensao * 100.0)]
+        return T.t("PUXANDO · %s · tensão %d%% · [J] técnica") % [TECNICAS[tecnica], roundi(tensao * 100.0)]
     if cardumes == null or cardumes.ao_alcance(barco.global_position).is_empty():
-        return "PROCURE UM CARDUME"
+        return T.t("PROCURE UM CARDUME")
     if abs(barco.velocidade) > VELOCIDADE_MAXIMA_PESCA:
-        return "CARDUME PERTO — reduza para pescar"
-    return "CARDUME AO ALCANCE — F pescar · B isca · N profundidade"
+        return T.t("CARDUME PERTO — reduza para pescar")
+    return T.t("CARDUME AO ALCANCE — F pescar · B isca · N profundidade")
 
 func resetar() -> void:
     estado = Estado.PRONTO

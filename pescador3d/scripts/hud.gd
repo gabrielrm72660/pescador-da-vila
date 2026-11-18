@@ -8,14 +8,15 @@ signal devolveu(item: Dictionary)      # o jogador jogou um peixe do porão de v
 
 const Cardumes = preload("res://scripts/cardumes.gd")
 const Aq = preload("res://scripts/aquarela.gd")
+const T = preload("res://scripts/idioma.gd")
 const TINTA := Color(0.075, 0.125, 0.19, 0.90)        # azul-marinho das pinceladas
 const CREME := Color(0.96, 0.93, 0.84)
 const DOURADO := Color(0.98, 0.76, 0.33)
 const VERDE := Color(0.33, 0.83, 0.66)
 const LARANJA := Color(0.96, 0.62, 0.24)
 const APAGADO := Color(0.55, 0.62, 0.66, 0.55)
-const BOTOES := ["pescar", "porao", "diario", "config"]
-const DICA := {"pescar": "Pescar  [F]", "porao": "Porão", "diario": "Diário de bordo", "config": "Pausa  [ESC]"}
+const BOTOES := ["pescar", "porao", "diario"]           # a pausa saiu da barra: é o ESC
+const DICA := {"pescar": "Pescar  [F]", "porao": "Porão  [I]", "diario": "Diário de bordo  [TAB]"}
 const TAM_BOTAO := 74.0
 const PONTOS := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 
@@ -26,7 +27,8 @@ const PONTOS := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 var nome_barco := "PE-3476"
 var rumo := 0.0                 # graus, 0 = norte
 var nos := 0.0
-var fracao_motor := 0.0         # 0..1: quanto do motor está em uso
+var fracao_motor := 0.0         # 0..1: quanto do motor está em uso (velocímetro)
+var saude := 100.0              # saúde do casco (0..100): a barra da placa do barco
 var distancia := 0.0
 var missao_titulo := "Primeira Missão"
 var missao_texto := "Pescaria inaugural (0/3)"
@@ -94,11 +96,11 @@ func _process(delta: float) -> void:
     _pop_tempo = maxf(0.0, _pop_tempo - delta)
     if pesca != null:
         if pesca.brilho > _brilho_antes + 0.2:                 # acabou de acertar
-            _pop_texto = "PERFEITO!" if pesca.ultimo_perfeito else "BOM!"
+            _pop_texto = T.t("PERFEITO!") if pesca.ultimo_perfeito else T.t("BOM!")
             _pop_cor = DOURADO if pesca.ultimo_perfeito else VERDE.lightened(0.35)
             _pop_tempo = 0.9
         elif pesca.trava > _trava_antes + 0.2:                 # acabou de errar
-            _pop_texto = "ERROU"
+            _pop_texto = T.t("ERROU")
             _pop_cor = Color(0.95, 0.40, 0.32)
             _pop_tempo = 0.7
         _brilho_antes = pesca.brilho
@@ -266,8 +268,12 @@ func _placa_barco() -> void:
     _pincelada(Rect2(46, 96, 300, 44), 12)
     _icone_barco(Vector2(118, 66), 1.0, CREME)
     _texto(Vector2(206, 78), nome_barco, 40, CREME, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
-    _icone_engrenagem(Vector2(88, 118), 12.0, CREME)
-    _barra(Rect2(116, 108, 218, 20), fracao_motor, VERDE)
+    # saúde do casco: boia salva-vidas, barra que vai do verde ao vermelho e o número
+    var cor_saude: Color = VERDE if saude >= 60.0 else (DOURADO if saude >= 30.0 else Color(0.95, 0.36, 0.28))
+    var pisca: bool = saude < 30.0 and fmod(Time.get_ticks_msec() / 1000.0, 1.0) < 0.5
+    _icone_boia(Vector2(88, 118), 12.5, Color(0.95, 0.36, 0.28) if pisca else CREME)
+    _barra(Rect2(116, 108, 168, 20), saude / 100.0, cor_saude)
+    _texto(Vector2(290, 127), "%d%%" % floori(saude), 22, cor_saude, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     _pincelada(Rect2(46, 148, 190, 40), 13)
     _texto(Vector2(64, 179), "R$ %d" % dinheiro, 32, DOURADO, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     if hora != "":                                             # relógio: sol de dia, lua à noite
@@ -430,7 +436,7 @@ func _radar() -> void:
         else:
             _icone_ancora(c + pc, DOURADO)
     draw_colored_polygon(PackedVector2Array([c + Vector2(0, -15), c + Vector2(9, 12), c + Vector2(0, 6), c + Vector2(-9, 12)]), CREME)
-    var rodape := "Percorrido: %d m" % int(distancia) if cais_rel == Vector2.INF else "Cais a %d m" % int(cais_dist)
+    var rodape := T.t("Percorrido: %d m") % int(distancia) if cais_rel == Vector2.INF else T.t("Cais a %d m") % int(cais_dist)
     var larg_rodape := _fonte.get_string_size(rodape, HORIZONTAL_ALIGNMENT_LEFT, -1, 21).x + 34.0
     _pincelada(Rect2(c.x - larg_rodape / 2.0, c.y + raio + 8.0, larg_rodape, 34.0), 29, Color(TINTA, 0.86))   # sobre o mar claro o texto sumia
     _texto(Vector2(c.x - raio, c.y + raio + 31.0), rodape, 21, CREME, HORIZONTAL_ALIGNMENT_CENTER, raio * 2.0)
@@ -457,7 +463,7 @@ func _velocimetro() -> void:
     draw_circle(c, 3.5, CREME)
     _texto(Vector2(x + 78.0, y + 50.0), ("%.1f" % nos).replace(".", ","), 42, CREME, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     var larg := _fonte_titulo.get_string_size(("%.1f" % nos), HORIZONTAL_ALIGNMENT_LEFT, -1, 42).x
-    _texto(Vector2(x + 86.0 + larg, y + 48.0), "nós", 24, CREME)
+    _texto(Vector2(x + 86.0 + larg, y + 48.0), T.t("nós"), 24, CREME)
     _barra(Rect2(x + 76.0, y + 60.0, 128.0, 12.0), fracao_motor, VERDE)
 
 func _barra_botoes() -> void:
@@ -478,9 +484,8 @@ func _barra_botoes() -> void:
             "pescar": _icone_anzol(c, cor)
             "porao": _icone_caixa(c, cor)
             "diario": _icone_livro(c, cor)
-            "config": _icone_engrenagem(c, 17.0, cor)
         if nome == _sobre:
-            _texto(Vector2(r.position.x - 60.0, r.position.y - 14.0), DICA[nome], 18, CREME, HORIZONTAL_ALIGNMENT_CENTER, TAM_BOTAO + 120.0)
+            _texto(Vector2(r.position.x - 60.0, r.position.y - 14.0), T.t(DICA[nome]), 18, CREME, HORIZONTAL_ALIGNMENT_CENTER, TAM_BOTAO + 120.0)
 
 func _aviso() -> void:
     if dica != "" and painel_aberto == "":                     # dica fixa, em dourado, logo acima dos botões
@@ -528,7 +533,7 @@ func _painel() -> void:
         draw_multiline_string(_fonte, Vector2(r.position.x + 32.0, y), str(blocos[k]), HORIZONTAL_ALIGNMENT_LEFT, larg_texto, 19, -1, Aq.NANQUIM, quebra)
         y += float(alturas[k])
     if blocos.is_empty():
-        draw_string(_fonte, Vector2(r.position.x + 32.0, y), "Nada anotado ainda.", HORIZONTAL_ALIGNMENT_LEFT, larg_texto, 19, Color(Aq.NANQUIM, 0.6))
+        draw_string(_fonte, Vector2(r.position.x + 32.0, y), T.t("Nada anotado ainda."), HORIZONTAL_ALIGNMENT_LEFT, larg_texto, 19, Color(Aq.NANQUIM, 0.6))
 
 ## Linha de nanquim tremida, como feita à mão.
 func _fio_de_tinta(a: Vector2, b: Vector2, cor: Color, espessura: float = 2.0) -> void:
@@ -603,7 +608,7 @@ func _anel_de_pesca() -> void:
         draw_arc(c, raio, 0.0, TAU, 96, Color(DOURADO if pesca.ultimo_perfeito else VERDE, pesca.brilho * 1.6), 3.0 + (0.35 - pesca.brilho) * 40.0, true)
     # embaixo: barra do peixe, cardume e a tecla
     _barra(Rect2(c.x - 106.0, c.y + 132.0, 212.0, 18.0), p, DOURADO if p > 0.8 else VERDE)
-    _texto(Vector2(c.x - 106.0, c.y + 176.0), "Cardume: %s" % pesca.estoque(), 19, CREME)
+    _texto(Vector2(c.x - 106.0, c.y + 176.0), T.t("Cardume: %s") % T.t(pesca.estoque()), 19, CREME)
     # Indicador de tensão: vermelho próximo do limite da linha.
     var tensao_atual: float = tensao_anel
     var alerta_piscando: bool = tensao_atual > 0.72 and int(Time.get_ticks_msec() / 140.0) % 2 == 0
@@ -612,7 +617,7 @@ func _anel_de_pesca() -> void:
     var tecla := Rect2(c.x + 30.0, c.y + 157.0, 24.0, 24.0)
     _caixa_arredondada(tecla, CREME if pesca.trava <= 0.0 else Color(CREME, 0.4))
     draw_string(_fonte, Vector2(tecla.position.x, tecla.position.y + 18.0), "F", HORIZONTAL_ALIGNMENT_CENTER, 24.0, 16, Color(0.06, 0.10, 0.15))
-    _texto(Vector2(tecla.end.x + 8.0, c.y + 177.0), "Puxar", 19, CREME)
+    _texto(Vector2(tecla.end.x + 8.0, c.y + 177.0), T.t("Puxar"), 19, CREME)
 
 # ------------------------------------------------------------------ porão em grade
 
@@ -729,7 +734,7 @@ func _painel_porao() -> void:
     var r := _ret_painel_porao()
     _pincelada(r, 71, Color(TINTA, 0.97), "papel")
     _icone_caixa(Vector2(r.position.x + 46.0, r.position.y + 42.0), Color(0.55, 0.22, 0.14))
-    _texto(Vector2(r.position.x + 80.0, r.position.y + 52.0), "Porão", 38, Color(0.55, 0.22, 0.14), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
+    _texto(Vector2(r.position.x + 80.0, r.position.y + 52.0), T.t("Porão"), 38, Color(0.55, 0.22, 0.14), HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
     draw_string(_fonte, Vector2(r.position.x + 190.0, r.position.y + 50.0), "%d de %d casas" % [porao.casas_ocupadas(), porao.colunas * porao.linhas], HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Aq.NANQUIM_CLARO)
     _fio_de_tinta(Vector2(r.position.x + 30.0, r.position.y + 64.0), Vector2(r.end.x - 30.0, r.position.y + 64.0), Color(Aq.NANQUIM, 0.5))
     var o := _origem_grade()
@@ -762,15 +767,15 @@ func _painel_porao() -> void:
     else:
         _texto(Vector2(x, y), "%d peixe(s)" % porao.itens.size(), 32, Aq.NANQUIM, HORIZONTAL_ALIGNMENT_LEFT, -1.0, true)
         draw_string(_fonte, Vector2(x, y + 28.0), "%s kg  •  R$ %d" % [("%.1f" % porao.peso_total()).replace(".", ","), porao.valor_total()], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Aq.NANQUIM)
-    var dicas := ["Clique num peixe para pegar.", "Clique numa casa para soltar.", "R ou botão direito: girar."] if not porao.itens.is_empty() \
-            else ["Vazio. Pare perto de um", "cardume e pesque com F.", "Peixe grande ocupa mais casas."]
+    var dicas := [T.t("Clique num peixe para pegar."), T.t("Clique numa casa para soltar."), T.t("R ou botão direito: girar.")] if not porao.itens.is_empty() \
+            else [T.t("Vazio. Pare perto de um"), T.t("cardume e pesque com F."), T.t("Peixe grande ocupa mais casas.")]
     for i in dicas.size():
         draw_string(_fonte, Vector2(x, y + 68.0 + i * 24.0), dicas[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Aq.NANQUIM_CLARO)
     var b := _ret_arrumar()
     var sobre_botao := b.has_point(_para_painel(_mouse))
     var devolver := not _na_mao.is_empty()
     _pincelada(b, 73, Color(TINTA, 0.97), "terracota" if devolver else ("ouro" if sobre_botao else "turquesa"), 10.0, {"irregular": 2.5, "seco": 0.0, "respingos": 0.0})
-    draw_string(_fonte, Vector2(b.position.x, b.position.y + 26.0), "Devolver ao mar" if devolver else "Arrumar o porão", HORIZONTAL_ALIGNMENT_CENTER, b.size.x, 21, CREME if (devolver or not sobre_botao) else Aq.NANQUIM)
+    draw_string(_fonte, Vector2(b.position.x, b.position.y + 26.0), T.t("Devolver ao mar") if devolver else T.t("Arrumar o porão"), HORIZONTAL_ALIGNMENT_CENTER, b.size.x, 21, CREME if (devolver or not sobre_botao) else Aq.NANQUIM)
 
 # ------------------------------------------------------------------ ícones
 
@@ -815,6 +820,13 @@ func _icone_barco(c: Vector2, escala: float, cor: Color) -> void:
     draw_line(c + Vector2(-16, -30) * s, c + Vector2(10, -12) * s, cor, 1.5)
     draw_rect(Rect2(c + Vector2(0, -8) * s, Vector2(7, 6) * s), TINTA)
     draw_rect(Rect2(c + Vector2(12, -8) * s, Vector2(7, 6) * s), TINTA)
+
+## Boia salva-vidas: anel creme com quatro faixas vermelhas (a saúde do casco).
+func _icone_boia(c: Vector2, raio: float, cor: Color) -> void:
+    draw_arc(c, raio * 0.72, 0.0, TAU, 28, cor, raio * 0.52, true)
+    for i in 4:
+        var a0: float = TAU * float(i) / 4.0 + PI * 0.25 - 0.28
+        draw_arc(c, raio * 0.72, a0, a0 + 0.56, 6, Color(0.88, 0.30, 0.22), raio * 0.54, true)
 
 func _icone_engrenagem(c: Vector2, raio: float, cor: Color) -> void:
     for i in 8:

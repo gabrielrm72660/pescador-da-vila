@@ -240,6 +240,41 @@ static func metodo_render() -> String:
 static func e_forward_plus() -> bool:
     return metodo_render() == "forward_plus"
 
+## Usados pela tela "Opções > Gráficos" do menu: mudam o mesmo estado que o painel F10 e o mantêm em dia.
+func definir_qualidade(n: int) -> void:
+    qualidade = clampi(n, 0, QUALIDADE_MAX)
+    _qualidade_opcao.select(qualidade)
+    _atualizar_dica()
+    automatica = false
+    _auto_opcao.set_pressed_no_signal(false)
+    aplicar()
+    _salvar()
+
+func definir_automatica(ligado: bool) -> void:
+    automatica = ligado
+    _auto_lentas = 0
+    _auto_opcao.set_pressed_no_signal(ligado)
+    _salvar()
+
+func definir_limite_fps(n: int) -> void:
+    fps_indice = clampi(n, 0, LIMITES.size() - 1)
+    _fps_opcao.select(fps_indice)
+    aplicar()
+    _salvar()
+
+func definir_vsync(ligado: bool) -> void:
+    vsync = ligado
+    _vsync_opcao.set_pressed_no_signal(ligado)
+    aplicar()
+    _salvar()
+
+func abrir_avancado() -> void:
+    if not cinema.esta_aberto():
+        cinema.alternar()
+
+func texto_dica() -> String:
+    return _qualidade_dica.text if _qualidade_dica != null else ""
+
 func _atualizar_dica() -> void:
     if _qualidade_dica == null:
         return

@@ -31,7 +31,7 @@ static func salvar(jogo: Node) -> bool:
         "missao": jogo.missoes.indice, "missao_progresso": jogo.missoes.progresso,
         "melhorias": jogo.melhorias.nivel.duplicate(),
         "barco": {"x": jogo.barco.global_position.x, "z": jogo.barco.global_position.z, "giro": jogo.barco.rotation.y,
-                "combustivel": jogo.barco.combustivel, "distancia": jogo.barco.distancia_percorrida},
+                "combustivel": jogo.barco.combustivel, "saude": jogo.barco.saude, "distancia": jogo.barco.distancia_percorrida},
         "porao": peixes,
     }
     var f := FileAccess.open(ARQUIVO, FileAccess.WRITE)
@@ -87,6 +87,7 @@ static func carregar(jogo: Node) -> bool:
         jogo.barco.global_position = pos
         jogo.barco.rotation = Vector3(0.0, float(b.get("giro", 0.0)), 0.0)
         jogo.barco.combustivel = clampf(float(b.get("combustivel", jogo.barco.tanque)), 0.0, jogo.barco.tanque)
+        jogo.barco.saude = clampf(float(b.get("saude", 100.0)), 0.0, 100.0)
         jogo.barco.distancia_percorrida = maxf(0.0, float(b.get("distancia", 0.0)))
         jogo.barco.velocidade = 0.0
     jogo.porao.itens.clear()

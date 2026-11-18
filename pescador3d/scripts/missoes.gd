@@ -10,7 +10,7 @@ const LISTA := [
     {"texto": "Pescaria inaugural", "tipo": "pescar", "alvo": "", "quantos": 3, "premio": 20,
             "dica": "Pare perto de um cardume e aperte F."},
     {"texto": "Vender os peixes no cais", "tipo": "vender", "alvo": "", "quantos": 1, "premio": 30,
-            "dica": "Siga a âncora do radar e aperte E na ponta do cais."},
+            "dica": "Siga a âncora do radar e aperte F na ponta do cais."},
     {"texto": "Comprar uma melhoria", "tipo": "comprar", "alvo": "", "quantos": 1, "premio": 40,
             "dica": "No cais da Vila do Porto, teclas 3 a 6."},
     {"texto": "Pescar olho-de-cão à noite", "tipo": "pescar", "alvo": "Olho-de-cão", "quantos": 2, "premio": 80,

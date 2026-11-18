@@ -1,0 +1,46 @@
+PESCADOR v0.5.6 — CASCO, ATALHOS E MENU DE OPÇÕES
+================================================
+
+1) SAÚDE DO CASCO (scripts/barco.gd, jogo.gd, salvamento.gd)
+- barco.saude (0 a 100), sinal casco_avariado(perda, motivo), danificar(), consertar(), fator_avaria().
+- Tempestade: DANO_TEMPESTADE = 0,085 ponto/s no auge, vezes nível^1,5, vezes exposição (0,45 abrigado a 1,0 em mar aberto),
+  vezes estabilizadores (o upgrade "Estabilizadores" reduz o dano). Medido: 2 min de temporal perto das ilhas = ~5 a 6 pontos.
+- Costa: 2 a 8 pontos conforme a velocidade da batida (só acima de 1,2 m/s, como o aviso de encalhe).
+- Outro barco: 1,5 + 7 x intensidade (2 a 8,5 pontos), com a mesma recarga de 0,6 s do aviso.
+- Efeito: abaixo de 50 o motor perde força (60% perto de zero); em 0 o barco só se arrasta (igual a sem diesel).
+- Avisos: a cada 10 pontos perdidos na tempestade, ao cruzar 50% e ao chegar a 0%. Batidas mostram o casco no aviso.
+- Conserto no cais (todos os cais): R$ 3 por ponto (100 pontos = R$ 300); sem dinheiro para tudo, conserta o que der. Tecla R ou botão.
+- A saúde vai no salvamento (saves antigos começam com 100).
+
+2) HUD (scripts/hud.gd)
+- A barra da placa do barco (acima do dinheiro) é a saúde do casco: ícone de boia, cor verde (60+), amarela (30 a 60), vermelha
+  com a boia piscando (abaixo de 30) e o número em %. A aceleração continua no velocímetro.
+- Barra de baixo: pescar [F], porão [I], diário [TAB]. A engrenagem (pausa) saiu: a pausa é o ESC.
+
+3) ATALHOS (scripts/jogo.gd)
+- F: pesca; na ponta do cais (onde aparece "F: atracar em ...") atraca. No cais, F zarpa. E continua funcionando como antes.
+- I: porão (inventário). TAB: diário de bordo. R no cais: consertar o casco.
+- Modo Construtor: só F9 (o TAB virou diário).
+
+4) MENU E OPÇÕES (scripts/interface.gd, idioma.gd, som.gd, opcoes_graficas.gd, botao_aquarela.gd)
+- Menu (início e ESC): Voltar a navegar / Começar / Continuar, Novo jogo (com confirmação se houver viagem salva), Opções, Sair do jogo
+  (salva antes de fechar). No pé: W A S D, ESPAÇO, F, I, TAB, M e ESC.
+- Opções: Geral, Áudio, Gráficos, Voltar ao menu. ESC numa subpágina volta um nível.
+- Geral: idioma Português / Español / English, guardado em user://pescador.cfg. Traduz menus, opções, painel do cais, HUD e o estado
+  da pesca. Ainda em português: missões, mensagens do diário/avisos, nomes das melhorias da loja, painel F10 e painel F11.
+- Áudio: seis volumes (Geral, Mar e ondas, Vento, Chuva e trovões, Motor e casco, Efeitos) e Silenciar tudo. O volume antigo
+  "Mar e vento" é copiado para Mar, Vento e Chuva na primeira vez.
+- Gráficos: Qualidade (Baixa/Média/Alta/Ultra), Ajuste automático, Limite de quadros (30/60/120/sem limite), V-Sync, Mostrar FPS,
+  AVANÇADO (abre o painel Cinema do F11; o menu sai da frente e volta para Gráficos quando o painel fecha) e Teste de desempenho.
+  Mexe no mesmo estado do F10 (os dois ficam sincronizados).
+
+COMO TESTEI
+- Prints em 1920x1080 de cada tela (início, pausa, opções, geral, áudio, gráficos, avançado, espanhol, inglês, cais com conserto,
+  teclas I e TAB). Sem erros de script.
+- Batida de barco: 100 -> 92,9. Tempestade simulada 2 min (sem tela): 100 -> 95. Conserto: 47,9 -> 100 por R$ 159.
+- Regressão da física dos NPC (6 barcos) depois das mudanças.
+
+NÃO TESTADO
+- Tudo foi no meu ambiente (compatibilidade). Jogar de verdade no seu PC: se o dano da tempestade parecer pouco ou muito,
+  ajuste DANO_TEMPESTADE no topo de scripts/barco.gd ou me diga.
+- Sair do jogo fecha a janela (get_tree().quit()); no editor do Godot isso para a execução.

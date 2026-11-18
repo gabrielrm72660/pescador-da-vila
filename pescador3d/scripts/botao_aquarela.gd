@@ -5,9 +5,14 @@ const Aq = preload("res://scripts/aquarela.gd")
 
 var lavagem: ColorRect
 var _estado_antes: int = -1
+var _esquema: String = ""
+var _cor_texto: Color = Color.WHITE
+var marcado: bool = false
 
 func configurar(nome_esquema: String, semente: float, cor_texto: Color, tamanho: int = 18) -> void:
     var esq: Dictionary = Aq.esquema(nome_esquema)
+    _esquema = nome_esquema
+    _cor_texto = cor_texto
     flat = false
     focus_mode = Control.FOCUS_NONE
     var vazio := StyleBoxEmpty.new()
@@ -42,3 +47,16 @@ func _notification(what: int) -> void:
         _:
             m.set_shader_parameter("brilho", 0.0)
     lavagem.modulate = Color(1, 1, 1, 0.45) if modo == DRAW_DISABLED else Color.WHITE
+
+## Para escolhas (idioma, qualidade...): o marcado vira ouro com tinta escura; os outros voltam ao esquema de origem.
+func marcar(sim: bool) -> void:
+    marcado = sim
+    if lavagem == null:
+        return
+    var esq: Dictionary = Aq.esquema("ouro" if sim else _esquema)
+    var m: ShaderMaterial = lavagem.material
+    m.set_shader_parameter("cor", esq["cor"])
+    m.set_shader_parameter("cor2", esq["cor2"])
+    var cor: Color = Aq.NANQUIM if sim else _cor_texto
+    for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+        add_theme_color_override(c, cor)

@@ -1,5 +1,5 @@
 extends Node
-## Modo Construtor (Tab): edita a ilha principal dentro do jogo.
+## Modo Construtor (F9): edita a ilha principal dentro do jogo.
 ## Casas e prédios, ruas, postes, props do porto e vegetação (pinheiros, coqueiros, árvores, moitas, pedras).
 ## O que o jogador monta vive em ilha.mundo (scripts/mundo_dados.gd) e é salvo em user://mundo_ilha_principal.json.
 ## O jogo fica pausado enquanto o construtor está aberto; ao sair, o mundo editado vale para a viagem.
@@ -123,7 +123,7 @@ func _input(event: InputEvent) -> void:
     if ativo and event is InputEventMouse:
         _n_raw += 1
         _ultimo_mouse = event.position
-    if event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_TAB or event.physical_keycode == KEY_F9):
+    if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F9:
         get_viewport().set_input_as_handled()
         if ativo:
             fechar()
@@ -1527,7 +1527,7 @@ func _construir_interface() -> void:
     linha_barra.add_child(_botao("Gravar na pasta do jogo", _exportar))
     linha_barra.add_child(_botao("Mundo do jogo", func(): _restaurar_padrao(true)))
     linha_barra.add_child(_botao("Ilha original", func(): _restaurar_padrao(false)))
-    linha_barra.add_child(_botao("Sair (Tab)", fechar))
+    linha_barra.add_child(_botao("Sair (F9)", fechar))
 
     _info = Label.new()
     _info.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))

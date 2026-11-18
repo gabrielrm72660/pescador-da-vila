@@ -168,7 +168,7 @@ func _criar_modelo() -> void:
 
     _audio_sopro = AudioStreamPlayer3D.new()
     _audio_sopro.name = "RespiracaoBaleia"
-    _audio_sopro.bus = "Ambiente"
+    _audio_sopro.bus = "Mar"            # sopro das baleias: junto do mar
     _audio_sopro.volume_db = -10.0
     _audio_sopro.unit_size = 45.0
     _audio_sopro.max_distance = 280.0

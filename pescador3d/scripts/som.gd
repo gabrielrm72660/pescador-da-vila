@@ -1,6 +1,6 @@
 extends Node
-## Som do jogo: ressaca costeira, mar com respiracao lenta e vento em rajadas espaçadas; motor e água no casco conforme a velocidade; uma onda quebrando de vez
-## em quando; efeitos da pesca. Quatro volumes (geral, ambiente, barco, efeitos), ajustados no menu e
+## Som do jogo (seis volumes: geral, mar, vento, chuva, barco, efeitos): ressaca costeira, mar com respiracao lenta e vento em rajadas espaçadas; motor e água no casco conforme a velocidade; uma onda quebrando de vez
+## em quando; efeitos da pesca. Volumes ajustados em Opções > Áudio e
 ## guardados em user://pescador.cfg. Os arquivos ficam em assets/sons/; se algum faltar, o jogo segue.
 
 signal volumes_mudaram
@@ -8,14 +8,14 @@ signal volumes_mudaram
 const PASTA := "res://assets/sons/"
 const ARQUIVO_CONFIG := "user://pescador.cfg"
 const ARQUIVO_ANTIGO := "user://mar_aberto.cfg"      # de quando o jogo se chamava Mar Aberto
-const GRUPOS := ["geral", "ambiente", "barco", "efeitos"]
-const NOME_GRUPO := {"geral": "Geral", "ambiente": "Mar e vento", "barco": "Motor e casco", "efeitos": "Efeitos"}
-const CANAL := {"geral": "Master", "ambiente": "Ambiente", "barco": "Barco", "efeitos": "Efeitos"}
+const GRUPOS := ["geral", "mar", "vento", "chuva", "barco", "efeitos"]
+const NOME_GRUPO := {"geral": "Geral", "mar": "Mar e ondas", "vento": "Vento", "chuva": "Chuva e trovões", "barco": "Motor e casco", "efeitos": "Efeitos"}
+const CANAL := {"geral": "Master", "mar": "Mar", "vento": "Vento", "chuva": "Chuva", "barco": "Barco", "efeitos": "Efeitos"}
 
 var barco: Node3D
 var oceano: Node3D
 var navegando: bool = false          # falso no menu e na pausa: o motor cala
-var volumes: Dictionary = {"geral": 0.8, "ambiente": 0.8, "barco": 0.8, "efeitos": 0.8}
+var volumes: Dictionary = {"geral": 0.8, "mar": 0.8, "vento": 0.8, "chuva": 0.8, "barco": 0.8, "efeitos": 0.8}
 var _mar: AudioStreamPlayer
 var _vento: AudioStreamPlayer
 var _agua: AudioStreamPlayer
@@ -41,15 +41,15 @@ func _ready() -> void:
     _carregar_config()
     barco = get_node_or_null("../Barco")
     oceano = get_node_or_null("../Oceano")
-    _mar = _laco("mar", -14.0, "ambiente")
-    _vento = _laco("vento", -60.0, "ambiente")
+    _mar = _laco("mar", -14.0, "mar")
+    _vento = _laco("vento", -60.0, "vento")
     _proxima_rajada = randf_range(12.0, 25.0)
     _agua = _laco("agua_casco", -60.0, "barco")
     _motor = _laco("motor_diesel", -60.0, "barco")
-    _chuva = _laco("chuva", -60.0, "ambiente")
+    _chuva = _laco("chuva", -60.0, "chuva")
     _proximo_trovao = randf_range(18.0, 36.0)
-    for nome in ["onda", "trovao"]:
-        _guardar_avulso(nome, "ambiente")
+    _guardar_avulso("onda", "mar")
+    _guardar_avulso("trovao", "chuva")
     for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura"]:
         _guardar_avulso(nome, "efeitos")
 
@@ -118,6 +118,10 @@ func alternar_mudo() -> bool:
 func _carregar_config() -> void:
     var cfg := ConfigFile.new()
     if cfg.load(ARQUIVO_CONFIG) == OK or cfg.load(ARQUIVO_ANTIGO) == OK:
+        var antigo = cfg.get_value("som", "ambiente", null)          # até a 0.5.5 mar, vento e chuva eram um só ("ambiente")
+        if typeof(antigo) in [TYPE_FLOAT, TYPE_INT] and not cfg.has_section_key("som", "mar"):
+            for grupo in ["mar", "vento", "chuva"]:
+                volumes[grupo] = clampf(float(antigo), 0.0, 1.0)
         for grupo in GRUPOS:
             var v = cfg.get_value("som", grupo, volumes[grupo])
             if typeof(v) in [TYPE_FLOAT, TYPE_INT]:

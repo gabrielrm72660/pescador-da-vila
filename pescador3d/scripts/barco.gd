@@ -18,6 +18,13 @@ signal encalhou                                # bateu na costa ou no cais
 signal bateu_em_barco(intensidade: float)      # outro barco bateu no seu (0..1)
 signal combustivel_baixo                       # passou para menos de 20%
 signal combustivel_acabou
+signal casco_avariado(perda: float, motivo: String)   # motivo: "tempestade", "costa" ou "barco"; perda em pontos de 0..100
+
+## Saúde do casco (0 a 100). Tempestade desgasta devagar; batidas na costa e em outros barcos tiram mais.
+## Abaixo de 50 o barco perde força; em 0 ele faz água e só se arrasta, até ser consertado no cais.
+const DANO_TEMPESTADE := 0.085         # pontos por segundo no auge do temporal em mar aberto (2 min de temporal: ~6 perto das ilhas, ~10 longe)
+var saude: float = 100.0
+var _dano_acumulado: float = 0.0
 
 var combustivel: float = 60.0
 var _avisou_baixo: bool = false
@@ -127,6 +134,18 @@ func _physics_process(delta: float) -> void:
                 combustivel_baixo.emit()
         else:
             meta_velocidade = clampf(meta_velocidade, -velocidade_reserva * 0.6, velocidade_reserva)
+        # casco avariado: perde força abaixo de 50; arrombado (0), só se arrasta
+        if saude <= 0.0:
+            meta_velocidade = clampf(meta_velocidade, -velocidade_reserva * 0.6, velocidade_reserva)
+        else:
+            meta_velocidade *= fator_avaria()
+        # tempestade: as ondas castigam o casco aos poucos (menos com estabilizadores e em águas abrigadas)
+        if oceano != null and float(oceano.tempestade_nivel) > 0.05:
+            var exposto: float = lerpf(0.45, 1.0, clampf(oceano.intensidade_em(global_position) / 0.6, 0.0, 1.0))
+            _dano_acumulado += DANO_TEMPESTADE * pow(float(oceano.tempestade_nivel), 1.5) * exposto * lerpf(1.0, estabilidade, 0.7) * delta
+            if _dano_acumulado >= 1.0:
+                danificar(_dano_acumulado, "tempestade")
+                _dano_acumulado = 0.0
         # Aproximação de recifes e praias reduz a velocidade admissível para evitar encalhe.
         if obstaculo != null and obstaculo.has_method("altura_terra"):
             var fundo: float = float(obstaculo.altura_terra(global_position))
@@ -194,6 +213,7 @@ func _physics_process(delta: float) -> void:
                     break
         if bloqueou:
             if absf(velocidade) > 1.2:
+                danificar(2.0 + 6.0 * clampf((absf(velocidade) - 1.2) / 4.5, 0.0, 1.0), "costa")
                 encalhou.emit()
             # Para o avanço mas não projeta a embarcação para dentro da margem.
             velocidade *= -0.08
@@ -325,6 +345,7 @@ func receber_batida(dv: Vector3, ponto: Vector3, intensidade: float) -> void:
     _velocidade_arfagem += dv.dot(frente) * 0.08
     if intensidade > 0.12 and _recarga_batida <= 0.0:
         _recarga_batida = 0.6
+        danificar(1.5 + 7.0 * clampf(intensidade, 0.0, 1.0), "barco")
         bateu_em_barco.emit(intensidade)
 
 ## Correção de posição da batida (separação dos cascos); não deixa a batida empurrar o barco para a terra.
@@ -343,7 +364,27 @@ func rumo() -> int:
     # 0° aponta para o norte (-Z), como em cartas de navegação.
     return posmod(int(round(-rad_to_deg(rotation.y))), 360)
 
+## Tira pontos do casco (0..100).
+func danificar(perda: float, motivo: String) -> void:
+    if perda <= 0.0 or saude <= 0.0:
+        return
+    var antes := saude
+    saude = maxf(0.0, saude - perda)
+    casco_avariado.emit(antes - saude, motivo)
+
+## Conserta até "pontos"; devolve quantos entraram.
+func consertar(pontos: float) -> float:
+    var entra: float = clampf(pontos, 0.0, 100.0 - saude)
+    saude += entra
+    return entra
+
+## Força que sobra no motor: 100% até metade da saúde, caindo para 60% perto de zero.
+func fator_avaria() -> float:
+    return 1.0 if saude >= 50.0 else lerpf(0.6, 1.0, saude / 50.0)
+
 func zerar() -> void:
+    saude = 100.0
+    _dano_acumulado = 0.0
     combustivel = tanque
     _avisou_baixo = false
     ativo = false
