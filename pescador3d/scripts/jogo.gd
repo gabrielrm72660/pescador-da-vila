@@ -16,6 +16,7 @@ var luz_barco: OmniLight3D
 var luz_ligada: bool = true
 const Baleias = preload("res://scripts/baleias.gd")
 var baleias: Node3D
+const Cursor = preload("res://scripts/cursor.gd")             # v0.7.4: cursor em aquarela e mouse preso navegando
 const Toque = preload("res://scripts/toque.gd")               # v0.7.0: controles de toque (celular)
 const Controle = preload("res://scripts/controle.gd")         # v0.7.0: controle (gamepad)
 const Historia = preload("res://scripts/historia.gd")         # v0.7.0: o compadre Bento e os dois finais
@@ -277,6 +278,9 @@ func _ready() -> void:
     var controle := Controle.new()
     add_child(controle)
     controle.construir(self)
+    var cursor := Cursor.new()
+    add_child(cursor)
+    cursor.construir(self)
     if Toque.ligado():
         var toque := Toque.new()
         add_child(toque)
@@ -475,7 +479,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.7.3] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.7.4] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:

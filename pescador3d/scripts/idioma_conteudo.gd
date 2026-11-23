@@ -463,6 +463,7 @@ const TABELA := {
 	"30 nós": ["30 nudos", "30 knots", "30 节"],
 	"%s\n%s · 30 nós após as missões de São Pedro": ["%s\n%s · 30 nudos tras las misiones de São Pedro", "%s\n%s · 30 knots after the São Pedro missions", "%s\n%s · 完成圣佩德罗任务后解锁 30 节"],
 	"Missões de São Pedro concluídas! Nova melhoria na loja da Vila: motor de 30 nós.": ["¡Misiones de São Pedro completadas! Nueva mejora en la tienda de la Vila: motor de 30 nudos.", "São Pedro missions complete! New upgrade at the Vila shop: a 30-knot engine.", "圣佩德罗任务全部完成！港口镇商店新增升级：30 节引擎。"],
+	"Mexa o mouse para olhar em volta. Segure Alt para usar o cursor.": ["Mueve el ratón para mirar alrededor. Mantén Alt para usar el cursor.", "Move the mouse to look around. Hold Alt to use the cursor.", "移动鼠标环顾四周。按住 Alt 使用光标。"],
 	"Pescar": ["Pescar", "Fish", "捕鱼"],
 	"Frear": ["Frenar", "Brake", "刹车"],
 	"Carta": ["Carta", "Chart", "海图"],

@@ -1,3 +1,7 @@
+BRUMA — Versão 0.7.4 (Godot 4.7)
+================================================
+NOVO NA 0.7.4: cursor próprio em aquarela que só aparece quando há algo para clicar; navegando, mexer o mouse gira a câmera (Alt mostra o cursor).
+
 BRUMA — Versão 0.7.3 (Godot 4.7)
 ================================================
 NOVO NA 0.7.3: carta náutica com cara própria: ilhas nas cores do minimapa, corda em volta, coordenadas escritas à mão e nomes sem sobreposição.

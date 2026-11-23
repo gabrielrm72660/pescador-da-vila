@@ -1,5 +1,6 @@
 extends Camera3D
-## Câmera atrás da popa. Gira em volta do barco com o botão direito do mouse (ou as teclas Z e X),
+## Câmera atrás da popa. Gira em volta do barco mexendo o mouse (v0.7.4: navegando, o mouse fica preso e não precisa
+## segurar botão; ver scripts/cursor.gd), com o botão direito arrastando ou com as teclas Z e X,
 ## aproxima com a roda do mouse, alterna dois enquadramentos com C e volta para trás da popa com V.
 var alvo: Node3D
 var aproximada: bool = false
@@ -14,6 +15,9 @@ const ELEVACAO_MIN := 0.22
 const ELEVACAO_MAX := 2.6
 
 var _arrastando: bool = false
+var mouse_livre: bool = false          # v0.7.4: mouse preso na janela: só mexer já gira a câmera
+var _mexeu: float = 0.0
+const SENSIBILIDADE_LIVRE := 0.0032
 
 func _ready() -> void:
     alvo = get_node("../Barco")
@@ -38,7 +42,8 @@ func _process(delta: float) -> void:
     if Input.is_physical_key_pressed(KEY_X):
         giro -= GIRO_TECLA * delta
     giro = wrapf(giro, -PI, PI)
-    var fator := 1.0 - exp(-(9.0 if _arrastando else 3.3) * delta)      # arrastando, a câmera responde na hora
+    _mexeu = maxf(0.0, _mexeu - delta)
+    var fator := 1.0 - exp(-(9.0 if (_arrastando or _mexeu > 0.0) else 3.3) * delta)      # mexendo o mouse, a câmera responde na hora
     global_position = global_position.lerp(_posicao_desejada(), fator)
     look_at(alvo.global_position + Vector3(0.0, 1.35, 0.0), Vector3.UP)
 
@@ -55,6 +60,9 @@ func _input(event: InputEvent) -> void:
             var sinal := -1.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0
             distancia = clampf(distancia + 1.5 * sinal, 8.0, 27.0)
             altura = clampf(altura + 0.5 * sinal, 4.0, 12.5)
+    elif event is InputEventMouseMotion and mouse_livre and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+        girar(-event.relative.x * SENSIBILIDADE_LIVRE, event.relative.y * 0.0028)
+        _mexeu = 0.3
     elif event is InputEventMouseMotion and _arrastando:
         girar(-event.relative.x * SENSIBILIDADE, event.relative.y * 0.006)
     elif event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_V:

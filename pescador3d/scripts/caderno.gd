@@ -126,6 +126,12 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:                      # v0.7.4: seta dourada sobre o que dá para clicar
+		var p: Vector2 = event.position
+		var clicavel: bool = (_seta_esq.has_point(p) and pagina > 0) or (_seta_dir.has_point(p) and pagina + 2 < FICHAS.size()) or _fechar_ret.has_point(p)
+		for z in _zonas_ret:
+			clicavel = clicavel or Rect2(z[0]).has_point(p)
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if clicavel else Control.CURSOR_ARROW
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_UP: virar(-1)

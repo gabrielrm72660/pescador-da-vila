@@ -1,0 +1,22 @@
+BRUMA v0.7.4 — CURSOR PRÓPRIO E CÂMERA NO MOUSE
+===============================================
+1) CURSOR EM AQUARELA (scripts/cursor.gd, assets/cursor/, ferramentas/cursor/gerar_cursor.py)
+- A seta do Windows deu lugar a uma seta em aquarela turquesa com borda creme (opção D da prévia).
+- Sobre o que dá para clicar ela fica dourada: botões dos menus, do cais e das opções, os botões do HUD,
+  as marcas e setas do caderno.
+
+2) O CURSOR SÓ APARECE QUANDO É PRECISO
+- Navegando, o cursor some e o mouse fica preso na janela.
+- Ele volta sozinho na tela de título, no menu (ESC), no cais, nas conversas, no porão, no diário, no caderno,
+  na carta, no cartão do final, nas opções gráficas (F10/F11) e no Modo Construtor.
+- Segurar Alt no mar mostra o cursor (para clicar nos botões do HUD). Com controle ele fica escondido.
+  Se a janela perde o foco (Alt+Tab), o mouse é solto.
+
+3) CÂMERA SÓ MEXENDO O MOUSE (scripts/camera_barco.gd)
+- Navegando, mexer o mouse gira a câmera em volta do barco (para os lados) e sobe ou desce, sem segurar botão.
+  Botão direito arrastando, Z/X, roda (zoom), V e botão do meio (recentrar) continuam valendo.
+- Na primeira vez em cada sessão aparece o aviso "Mexa o mouse para olhar em volta. Segure Alt para usar o cursor."
+
+NÃO TESTADO AQUI
+- O cursor de verdade no Windows (aqui só testei os modos do mouse e o giro da câmera por eventos simulados).
+- A sensibilidade do mouse (0,0032 rad por pixel): se ficar rápida ou lenta demais, é um número só para ajustar.
