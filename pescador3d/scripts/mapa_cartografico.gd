@@ -1,5 +1,5 @@
 extends Control
-## Carta náutica (tecla M), v0.5.8 no espírito do mapa do DREDGE: uma folha de papel com dobras nos cantos, grade verde
+## Carta náutica (tecla M). Desde a v0.7.3 com cara própria: mar e ilhas pintados como no minimapa, corda náutica em volta e
 ## com letras embaixo (colunas) e números à esquerda (linhas, 1 embaixo), ilhas cheias em tom de terra com contorno de
 ## tinta e uma linha clara por dentro, linhas de profundidade em volta e marcas de cais, recifes e bancos.
 ## Escala fixa do mundo inteiro; roda = zoom em volta do mouse, botão direito arrasta, clique marca destino.
@@ -15,6 +15,8 @@ var tem_marcador: bool = false
 
 var _fundo: Control                 # v0.7.2: fundo escuro + folha, desenhados por trás do mar
 var _mar: ColorRect                 # v0.7.2: o mar da carta pintado igual ao do minimapa (aquarela "mar")
+var _rotulos: Array = []            # v0.7.3: retângulos dos nomes já escritos (o nome do arquipélago desvia deles)
+var _registrar: bool = false
 var _contornos: Array = []          # por ilha: {ilha, costa, dentro, alto, raso, fundo}
 var _mundo: Node = null
 var _zoom: float = 1.0
@@ -40,6 +42,13 @@ const NANQUIM := Color(0.20, 0.17, 0.13)
 const TINTA_SUAVE := Color(0.33, 0.29, 0.22)
 const CONTORNO_MAR := Color(0.42, 0.50, 0.42, 0.55)
 const LARGURA_FAIXA := 46.0
+# v0.7.3: as ilhas com as cores do minimapa (scripts/hud.gd, _radar)
+const MINI_RASO := Color(0.16, 0.58, 0.60, 0.80)
+const MINI_AREIA := Color(0.84, 0.75, 0.50)
+const MINI_MATA := Color(0.40, 0.58, 0.30)
+const MINI_CREME := Color(0.96, 0.93, 0.84)
+const CORDA := Color(0.62, 0.47, 0.28)
+const CORDA_ESCURA := Color(0.36, 0.25, 0.14)
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -72,7 +81,8 @@ func configurar(p_barco: Node3D, p_ilhas: Array) -> void:
 	_contornos.clear()
 	for ilha in ilhas:
 		_contornos.append({"ilha": ilha, "costa": _contorno(ilha, 0.0), "dentro": _contorno(ilha, 1.6),
-				"alto": _contorno(ilha, 9.0), "raso": _contorno(ilha, -2.5), "fundo": _contorno(ilha, -6.5)})
+				"alto": _contorno(ilha, 7.0), "raso": _contorno(ilha, -2.5), "fundo": _contorno(ilha, -6.5),
+				"rasa": _contorno(ilha, -5.0)})           # v0.7.3: água rasa turquesa, como no minimapa
 	_reconstruir()
 
 func configurar_batimetria(mundo: Node) -> void:
@@ -292,6 +302,8 @@ func _limpo(pontos: PackedVector2Array) -> PackedVector2Array:
 
 func _escrever(t: String, p: Vector2, tam: int, cor: Color = NANQUIM, titulo: bool = false, contorno: bool = false) -> void:
 	var f: Font = Aq.FONTE_TITULO if titulo else Aq.FONTE_TEXTO
+	if _registrar:
+		_rotulos.append(Rect2(p - Vector2(2.0, tam * 0.85), Vector2(f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, tam).x + 4.0, tam * 1.05)))
 	if contorno:
 		draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, tam, 5, Color(PAPEL_CLARO, 0.9))
 	draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, tam, cor)
@@ -322,10 +334,13 @@ func _draw() -> void:
 	_grade(area)
 	for item in _contornos:
 		_ilha(item, area)
+	_rotulos.clear()
+	_registrar = true
 	_pontos(area)
-	_arquipelagos(area)
 	for item in _contornos:
 		_rotulo_ilha(item, area)
+	_registrar = false
+	_arquipelagos(area)
 	_rota(area)
 	_barco(area)
 	_rosa(area.end - Vector2(62.0, 70.0))
@@ -368,18 +383,28 @@ func _papel_detalhes(f: Rect2) -> void:
 	draw_line(Vector2(f.get_center().x, f.position.y), Vector2(f.get_center().x, f.end.y), Color(PAPEL_ESCURO, 0.35), 2.0)
 	draw_line(Vector2(f.get_center().x + 2.0, f.position.y), Vector2(f.get_center().x + 2.0, f.end.y), Color(PAPEL_CLARO, 0.5), 1.0)
 	draw_line(Vector2(f.position.x, f.get_center().y), Vector2(f.end.x, f.get_center().y), Color(PAPEL_ESCURO, 0.30), 2.0)
-	# cantos virados: triângulo claro (o verso do papel) com sombra
-	var c := 26.0
-	for canto in [[f.position, Vector2(1, 1)], [Vector2(f.end.x, f.position.y), Vector2(-1, 1)], [f.end, Vector2(-1, -1)], [Vector2(f.position.x, f.end.y), Vector2(1, -1)]]:
-		var o: Vector2 = canto[0]
-		var d: Vector2 = canto[1]
-		draw_colored_polygon(PackedVector2Array([o, o + Vector2(d.x * c, 0), o + Vector2(0, d.y * c)]), Color(0.02, 0.05, 0.07, 1.0))
-		draw_colored_polygon(PackedVector2Array([o + Vector2(d.x * c, 0), o + Vector2(0, d.y * c), o + Vector2(d.x * c, d.y * c) * 0.92]), PAPEL_CLARO)
-		draw_line(o + Vector2(d.x * c, 0), o + Vector2(0, d.y * c), Color(PAPEL_ESCURO, 0.9), 1.5)
-	# moldura dupla em volta da carta
-	var moldura: Rect2 = _quadro().grow_individual(LARGURA_FAIXA + 8.0, 8.0, 8.0, LARGURA_FAIXA + 8.0)
-	draw_rect(moldura, Color(NANQUIM, 0.85), false, 2.5)
-	draw_rect(moldura.grow(5.0), Color(GRADE, 0.55), false, 1.5)
+	# v0.7.3: sem cantos dobrados nem moldura dupla (muito DREDGE): uma corda náutica em volta da carta
+	_corda(_quadro().grow(7.0))
+
+## Corda torcida: um cordão escuro por baixo e gomos claros inclinados por cima, com um nó em cada canto.
+func _corda(r: Rect2) -> void:
+	var cantos := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
+	for k in 4:
+		var a: Vector2 = cantos[k]
+		var b: Vector2 = cantos[(k + 1) % 4]
+		draw_line(a, b, CORDA_ESCURA, 7.0)
+		var d: Vector2 = (b - a).normalized()
+		var n := Vector2(-d.y, d.x)
+		var comp: float = a.distance_to(b)
+		var t := 0.0
+		while t < comp:
+			var p: Vector2 = a + d * t
+			draw_line(p - n * 2.6 - d * 2.2, p + n * 2.6 + d * 2.2, CORDA, 3.2)
+			t += 6.0
+	for c in cantos:
+		draw_circle(c, 7.5, CORDA_ESCURA)
+		draw_circle(c, 5.0, CORDA)
+		draw_arc(c, 5.0, 0.3, 2.6, 8, CORDA_ESCURA, 1.2)
 
 ## Linhas de profundidade: duas curvas em volta de cada ilha, tracejadas e claras, como numa carta antiga.
 func _profundidades(area: Rect2) -> void:
@@ -404,21 +429,15 @@ func _ilha(item: Dictionary, area: Rect2) -> void:
 	var costa: PackedVector2Array = _limpo(_na_tela(item["costa"], area))
 	if costa.size() < 3:
 		return
-	# sombra de tinta deslocada (dá volume, como as ilhas do DREDGE)
-	var sombra := PackedVector2Array()
-	for p in costa:
-		sombra.append(p + Vector2(2.0, 2.5))
-	draw_colored_polygon(sombra, Color(NANQUIM, 0.22))
-	draw_colored_polygon(costa, TERRA)
+	# v0.7.3: igual ao minimapa: água rasa turquesa em volta, faixa de areia com contorno creme e a mata verde no meio
+	var rasa: PackedVector2Array = _limpo(_na_tela(item.get("rasa", PackedVector2Array()), area))
+	if rasa.size() >= 3:
+		draw_colored_polygon(rasa, MINI_RASO)
+	draw_colored_polygon(costa, MINI_AREIA)
 	var alto: PackedVector2Array = _limpo(_na_tela(item["alto"], area))
 	if alto.size() >= 3:
-		draw_colored_polygon(alto, TERRA_ALTA)
-	draw_polyline(_fechar(costa), NANQUIM, 2.6, true)
-	var dentro: PackedVector2Array = _limpo(_na_tela(item["dentro"], area))
-	if dentro.size() >= 3:
-		draw_polyline(_fechar(dentro), Color(PAPEL_CLARO, 0.85), 1.6, true)
-	if alto.size() >= 3:
-		draw_polyline(_fechar(alto), Color(NANQUIM, 0.30), 1.0, true)
+		draw_colored_polygon(alto, MINI_MATA)
+	draw_polyline(_fechar(costa), Color(MINI_CREME, 0.85), 1.8, true)
 	var ilha: Node3D = item["ilha"]
 	if ilha.tem_cais:
 		var cais: Vector2 = _posicao(Vector2(ilha.cais_ponta.x, ilha.cais_ponta.z), area)
@@ -468,10 +487,32 @@ func _arquipelagos(area: Rect2) -> void:
 	for nome in grupos:
 		var mn: Vector2 = grupos[nome][0]
 		var mx: Vector2 = grupos[nome][1]
-		var p: Vector2 = _posicao(Vector2((mn.x + mx.x) * 0.5, mn.y), area) - Vector2(0, 30.0)
 		var texto: String = " ".join(T.t(nome).to_upper().split(""))
+		var tam: int = 22 if _zoom < 2.0 else 28
+		var larg: float = Aq.FONTE_TITULO.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, tam).x
+		# v0.7.3: acima do grupo; se bater no nome de uma ilha, sobe um pouco; se não couber, vai para baixo do grupo
+		var topo: Vector2 = _posicao(Vector2((mn.x + mx.x) * 0.5, mn.y), area) - Vector2(0, 30.0)
+		var base: Vector2 = _posicao(Vector2((mn.x + mx.x) * 0.5, mx.y), area) + Vector2(0, 34.0)
+		var candidatos: Array = []
+		for k in 7:
+			candidatos.append(topo - Vector2(0, 12.0 * k))
+		for k in 5:
+			candidatos.append(base + Vector2(0, 12.0 * k))
+		var p: Vector2 = topo
+		for cand in candidatos:
+			var caixa := Rect2(cand - Vector2(larg * 0.5 + 4.0, tam * 0.55), Vector2(larg + 8.0, tam * 1.1))
+			if not area.grow(-10.0).encloses(caixa):
+				continue
+			var livre := true
+			for r in _rotulos:
+				if caixa.intersects(r):
+					livre = false
+					break
+			if livre:
+				p = cand
+				break
 		if area.grow(-10.0).has_point(p):
-			_centrar(texto, p, 22 if _zoom < 2.0 else 28, Color(0.30, 0.40, 0.36, 0.75), true, true)
+			_centrar(texto, p, tam, Color(0.30, 0.40, 0.36, 0.75), true, true)
 
 func _pontos(area: Rect2) -> void:
 	for item in pontos_extras:
@@ -557,20 +598,19 @@ func _margens(f: Rect2, area: Rect2) -> void:
 func _faixas(area: Rect2) -> void:
 	var esq := Rect2(Vector2(area.position.x - LARGURA_FAIXA, area.position.y), Vector2(LARGURA_FAIXA - 4.0, area.size.y))
 	var baixo := Rect2(Vector2(area.position.x, area.end.y + 4.0), Vector2(area.size.x, LARGURA_FAIXA - 4.0))
-	draw_rect(esq, FAIXA, true)
-	draw_rect(baixo, FAIXA, true)
+	# v0.7.3: sem as faixas verdes: os números e as letras ficam escritos à mão, a nanquim, na margem do papel
 	for j in _grade_n.y:
 		var y0: float = _posicao(Vector2(0, _grade_origem.y + float(j) * _grade_m), area).y
 		var y1: float = _posicao(Vector2(0, _grade_origem.y + float(j + 1) * _grade_m), area).y
 		var ym: float = (y0 + y1) * 0.5
 		if ym > area.position.y + 6.0 and ym < area.end.y - 6.0:
-			_centrar(str(_grade_n.y - j), Vector2(esq.get_center().x, ym), 22, Color(0.96, 0.93, 0.84), true)
+			_centrar(str(_grade_n.y - j), Vector2(esq.get_center().x - 4.0, ym), 24, Color(NANQUIM, 0.85), true)
 	for i in _grade_n.x:
 		var x0: float = _posicao(Vector2(_grade_origem.x + float(i) * _grade_m, 0), area).x
 		var x1: float = _posicao(Vector2(_grade_origem.x + float(i + 1) * _grade_m, 0), area).x
 		var xm: float = (x0 + x1) * 0.5
 		if xm > area.position.x + 6.0 and xm < area.end.x - 6.0:
-			_centrar(_letra(i), Vector2(xm, baixo.get_center().y), 22, Color(0.96, 0.93, 0.84), true)
+			_centrar(_letra(i), Vector2(xm, baixo.get_center().y + 4.0), 24, Color(NANQUIM, 0.85), true)
 
 func _cabecalho(f: Rect2) -> void:
 	_escrever(T.t("Carta náutica"), f.position + Vector2(40, 58), 38, NANQUIM, true)

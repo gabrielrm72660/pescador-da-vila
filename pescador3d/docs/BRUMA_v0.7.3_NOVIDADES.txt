@@ -1,0 +1,14 @@
+BRUMA v0.7.3 — CARTA NÁUTICA COM CARA PRÓPRIA
+=============================================
+1) ILHAS COM AS CORES DO MINIMAPA (scripts/mapa_cartografico.gd)
+- Saíram as ilhas marrom-bege com sombra e contorno grosso de nanquim (estilo DREDGE). Agora são iguais às do minimapa:
+  água rasa turquesa em volta, faixa de areia com contorno creme e a mata verde no meio (mesmos níveis do minimapa).
+  Cais, casinhas e farol continuam por cima.
+
+2) MOLDURA NOVA
+- Saíram as faixas verdes com letras e números e os cantos dobrados do papel. As coordenadas continuam, escritas à mão a
+  nanquim na margem da folha (letras embaixo, números à esquerda), e uma corda náutica com nós nos cantos contorna a carta.
+
+3) NOMES SEM SOBREPOSIÇÃO
+- O nome do arquipélago desvia dos nomes das ilhas e dos pontos: sobe um pouco; se não couber, vai para baixo do grupo.
+  Antes "ARQUIPÉLAGO DE SÃO PAULO" passava por cima da "Ilhota do Meio".

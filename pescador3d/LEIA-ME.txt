@@ -1,3 +1,7 @@
+BRUMA — Versão 0.7.3 (Godot 4.7)
+================================================
+NOVO NA 0.7.3: carta náutica com cara própria: ilhas nas cores do minimapa, corda em volta, coordenadas escritas à mão e nomes sem sobreposição.
+
 BRUMA — Versão 0.7.2 (Godot 4.7)
 ================================================
 NOVO NA 0.7.2: o mar da carta náutica (M) agora é pintado igual ao do minimapa; o resto da carta não mudou.
