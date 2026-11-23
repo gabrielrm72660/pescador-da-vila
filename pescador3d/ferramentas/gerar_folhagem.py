@@ -6,6 +6,8 @@
 
 Se existir uma folha de texturas do SpriteCook (arte_original/spritecook/folhagem.png), use ferramentas/fatiar_folhagem.py,
 que refaz copa.png a partir dela; a palmeira continua vindo daqui (a transparência precisa ser desenhada).
+v0.7.6: copa.png e palmeira.png agora vêm do SpriteCook (ferramentas/texturas_spritecook.py); rodar este script
+sobrescreve as pintadas com as antigas feitas por código.
 
 Uso:  python3 ferramentas/gerar_folhagem.py        (precisa de numpy e opencv-python)
 """
