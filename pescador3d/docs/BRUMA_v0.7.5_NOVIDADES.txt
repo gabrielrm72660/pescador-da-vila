@@ -1,0 +1,9 @@
+BRUMA v0.7.5 — RETRATOS DOS NPCs BEM RECORTADOS
+===============================================
+1) RETRATOS (assets/retratos/zefa, jacinto, toinho, rosa, abilio)
+- Os recortes antigos tinham sobras do fundo e bordas serrilhadas. Agora vêm da folha sem fundo enviada pelo Gabriel
+  (guardada em arte_original/retratos/retratos_sem_fundo_v074.png).
+- A folha trazia um halo avermelhado quase transparente em volta das figuras e o miolo com alfa 253: o recorte tira o halo,
+  deixa o miolo opaco, troca a cor da beirada pela do pixel firme mais próximo (sem franja no jogo) e suaviza meio pixel.
+- Mesma altura dos retratos antigos (650 px), então a caixa de diálogo não muda.
+- Para refazer: python3 ferramentas/retratos/recortar_folha_transparente.py (precisa de pillow, numpy e scipy).

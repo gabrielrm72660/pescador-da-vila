@@ -1,3 +1,7 @@
+BRUMA — Versão 0.7.5 (Godot 4.7)
+================================================
+NOVO NA 0.7.5: retratos dos NPCs refeitos a partir da folha sem fundo (sem sobras do fundo nem bordas serrilhadas).
+
 BRUMA — Versão 0.7.4 (Godot 4.7)
 ================================================
 NOVO NA 0.7.4: cursor próprio em aquarela que só aparece quando há algo para clicar; navegando, mexer o mouse gira a câmera (Alt mostra o cursor).
