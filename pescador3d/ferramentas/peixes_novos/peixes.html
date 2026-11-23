@@ -1,0 +1,165 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:transparent}
+.s{display:block;margin:0;padding:0}
+</style></head><body>
+<!-- filtro "guache": ruído suave nas bordas e textura -->
+<svg width="0" height="0" style="position:absolute"><defs>
+<filter id="guache" x="-5%" y="-5%" width="110%" height="110%">
+  <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="4" result="n"/>
+  <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G" result="d"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="9" result="g"/>
+  <feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.55 0.62" result="ga"/>
+  <feComposite in="ga" in2="d" operator="in" result="gr"/>
+  <feBlend in="d" in2="gr" mode="multiply"/>
+</filter>
+<filter id="suave"><feGaussianBlur stdDeviation="0.8"/></filter>
+</defs></svg>
+
+<!-- ===== CIOBA (lado, cabeça à esquerda) 340x200 ===== -->
+<svg id="cioba_lado" class="s" width="340" height="200" viewBox="0 0 340 200">
+ <defs>
+  <linearGradient id="cb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8e3b2e"/><stop offset=".45" stop-color="#c8553f"/><stop offset="1" stop-color="#f0b0a0"/></linearGradient>
+  <linearGradient id="cf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d8604a"/><stop offset="1" stop-color="#a8342a"/></linearGradient>
+ </defs>
+ <g filter="url(#guache)">
+  <!-- cauda -->
+  <path d="M236 100 C282 62 316 50 332 44 C326 78 326 122 332 156 C316 148 282 138 236 100Z" fill="url(#cf)"/>
+  <path d="M290 78 L328 52 M292 100 L330 100 M290 122 L328 148" stroke="#7d2a22" stroke-width="1.5" opacity=".5" fill="none"/>
+  <!-- nadadeira dorsal -->
+  <path d="M96 44 C120 22 150 20 176 30 C196 38 214 42 246 56 C226 60 196 60 150 62 C124 62 108 56 96 44Z" fill="#c9503a"/>
+  <path d="M118 34 L124 58 M138 28 L144 60 M158 26 L164 60 M178 32 L184 60 M200 40 L206 60 M224 48 L230 58" stroke="#6e241c" stroke-width="1.4" opacity=".45"/>
+  <!-- ventral/anal -->
+  <path d="M170 148 C190 164 220 170 252 124 C230 132 200 140 170 148Z" fill="#d86a52"/>
+  <path d="M100 138 C108 160 124 172 138 170 C136 156 130 146 120 138Z" fill="#e0775c"/>
+  <!-- corpo -->
+  <path d="M26 100 C34 70 62 50 104 44 C150 36 206 42 262 98 C206 160 150 166 108 160 C66 156 36 134 26 100Z" fill="url(#cb)"/>
+  <!-- focinho / boca -->
+  <path d="M26 100 C30 108 40 114 54 116" stroke="#5c1d17" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- escamas -->
+  <g fill="none" stroke="#7a2a20" stroke-width="1.1" opacity=".35">
+   <path d="M90 76q10 8 0 18M110 70q10 8 0 18M130 68q10 8 0 18M150 68q10 8 0 18M170 70q10 8 0 18M190 74q10 8 0 18M210 80q10 8 0 18M100 98q10 8 0 18M120 96q10 8 0 18M140 96q10 8 0 18M160 98q10 8 0 18M180 100q10 8 0 18M200 104q10 8 0 18M110 120q10 8 0 18M130 120q10 8 0 18M150 122q10 8 0 18M170 122q10 8 0 18"/>
+  </g>
+  <!-- linha lateral -->
+  <path d="M96 78 C150 72 210 84 258 102" stroke="#6a2219" stroke-width="1.6" fill="none" opacity=".4"/>
+  <!-- mancha preta da cioba -->
+  <ellipse cx="176" cy="76" rx="9" ry="8" fill="#2a1612" opacity=".85"/>
+  <!-- listra azul sob o olho -->
+  <path d="M50 108 C70 100 90 96 112 98" stroke="#6fb2d8" stroke-width="3" fill="none" opacity=".75" stroke-linecap="round"/>
+  <!-- opérculo e peitoral -->
+  <path d="M92 66 C104 90 104 116 92 142" stroke="#6a2219" stroke-width="2" fill="none" opacity=".45"/>
+  <path d="M112 112 C130 108 146 118 148 140 C130 140 116 130 112 112Z" fill="#e07a5e"/>
+  <!-- olho -->
+  <circle cx="60" cy="86" r="11" fill="#f2e6c6"/><circle cx="60" cy="86" r="8.2" fill="#c9602c"/><circle cx="60" cy="86" r="5" fill="#161010"/><circle cx="57.5" cy="83.5" r="1.8" fill="#fff" opacity=".9"/>
+  <!-- brilho do dorso -->
+  <path d="M60 64 C110 50 190 54 240 82" stroke="#ffd8b0" stroke-width="3" fill="none" opacity=".25"/>
+ </g>
+</svg>
+
+<!-- ===== OLHO-DE-BOI (lado) 360x150 ===== -->
+<svg id="boi_lado" class="s" width="360" height="150" viewBox="0 0 360 150">
+ <defs>
+  <linearGradient id="ob" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f6f6b"/><stop offset=".4" stop-color="#8aa6a0"/><stop offset=".72" stop-color="#cdd8d2"/><stop offset="1" stop-color="#f1f1e6"/></linearGradient>
+ </defs>
+ <g filter="url(#guache)">
+  <path d="M262 76 C306 48 334 30 350 22 C344 56 344 94 350 128 C334 120 306 104 262 76Z" fill="#a8b894"/>
+  <path d="M286 76 C312 52 336 30 350 22 C340 40 330 54 320 62" fill="none" stroke="#d6b040" stroke-width="3" opacity=".7"/>
+  <!-- dorsais -->
+  <path d="M120 34 C132 20 150 16 168 22 C160 28 158 32 156 38Z" fill="#5a7570"/>
+  <path d="M196 34 C220 28 252 40 280 58 C250 54 226 50 198 44Z" fill="#6f8c85"/>
+  <path d="M190 112 C220 124 254 112 280 94 C250 100 224 106 192 104Z" fill="#c8d4c8"/>
+  <path d="M120 112 C124 124 136 130 146 128 C142 120 138 114 132 110Z" fill="#d0d6c4"/>
+  <!-- corpo -->
+  <path d="M10 74 C20 50 56 36 112 32 C176 28 238 40 288 76 C240 112 176 124 112 120 C56 116 20 100 10 74Z" fill="url(#ob)"/>
+  <!-- faixa âmbar do flanco -->
+  <path d="M64 80 C120 70 200 72 284 78 C200 84 120 88 64 90Z" fill="#d6aa44" opacity=".55"/>
+  <!-- faixa escura oblíqua pelo olho (a "bandana" do olho-de-boi) -->
+  <path d="M18 66 C44 54 70 48 98 36 L112 34 L116 48 C96 56 74 68 56 84 C42 82 28 76 18 66Z" fill="#26302f" opacity=".9"/>
+  <!-- boca -->
+  <path d="M10 74 C16 84 28 90 44 92" stroke="#2c3030" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <path d="M96 40 C108 62 108 88 96 112" stroke="#46514e" stroke-width="2" fill="none" opacity=".45"/>
+  <!-- peitoral -->
+  <path d="M112 90 C128 88 142 96 144 110 C128 110 116 102 112 90Z" fill="#b9c6b8"/>
+  <!-- olho -->
+  <circle cx="44" cy="68" r="10" fill="#f0e6c8"/><circle cx="44" cy="68" r="7.4" fill="#caa232"/><circle cx="44" cy="68" r="4.6" fill="#101414"/><circle cx="41.8" cy="65.8" r="1.6" fill="#fff" opacity=".9"/>
+  <path d="M60 46 C120 36 210 38 270 62" stroke="#dcefe8" stroke-width="3" fill="none" opacity=".3"/>
+ </g>
+</svg>
+
+<!-- ===== PEIXE-LUA (lado) 300x270 ===== -->
+<svg id="lua_lado" class="s" width="300" height="270" viewBox="0 0 300 270">
+ <defs>
+  <radialGradient id="lb" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#d4dcdf"/><stop offset=".6" stop-color="#9eacb2"/><stop offset="1" stop-color="#6c7b82"/></radialGradient>
+ </defs>
+ <g filter="url(#guache)">
+  <!-- nadadeiras dorsal e anal altas, no fundo do corpo -->
+  <path d="M168 62 C198 10 232 6 246 22 C246 52 240 92 230 116 C208 96 188 78 168 62Z" fill="#7d8c93"/>
+  <path d="M168 208 C198 258 232 262 246 246 C246 216 240 176 230 152 C208 172 188 190 168 208Z" fill="#7d8c93"/>
+  <!-- clavo (cauda curta ondulada) -->
+  <path d="M226 112 C250 108 268 112 280 124 C286 134 286 142 280 150 C268 160 250 160 226 156Z" fill="#8c9aa0"/>
+  <path d="M236 116 C246 134 246 146 236 156 M250 114 C258 134 258 146 250 158 M264 118 C270 134 270 146 264 156" stroke="#56646b" stroke-width="2" fill="none" opacity=".55"/>
+  <!-- corpo em disco -->
+  <path d="M30 134 C30 70 82 30 150 30 C200 30 232 74 236 134 C232 196 200 238 150 238 C82 238 30 198 30 134Z" fill="url(#lb)"/>
+  <!-- manchas da pele -->
+  <g fill="#53626a" opacity=".22">
+   <ellipse cx="120" cy="90" rx="26" ry="14"/><ellipse cx="170" cy="150" rx="30" ry="18"/><ellipse cx="96" cy="170" rx="22" ry="12"/><ellipse cx="190" cy="82" rx="14" ry="9"/><ellipse cx="132" cy="206" rx="20" ry="10"/>
+  </g>
+  <g fill="#e8eef0" opacity=".25"><ellipse cx="96" cy="76" rx="40" ry="10" transform="rotate(-20 96 76)"/><ellipse cx="150" cy="60" rx="30" ry="6" transform="rotate(-8 150 60)"/></g>
+  <!-- boquinha e olho -->
+  <path d="M30 138 C34 144 40 146 46 144" stroke="#3a454a" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse cx="38" cy="136" rx="9" ry="6" fill="#aab6bb"/>
+  <circle cx="64" cy="112" r="14" fill="#eef0e6"/><circle cx="64" cy="112" r="10" fill="#7a8a84"/><circle cx="64" cy="112" r="6.5" fill="#12181a"/><circle cx="61" cy="109" r="2.2" fill="#fff" opacity=".9"/>
+  <!-- peitoral pequena -->
+  <path d="M90 154 C108 146 124 158 122 176 C106 176 92 168 90 154Z" fill="#8a989e"/>
+  <path d="M96 94 C110 100 112 124 102 140" stroke="#5e6c73" stroke-width="2" fill="none" opacity=".5"/>
+ </g>
+</svg>
+
+<!-- ===== CIOBA (cima, cabeça para cima) 150x300 ===== -->
+<svg id="cioba_cima" class="s" width="150" height="300" viewBox="0 0 150 300">
+ <defs><linearGradient id="cc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c85a42"/><stop offset=".5" stop-color="#9a3a2c"/><stop offset="1" stop-color="#c85a42"/></linearGradient></defs>
+ <g filter="url(#guache)">
+  <path d="M75 238 C56 252 44 270 40 288 C58 280 68 272 75 262 C82 272 92 280 110 288 C106 270 94 252 75 238Z" fill="#b84230"/>
+  <path d="M42 112 C22 112 10 124 12 142 C26 140 38 132 46 124Z" fill="#df7a5e"/>
+  <path d="M108 112 C128 112 140 124 138 142 C124 140 112 132 104 124Z" fill="#df7a5e"/>
+  <path d="M75 8 C94 12 104 40 106 84 C108 130 100 190 86 250 C82 258 68 258 64 250 C50 190 42 130 44 84 C46 40 56 12 75 8Z" fill="url(#cc)"/>
+  <path d="M75 30 L75 250" stroke="#5e1f18" stroke-width="3" opacity=".4"/>
+  <g fill="none" stroke="#6a2219" stroke-width="1.1" opacity=".3"><path d="M54 80q8 8 16 0M80 80q8 8 16 0M52 110q8 8 16 0M82 110q8 8 16 0M54 140q8 8 16 0M80 140q8 8 16 0M58 170q8 8 16 0M78 170q8 8 16 0M62 200q8 8 16 0M76 200q8 8 14 0"/></g>
+  <circle cx="58" cy="40" r="6" fill="#f2e6c6"/><circle cx="58" cy="40" r="3.6" fill="#101010"/>
+  <circle cx="92" cy="40" r="6" fill="#f2e6c6"/><circle cx="92" cy="40" r="3.6" fill="#101010"/>
+  <path d="M60 18 C70 10 80 10 90 18" stroke="#e9a18c" stroke-width="2" fill="none" opacity=".6"/>
+  <ellipse cx="75" cy="92" rx="5" ry="7" fill="#1d100d" opacity=".7"/>
+ </g>
+</svg>
+
+<!-- ===== OLHO-DE-BOI (cima) 120x330 ===== -->
+<svg id="boi_cima" class="s" width="120" height="330" viewBox="0 0 120 330">
+ <defs><linearGradient id="oc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a4b6aa"/><stop offset=".5" stop-color="#4a6a66"/><stop offset="1" stop-color="#a4b6aa"/></linearGradient></defs>
+ <g filter="url(#guache)">
+  <path d="M60 262 C44 284 34 306 30 324 C46 318 56 308 60 298 C64 308 74 318 90 324 C86 306 76 284 60 262Z" fill="#a8b894"/>
+  <path d="M34 130 C18 134 10 146 12 162 C26 158 36 150 40 142Z" fill="#9db0a0"/>
+  <path d="M86 130 C102 134 110 146 108 162 C94 158 84 150 80 142Z" fill="#9db0a0"/>
+  <path d="M60 6 C76 10 84 40 86 92 C88 150 80 220 68 268 C64 276 56 276 52 268 C40 220 32 150 34 92 C36 40 44 10 60 6Z" fill="url(#oc)"/>
+  <path d="M60 30 L60 268" stroke="#26302f" stroke-width="2.4" opacity=".4"/>
+  <path d="M38 44 L82 60 L84 76 L36 60Z" fill="#26302f" opacity=".55"/>
+  <circle cx="45" cy="38" r="5.5" fill="#f0e6c8"/><circle cx="45" cy="38" r="3.2" fill="#101414"/>
+  <circle cx="75" cy="38" r="5.5" fill="#f0e6c8"/><circle cx="75" cy="38" r="3.2" fill="#101414"/>
+  <path d="M42 110 L78 110 M40 150 L80 150 M42 190 L78 190" stroke="#d6aa44" stroke-width="3" opacity=".35"/>
+ </g>
+</svg>
+
+<!-- ===== PEIXE-LUA (cima) 150x260 ===== -->
+<svg id="lua_cima" class="s" width="150" height="260" viewBox="0 0 150 260">
+ <defs><linearGradient id="lc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c8c93"/><stop offset=".5" stop-color="#b4c0c4"/><stop offset="1" stop-color="#7c8c93"/></linearGradient></defs>
+ <g filter="url(#guache)">
+  <path d="M50 160 C20 170 10 196 16 226 C40 218 56 200 60 180Z" fill="#7d8c93"/>
+  <path d="M100 160 C130 170 140 196 134 226 C110 218 94 200 90 180Z" fill="#7d8c93"/>
+  <path d="M40 120 C14 112 8 128 14 144 C30 142 40 136 46 130Z" fill="#8a989e"/>
+  <path d="M110 120 C136 112 142 128 136 144 C120 142 110 136 104 130Z" fill="#8a989e"/>
+  <path d="M75 6 C98 12 110 52 110 108 C110 170 100 220 88 240 C82 250 68 250 62 240 C50 220 40 170 40 108 C40 52 52 12 75 6Z" fill="url(#lc)"/>
+  <path d="M75 30 L75 236" stroke="#53626a" stroke-width="2.4" opacity=".4"/>
+  <g fill="#53626a" opacity=".22"><ellipse cx="62" cy="90" rx="12" ry="22"/><ellipse cx="90" cy="150" rx="12" ry="26"/><ellipse cx="60" cy="170" rx="9" ry="18"/></g>
+  <circle cx="54" cy="36" r="7" fill="#eef0e6"/><circle cx="54" cy="36" r="4.4" fill="#12181a"/>
+  <circle cx="96" cy="36" r="7" fill="#eef0e6"/><circle cx="96" cy="36" r="4.4" fill="#12181a"/>
+ </g>
+</svg>
+</body></html>

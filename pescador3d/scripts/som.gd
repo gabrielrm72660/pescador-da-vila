@@ -37,6 +37,11 @@ var _musica_espera: float = 25.0            # primeira vez: meio minuto depois d
 var _musica_saindo: bool = false
 var _periodo_ant: String = ""
 var _tempo_ambiente: float = 0.0  # ciclo lento, evita volume de ambiente mecanicamente constante
+# v0.6.0: bruma. O mar e o vento ficam abafados (passa-baixa que fecha com a névoa) e, de longe, bate um sino de boia.
+var _filtros_bruma: Array = []              # [{bus, indice, filtro}]
+var _sino: AudioStreamPlayer
+var _prox_sino: float = 22.0
+var _clima_ref: Node = null
 # O arquivo vento.ogg roda em laco, mas fica inaudivel entre rajadas.
 # Dessa maneira nao ha corte seco no meio do arquivo e o vento deixa de dominar o som.
 var _proxima_rajada: float = 15.0
@@ -72,11 +77,72 @@ func _ready() -> void:
             if st is AudioStreamOggVorbis:
                 st.loop = false
             _musica_streams[periodo] = st
+    _preparar_bruma()
     _guardar_avulso("onda_2", "mar")
     _guardar_avulso("onda_3", "mar")
     _guardar_avulso("trovao", "chuva")
     for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura"]:
         _guardar_avulso(nome, "efeitos")
+
+func _preparar_bruma() -> void:
+    for nome in ["Mar", "Vento"]:
+        var i: int = AudioServer.get_bus_index(nome)
+        if i < 0:
+            continue
+        var f := AudioEffectLowPassFilter.new()
+        f.cutoff_hz = 20000.0
+        AudioServer.add_bus_effect(i, f)
+        var idx: int = AudioServer.get_bus_effect_count(i) - 1
+        AudioServer.set_bus_effect_enabled(i, idx, false)
+        _filtros_bruma.append({"bus": i, "indice": idx, "filtro": f})
+    var caminho: String = PASTA + "sino_bruma.ogg"
+    if not ResourceLoader.exists(caminho):
+        return
+    if AudioServer.get_bus_index("Sino") == -1:
+        AudioServer.add_bus()
+        var k: int = AudioServer.bus_count - 1
+        AudioServer.set_bus_name(k, "Sino")
+        AudioServer.set_bus_send(k, CANAL["efeitos"])
+        var passa_baixa := AudioEffectLowPassFilter.new()
+        passa_baixa.cutoff_hz = 1900.0
+        AudioServer.add_bus_effect(k, passa_baixa)
+        var eco := AudioEffectReverb.new()
+        eco.room_size = 0.85
+        eco.damping = 0.6
+        eco.wet = 0.35
+        eco.dry = 0.7
+        AudioServer.add_bus_effect(k, eco)
+    _sino = AudioStreamPlayer.new()
+    _sino.stream = load(caminho)
+    _sino.bus = "Sino"
+    _sino.volume_db = -26.0
+    add_child(_sino)
+
+## Quão abafado está o mar (0..1): a bruma fecha mais longe das ilhas.
+func _bruma_do_som() -> float:
+    if _clima_ref == null:
+        _clima_ref = get_node_or_null("../Clima")
+    if _clima_ref == null:
+        return 0.0
+    return clampf(float(_clima_ref.bruma) * (0.40 + 0.60 * float(_clima_ref.bruma_local)), 0.0, 1.0)
+
+func _aplicar_bruma(delta: float, bruma: float) -> void:
+    for f in _filtros_bruma:
+        var ligado: bool = bruma > 0.02
+        if AudioServer.is_bus_effect_enabled(f.bus, f.indice) != ligado:
+            AudioServer.set_bus_effect_enabled(f.bus, f.indice, ligado)
+        (f.filtro as AudioEffectLowPassFilter).cutoff_hz = lerpf(20000.0, 2500.0, bruma)
+    if _sino == null:
+        return
+    if navegando and bruma > 0.45:
+        _prox_sino -= delta
+        if _prox_sino <= 0.0:
+            _sino.volume_db = lerpf(-33.0, -23.0, bruma) + randf_range(-3.0, 1.0)
+            _sino.pitch_scale = randf_range(0.92, 1.07)
+            _sino.play()
+            _prox_sino = randf_range(24.0, 52.0)
+    else:
+        _prox_sino = maxf(_prox_sino, 10.0)
 
 func _guardar_avulso(nome: String, grupo: String) -> void:
     var p := _tocador(nome, -8.0, grupo)
@@ -222,10 +288,12 @@ func _process(delta: float) -> void:
         var distancia: float = maxf(0.0, mundo.distancia_da_costa(barco.global_position))
         proximidade_costa = 1.0 - smoothstep(30.0, 170.0, distancia)
     var suave: float = 1.0 - exp(-2.5 * delta)
+    var bruma_som: float = _bruma_do_som()
+    _aplicar_bruma(delta, bruma_som)
     if _mar != null:
         # O respiro das ondas e lento; pertinho da praia o ambiente cresce um pouco.
         var ciclo: float = 0.68 * sin(_tempo_ambiente * 0.21) + 0.32 * sin(_tempo_ambiente * 0.37 + 1.2)
-        var alvo_mar: float = lerpf(-15.0, -10.0, mar_agitado) + 2.2 * proximidade_costa + 0.5 * ciclo
+        var alvo_mar: float = lerpf(-15.0, -10.0, mar_agitado) + 2.2 * proximidade_costa + 0.5 * ciclo - 4.0 * bruma_som
         _mar.volume_db = lerpf(_mar.volume_db, alvo_mar, suave)
     if _motor != null:                                       # marcha lenta baixinha, acelera com o barco
         var com_diesel: bool = barco == null or barco.combustivel > 0.0        # sem combustível o motor cala

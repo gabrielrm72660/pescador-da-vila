@@ -1,0 +1,53 @@
+BRUMA v0.6.0 — NOVO NOME, NPCs ESTILO DREDGE, MENU DE ABERTURA, BRUMA NO MAR, SÃO PEDRO, 4 IDIOMAS
+================================================================================================
+O jogo agora se chama BRUMA (antes Pescador). A pasta de dados do usuário continua "Pescador", então saves e opções antigos seguem valendo.
+
+1) NOME E ÍCONE (project.godot, assets/marca/icone.png)
+- Título "Bruma", versão 0.6.0, ícone novo.
+
+2) ABRE NO MENU (scripts/tela_inicial.gd, jogo.gd)
+- O jogo não cai mais direto no mar: primeiro a tela de título (CONTINUAR A VIAGEM / COMEÇAR A VIAGEM / NOVO JOGO / OPÇÕES / SAIR),
+  depois a viagem. O relógio do jogo fica parado atrás da tela de título.
+
+3) SEM NPCs 3D NOS CAIS, NPCs NO ESTILO DREDGE (scripts/npcs.gd, dialogo.gd, missoes.gd, jogo.gd)
+- Os bonecos 3D dos cais saíram. Ao atracar, quem tem algo a dizer aparece em retrato pintado, com caixa de diálogo
+  (nome, papel, fala que vai surgindo, botão "Continuar", F ou clique avança, ESC pula).
+- 5 personagens, com os seus retratos: Seu Jacinto (pescador aposentado) e Dona Zefa (peixeira) na Vila do Porto,
+  Toinho (zelador) na Ilha das Rocas, Dona Rosa (mercadora) e Seu Abílio (faroleiro) na Ilha de São Pedro.
+- As 21 missões passaram a ter dono: cada uma é entregue por um NPC (fala de oferta) e termina com uma fala (de quem entregou ou de outro).
+  Missões de entrega: o NPC põe uma caixa de peças no porão (4 casas, não vende) e você leva até o destino.
+- No painel do cais há "Conversar com ..." [T] para ouvir a conversa de cada NPC.
+
+4) SÃO PEDRO COM CONTEÚDO (scripts/jogo.gd, cardumes.gd, ilha.gd)
+- O cais de São Pedro paga +25% e mais ainda por peixes da região (Cioba +60%, Olho-de-boi +50%, Peixe-lua +40%, Garoupa/Peixe-anjo +30%, Namorado +25%).
+- Espécies novas: Cioba e Olho-de-boi (só nascem perto de São Pedro) e Peixe-lua (só em noite de bruma).
+  (As imagens desses 3 peixes são provisórias, feitas por mim; troque os PNGs de mesmo nome quando tiver as definitivas.)
+
+5) CADA PEIXE LUTA DO SEU JEITO (scripts/pesca.gd)
+- Sete comportamentos no anel de pesca; a dica aparece no diário ao lançar a linha:
+  Bando (faixas largas, fácil: Sardinha, Tainha, Baiacu, Peixe-voador) · Corredor (o ponteiro dispara e inverte: Xaréu, Cavala, Barracuda, Dourado, Atum, Arabaiana, Olho-de-boi)
+  · Pesado (a tensão sobe sozinha; técnica Suave ajuda: Garoupa, Namorado, Cioba) · Arisco (faixas que se mexem: Olho-de-cão, Budião, Robalo, Peixe-anjo)
+  · Escorregadio (faixas finas, miolo dourado maior: Moreia) · Saltador (salta; espere o aviso: Agulhão-vela) · Colosso (3 fases: Peixe-lua).
+
+6) A BRUMA (scripts/clima.gd, fantasmas.gd, hud.gd, som.gd, ilha.gd)
+- A cada 3 noites (noites 1, 4, 7...) desce uma neblina espessa e leitosa. Mar aberto fica denso; perto das ilhas é mais ralo
+  e dentro do alcance do facho do farol fica quase limpo. K também alterna o clima "Bruma" de dia.
+- Longe de terra a bússola e o radar ficam instáveis (tremem, chiam e mostram miragens de cardumes que não existem).
+- Vultos de barcos-fantasma passam na névoa com lanterna; o som do mar fica abafado e toca um sino ao longe.
+
+7) QUATRO IDIOMAS: PORTUGUÊS, ESPAÑOL, ENGLISH E 中文 (scripts/idioma*.gd, ferramentas/idioma/)
+- Menus, HUD, avisos, loja, encomendas, mapa, nomes de lugares, espécies, missões e todas as falas dos NPCs mudam na hora em Opções > Idioma.
+- Chinês com fonte própria (Noto Sans SC, subconjunto de 795 caracteres, licença OFL em assets/fontes/). Se mudar texto em chinês, rode
+  ferramentas/idioma/gerar.py e depois ferramentas/idioma/subset_fonte.py. Para achar textos sem tradução: ferramentas/idioma/auditar.py.
+- Mapa: legenda e texto de ajuda agora acompanham a largura do texto (inglês e chinês não se sobrepõem mais).
+
+8) PEIXES DA MISSÃO PISCAM NO RADAR (scripts/hud.gd, jogo.gd)
+- Quando a missão pede uma espécie (ex.: "Pescar um atum") ou é uma encomenda, os cardumes dessa espécie ganham um anel
+  dourado que pisca em volta do eco; fora do alcance, o traço na borda do radar pisca em dourado e aponta a direção.
+  Missões de "qualquer peixe" não destacam nada.
+
+NÃO TESTADO AQUI
+- O áudio (sino da bruma, mar abafado): o ambiente de teste não toca som.
+- Imagens e luzes só foram vistas em renderizador compatível (gl_compatibility) e em 1280x720; Forward+ / RX 6600 e Full HD não.
+- As traduções para chinês foram escritas por mim e merecem revisão de um falante nativo.
+- Janela de Construtor (F9) continua só em português: é ferramenta de desenvolvimento.

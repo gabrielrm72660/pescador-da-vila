@@ -1,9 +1,11 @@
-; PESCADOR (antes MAR ABERTO)
+; BRUMA (antes PESCADOR e MAR ABERTO)
 ; Godot 4.3+ (renderizador Forward+)
 config_version=5
 
 [application]
-config/name="Pescador v0.5.13"
+config/name="Bruma"
+config/version="0.6.0"
+config/icon="res://assets/marca/icone.png"
 run/main_scene="res://cenas/Jogo.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="Pescador"

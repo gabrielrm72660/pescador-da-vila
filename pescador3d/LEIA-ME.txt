@@ -1,3 +1,13 @@
+BRUMA — Versão 0.6.0 (Godot 4.7)   [antes "Pescador"]
+================================================
+NOVO NA 0.6.0 (detalhes em docs/BRUMA_v0.6.0_NOVIDADES.txt):
+- NOME NOVO: Bruma, com ícone novo. O jogo abre na tela de título e só depois vai ao mar.
+- NPCs ESTILO DREDGE nos cais (retrato pintado + caixa de diálogo) dando as 21 missões; os bonecos 3D saíram.
+- BRUMA: a cada 3 noites uma neblina espessa; bússola e radar falham longe das ilhas; vultos, miragens e sino ao longe.
+- SÃO PEDRO: cais que paga mais, Cioba, Olho-de-boi e Peixe-lua. Cada peixe luta do seu jeito (7 comportamentos).
+- 4 IDIOMAS: português, español, English e 中文, mudam na hora em Opções > Idioma.
+- RADAR: os cardumes da espécie que a missão pede piscam em dourado.
+
 PESCADOR — Versão 0.5.13 (Godot 4.7)
 ================================================
 NOVO NA 0.5.13 (detalhes em docs/PESCADOR_v0.5.13_NOVIDADES.txt):

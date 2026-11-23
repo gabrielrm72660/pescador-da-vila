@@ -18,6 +18,8 @@ signal melhorar_linha_pressed
 signal sair_pressed
 signal consertar_pressed
 signal idioma_mudou
+signal conversar_pressed(id: String)    # v0.6.0: botão "Conversar" do cais
+signal dialogo_terminou                 # v0.6.0: acabou a conversa com o NPC do cais
 
 const HudPintado = preload("res://scripts/hud.gd")
 const CartaMapa = preload("res://scripts/mapa_cartografico.gd")
@@ -26,6 +28,10 @@ const BotaoAq = preload("res://scripts/botao_aquarela.gd")
 const DeslizanteAq = preload("res://scripts/deslizante_aquarela.gd")
 const VEU = preload("res://shaders/veu_aquarela.gdshader")
 const T = preload("res://scripts/idioma.gd")
+const TelaInicial = preload("res://scripts/tela_inicial.gd")
+const Marca = preload("res://scripts/marca.gd")
+const Dialogo = preload("res://scripts/dialogo.gd")
+const Npcs = preload("res://scripts/npcs.gd")
 
 var raiz: Control
 var menu: ColorRect
@@ -73,6 +79,11 @@ var porto_consertar: Button
 var porto_sair: Button
 var _ultimo_porto: Dictionary = {}
 var _voltar_do_avancado := false
+var tela_inicial: Control             # v0.6.0: o jogo abre nela
+var dialogo: Control                  # v0.6.0: caixa de diálogo dos NPCs (scripts/dialogo.gd)
+var porto_npcs: HBoxContainer         # v0.6.0: botões "Conversar com ..."
+var _botoes_npc: Array = []
+var no_titulo := false
 
 const COR_TEXTO := Aq.NANQUIM                       # tinta dos textos sobre o papel
 const COR_SECAO := Color(0.08, 0.40, 0.42)         # títulos de seção: verde-azulado
@@ -80,6 +91,7 @@ const COR_TITULO := Color(0.58, 0.24, 0.15)        # terracota: nomes e títulos
 const COR_SUAVE := Aq.NANQUIM_CLARO
 
 func _ready() -> void:
+    Aq.preparar_fontes()
     raiz = Control.new()
     raiz.name = "InterfaceRaiz"
     raiz.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -88,6 +100,20 @@ func _ready() -> void:
     _construir_hud()
     _construir_mapa()
     _construir_porto()
+    dialogo = Dialogo.new()
+    raiz.add_child(dialogo)
+    dialogo.construir(self)
+    dialogo.terminou.connect(func(): dialogo_terminou.emit())
+    tela_inicial = TelaInicial.new()
+    raiz.add_child(tela_inicial)
+    tela_inicial.construir(self)
+    tela_inicial.visible = false
+    tela_inicial.continuar.connect(func(): iniciar_pressed.emit())
+    tela_inicial.novo_jogo.connect(func(): reiniciar_pressed.emit())
+    tela_inicial.sair.connect(func(): sair_pressed.emit())
+    tela_inicial.opcoes.connect(func():
+        menu.visible = true
+        _ir_para("opcoes"))
     _construir_menu()
 
 func _nova_label(texto: String, tamanho: int, cor: Color, quebra: bool = false, titulo: bool = false) -> Label:
@@ -241,7 +267,7 @@ func _construir_menu() -> void:
     col.add_theme_constant_override("separation", 8)
     margem.add_child(col)
 
-    titulo_menu = _nova_label("PESCADOR", 78, Color(0.10, 0.27, 0.36), false, true)
+    titulo_menu = _nova_label("BRUMA", 78, Color(0.10, 0.27, 0.36), false, true)
     titulo_menu.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     col.add_child(titulo_menu)
     col.add_child(_ornamento(14.0))
@@ -288,7 +314,7 @@ func _construir_menu() -> void:
         linha_idioma.add_child(bi)
         _botoes_idioma[codigo] = bi
     var nota := _nova_label("", 17, COR_SUAVE, true)
-    _t(nota, "Menus, painéis e o HUD mudam na hora. Missões e mensagens do diário continuam em português por enquanto.")
+    _t(nota, "Menus, painéis, missões e conversas mudam na hora.")
     geral.add_child(nota)
     geral.add_child(_t(_botao_aq("", "terracota", 24.0, Aq.CREME, 23, Vector2(440, 46)), "VOLTAR", func(): _ir_para("opcoes")))
 
@@ -324,6 +350,9 @@ func _t(controle: Control, chave: String, acao: Callable = Callable()) -> Contro
 
 func _ir_para(nome: String) -> void:
     pagina_atual = nome
+    if nome == "principal" and no_titulo and menu != null and menu.visible:
+        menu.visible = false                   # nas opções vindas da tela inicial, "voltar" volta para ela
+        return
     for k in paginas:
         paginas[k].visible = k == nome
     _confirmar_novo = -100.0
@@ -336,7 +365,7 @@ func _ir_para(nome: String) -> void:
 func _atualizar_cabecalho() -> void:
     match pagina_atual:
         "principal":
-            titulo_menu.text = T.t("PAUSA") if _pausa else "PESCADOR"
+            titulo_menu.text = T.t("PAUSA") if _pausa else Marca.NOME.to_upper()
             subtitulo_menu.text = T.t("O oceano continua esperando por você.") if _pausa else T.t("Uma aventura de pesca no Atlântico brasileiro.\nAssuma o comando do Estrela d'Alva.")
             if _pausa:
                 botao_principal.text = T.t("VOLTAR A NAVEGAR")
@@ -370,6 +399,10 @@ func definir_idioma(codigo: String) -> void:
     idioma_mudou.emit()
 
 func _aplicar_idioma() -> void:
+    if tela_inicial != null and tela_inicial.has_method("atualizar_textos") and tela_inicial._titulo != null:
+        tela_inicial.atualizar_textos()
+    if dialogo != null:
+        dialogo.atualizar_textos()
     for par in _textos:
         if is_instance_valid(par[0]):
             par[0].set("text", T.t(par[1]))
@@ -555,6 +588,10 @@ func _construir_porto() -> void:
         b.pressed.connect(func(): melhoria_pressed.emit(id))
         grade_oficina.add_child(b)
         porto_loja[id] = b
+    porto_npcs = HBoxContainer.new()
+    porto_npcs.add_theme_constant_override("separation", 10)
+    porto_npcs.visible = false
+    col.add_child(porto_npcs)
     porto_sair = _botao_aq(T.t("Zarpar   [F]"), "terracota", 41.0, Aq.CREME, 22, Vector2(300, 44))
     porto_sair.pressed.connect(func(): zarpar_pressed.emit())
     col.add_child(porto_sair)
@@ -563,7 +600,8 @@ func _construir_porto() -> void:
 func mostrar_porto(d: Dictionary) -> void:
     _ultimo_porto = d
     porto.visible = true
-    porto_titulo.text = T.t("Cais de %s") % d.nome
+    _atualizar_npcs_do_porto(d.get("npcs", []))
+    porto_titulo.text = T.t("Cais de %s") % T.t(String(d.nome))
     porto_rotulo_loja.visible = not d.get("loja", []).is_empty()
     for id in porto_loja:
         porto_loja[id].visible = porto_rotulo_loja.visible
@@ -609,6 +647,32 @@ func mostrar_porto(d: Dictionary) -> void:
 
 func esconder_porto() -> void:
     porto.visible = false
+
+## v0.6.0: a conversa com os NPCs do cais.
+func abrir_dialogo(falas: Array) -> void:
+    dialogo.abrir(falas)
+
+func dialogo_ativo() -> bool:
+    return dialogo != null and (dialogo.ativo or dialogo.visible)
+
+func _atualizar_npcs_do_porto(lista: Array) -> void:
+    for b in _botoes_npc:
+        b.visible = false
+    for i in lista.size():
+        if i >= _botoes_npc.size():
+            var novo := _botao_aq("", "ocre", 70.0 + i * 3.1, Aq.CREME, 17, Vector2(300, 38))
+            novo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+            novo.clip_text = true
+            porto_npcs.add_child(novo)
+            _botoes_npc.append(novo)
+        var b: Button = _botoes_npc[i]
+        var id: String = lista[i]
+        for conexao in b.pressed.get_connections():
+            b.pressed.disconnect(conexao.callable)
+        b.pressed.connect(func(): conversar_pressed.emit(id))
+        b.text = T.t("Conversar com %s") % T.t(Npcs.DADOS[id].nome) + ("  [T]" if i == 0 else "")
+        b.visible = true
+    porto_npcs.visible = not lista.is_empty()
 
 ## Volumes: um controle por canal (scripts/som.gd aplica e guarda) e o botão de silenciar.
 const NOMES_VOLUME := {"geral": "Geral", "musica": "Música", "mar": "Mar e ondas", "vento": "Vento", "chuva": "Chuva e trovões", "barco": "Motor e casco", "efeitos": "Efeitos"}
@@ -676,8 +740,16 @@ func _clicar_reiniciar() -> void:
 func mostrar_inicio(tem_viagem_salva: bool = false) -> void:
     _pausa = false
     _tem_salva = tem_viagem_salva
-    menu.visible = true
-    _ir_para("principal")
+    no_titulo = true
+    menu.visible = false
+    pagina_atual = "principal"
+    tela_inicial.mostrar(tem_viagem_salva)
+
+## Saindo da tela inicial (o jogo começou): some com ela, a não ser que a cortina ainda esteja fechando.
+func fechar_titulo() -> void:
+    no_titulo = false
+    if tela_inicial != null and not tela_inicial.em_transicao:
+        tela_inicial.visible = false
 
 func mostrar_pausa() -> void:
     _pausa = true
@@ -719,6 +791,6 @@ func atualizar(nos: float, rumo: int, distancia: float, peixes: int, peso: float
     hud.fracao_motor = fracao_motor
     hud.estado_pesca = pesca_status
     hud.pesca_ativa = pesca_ativa
-    hud.visible = not menu.visible and not esconder_hud and not mapa_aberto()
+    hud.visible = not menu.visible and not esconder_hud and not mapa_aberto() and not (tela_inicial != null and tela_inicial.visible) and not dialogo_ativo()
     if hud.painel_aberto != "":
         _preencher_painel()

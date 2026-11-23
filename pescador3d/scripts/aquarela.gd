@@ -6,6 +6,27 @@ const SHADER := preload("res://shaders/aquarela.gdshader")
 const FONTE_TITULO: Font = preload("res://assets/fontes/CaveatBrush-Regular.ttf")     # letra de pincel: títulos e números grandes
 const FONTE_TEXTO: Font = preload("res://assets/fontes/PatrickHand-Regular.ttf")      # letra de mão legível: o resto
 
+## v0.6.0: as duas fontes manuscritas não têm ideogramas. A Noto Sans CJK (OFL), recortada só com os caracteres do jogo,
+## entra como reserva: só é usada para o que as fontes pintadas não desenham, então português, espanhol e inglês não mudam.
+const FONTE_ZH_TEXTO := "res://assets/fontes/NotoSansSC-Regular-subset.otf"
+const FONTE_ZH_TITULO := "res://assets/fontes/NotoSansSC-Bold-subset.otf"
+static var _reserva_ligada: bool = false
+
+static func preparar_fontes() -> void:
+    if _reserva_ligada:
+        return
+    _reserva_ligada = true
+    for par in [[FONTE_TEXTO, FONTE_ZH_TEXTO], [FONTE_TITULO, FONTE_ZH_TITULO]]:
+        var reserva: Font = null
+        if ResourceLoader.exists(par[1]):
+            reserva = load(par[1]) as Font
+        if reserva == null and FileAccess.file_exists(par[1]):          # sem importar (testes): lê o arquivo direto
+            var ff := FontFile.new()
+            ff.load_dynamic_font(par[1])
+            reserva = ff
+        if reserva != null:
+            (par[0] as Font).fallbacks = [reserva]
+
 # pigmentos
 const AZUL_MAR := Color(0.07, 0.25, 0.33)          # lavagem principal dos cartões do jogo
 const AZUL_FUNDO := Color(0.035, 0.13, 0.22)       # o segundo tom dela

@@ -6,6 +6,8 @@ extends Node
 ## um instante para o renderizador se ajustar e então junta ~1 s de amostras do tempo de GPU. O valor da tabela é a MEDIANA
 ## (um engasgo isolado de compilação de shader não entra). Tudo é restaurado ao terminar. Esc cancela.
 
+const Idioma = preload("res://scripts/idioma.gd")
+
 signal terminou
 
 enum Fase { VISTA, CONFIG, MEDINDO, RESULTADO }
@@ -91,7 +93,7 @@ func iniciar(opcoes, modo_teste: String = "recursos") -> bool:
     _jogo = opcoes.get_parent()
     _camera = _jogo.get_node_or_null("Camera") as Camera3D
     if not _jogo.iniciado or _camera == null:
-        _jogo.interface.aviso("Comece a viagem antes: a bancada mede a cena real do jogo.")
+        _jogo.interface.aviso(Idioma.t("Comece a viagem antes: a bancada mede a cena real do jogo."))
         terminou.emit()
         queue_free()
         return false
@@ -244,7 +246,7 @@ func _input(event: InputEvent) -> void:
     elif tecla == KEY_ESCAPE:
         get_viewport().set_input_as_handled()
         _restaurar()
-        _jogo.interface.aviso("Teste de desempenho cancelado.")
+        _jogo.interface.aviso(Idioma.t("Teste de desempenho cancelado."))
         terminou.emit()
         queue_free()
 

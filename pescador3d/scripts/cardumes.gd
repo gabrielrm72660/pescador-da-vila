@@ -29,6 +29,10 @@ const ESPECIES := {
     "Arabaiana": {"preco": 12, "peso": [4.0, 22.0], "peixes": 4, "tam": 1.20, "chance": 7, "capturas": [2, 3], "espera": [4.5, 7.5], "ponteiro": 0.84, "faixas": 2, "largura": 26, "acertos": 5},
     "Namorado": {"preco": 16, "peso": [3.0, 16.0], "peixes": 3, "tam": 1.15, "chance": 4, "capturas": [2, 3], "espera": [5.0, 8.5], "ponteiro": 0.80, "faixas": 2, "largura": 27, "acertos": 5},
     "Agulhão-vela": {"preco": 11, "peso": [18.0, 48.0], "peixes": 3, "tam": 1.65, "chance": 4, "capturas": [1, 1], "espera": [7.0, 10.0], "ponteiro": 1.00, "faixas": 2, "largura": 20, "acertos": 7, "alto_mar": true, "so_dia": true},
+    # --- v0.6.0: as espécies exclusivas do arquipélago de São Pedro ("regiao"); o peixe-lua só aparece em noite de bruma
+    "Cioba": {"preco": 24, "peso": [1.5, 9.0], "peixes": 4, "tam": 0.95, "chance": 14, "capturas": [2, 3], "espera": [4.5, 7.5], "ponteiro": 0.78, "faixas": 2, "largura": 27, "acertos": 5, "regiao": "sao_pedro"},
+    "Olho-de-boi": {"preco": 16, "peso": [4.0, 22.0], "peixes": 4, "tam": 1.2, "chance": 10, "capturas": [2, 3], "espera": [5.0, 8.0], "ponteiro": 0.95, "faixas": 2, "largura": 24, "acertos": 6, "regiao": "sao_pedro"},
+    "Peixe-lua": {"preco": 9, "peso": [25.0, 80.0], "peixes": 2, "tam": 2.1, "chance": 5, "capturas": [1, 1], "espera": [8.0, 12.0], "ponteiro": 0.55, "faixas": 2, "largura": 30, "acertos": 8, "alto_mar": true, "so_noite": true, "so_bruma": true},
 }
 const MAXIMO := 8
 const NASCE_MIN := 60.0        # m do barco
@@ -71,12 +75,17 @@ const NADO := {
     "Arabaiana": {"vel": 1.90, "grupo": 0.70, "separa": 1.80, "muda": 0.12},
     "Namorado": {"vel": 0.75, "grupo": 0.50, "separa": 2.10, "muda": 0.10},
     "Agulhão-vela": {"vel": 2.80, "grupo": 0.60, "separa": 2.60, "muda": 0.08},
+    "Cioba": {"vel": 0.70, "grupo": 0.55, "separa": 2.00, "muda": 0.10},
+    "Olho-de-boi": {"vel": 2.30, "grupo": 0.80, "separa": 1.90, "muda": 0.14},
+    "Peixe-lua": {"vel": 0.35, "grupo": 0.20, "separa": 3.00, "muda": 0.06},
 }
 
 var lista: Array = []
 var _alto_mar: bool = false     # o cardume que está nascendo fica longe das ilhas?
 var _distancia_costeira: float = 9999.0
 var _zona_local: String = "costeiro"
+var _regiao: String = ""         # v0.6.0: "sao_pedro" quando o cardume nasce no arquipélago de São Pedro
+var bruma: bool = false          # v0.6.0: noite de bruma (quem avisa é scripts/jogo.gd); o peixe-lua só aparece nela
 var _areas_descanso: Array = []  # regiões já pescadas/envelhecidas só voltam após a recuperação
 var noite: bool = false:         # quem avisa é scripts/jogo.gd; algumas espécies só aparecem no escuro
     set(valor):
@@ -205,17 +214,23 @@ func _chance(nome: String) -> int:
     var d: Dictionary = ESPECIES[nome]
     if (d.get("so_noite", false) and not noite) or (d.get("so_dia", false) and noite):
         return 0
+    if d.get("so_bruma", false) and not bruma:
+        return 0
+    if String(d.get("regiao", "")) != "" and String(d.regiao) != _regiao:
+        return 0
     if d.get("alto_mar", false):
         return int(d.chance) * 3 if _alto_mar else 0
     var peso: float = float(d.chance)
     if nome in ["Sardinha", "Tainha", "Robalo", "Baiacu"]:
         peso *= 1.8 if _distancia_costeira < 180.0 else 0.65
-    elif nome in ["Garoupa", "Olho-de-cão", "Budião", "Peixe-anjo", "Moreia", "Namorado"]:
+    elif nome in ["Garoupa", "Olho-de-cão", "Budião", "Peixe-anjo", "Moreia", "Namorado", "Cioba"]:
         peso *= 1.6 if _distancia_costeira < 150.0 else 0.4
+    elif nome == "Olho-de-boi":
+        peso *= 1.5 if _distancia_costeira > 60.0 else 0.8
     elif nome in ["Cavala", "Barracuda", "Xaréu", "Arabaiana", "Peixe-voador"]:
         peso *= 1.5 if _distancia_costeira > 110.0 else 0.7
     if _zona_local == "recife":
-        peso *= 3.0 if nome in ["Garoupa", "Xaréu", "Olho-de-cão", "Budião", "Peixe-anjo", "Moreia", "Namorado"] else 0.65
+        peso *= 3.0 if nome in ["Garoupa", "Xaréu", "Olho-de-cão", "Budião", "Peixe-anjo", "Moreia", "Namorado", "Cioba"] else 0.65
     elif _zona_local == "banco":
         peso *= 2.6 if nome in ["Cavala", "Xaréu", "Tainha", "Arabaiana", "Robalo"] else 0.75
     return maxi(1, roundi(peso) * (int(d.get("vezes_noite", 1)) if noite else 1))
@@ -395,6 +410,7 @@ func _nascer() -> void:
     _distancia_costeira = float(melhor_info[0])
     _alto_mar = _distancia_costeira > ALTO_MAR
     _zona_local = String(melhor_info[1])
+    _regiao = String(mundo.regiao_em(melhor_p)) if mundo != null and mundo.has_method("regiao_em") else ""
     criar(melhor_p)
 
 func _process(delta: float) -> void:

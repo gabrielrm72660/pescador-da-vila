@@ -7,6 +7,7 @@ const Vento = preload("res://scripts/vento.gd")
 
 signal anoiteceu
 signal amanheceu
+signal bruma_mudou(ativa: bool)      # v0.6.0: a bruma fechou (true) ou se desfez (false)
 
 const DURACAO_DIA := 960.0           # segundos de jogo para 24 horas (16 min; 40 s por hora)
 const HORA_INICIAL := 8.0
@@ -60,7 +61,7 @@ var _relogio: float = 0.0
 var _tempo: float = 0.0
 var _era_noite: bool = false
 
-const TIPOS_CLIMA := ["Automático", "Ensolarado", "Nublado", "Chuva", "Tempestade"]
+const TIPOS_CLIMA := ["Automático", "Ensolarado", "Nublado", "Chuva", "Tempestade", "Bruma"]
 var modo_clima: int = 0
 var _oceano: MeshInstance3D
 var _barco: Node3D
@@ -71,6 +72,14 @@ var estilo_calor: float = 0.0        # 0..1: puxa a cor do sol para o dourado
 var estilo_ambiente: float = 1.0
 var hora_congelada: bool = false     # o painel Cinema pode parar o relógio para ajustar a luz com calma
 var vento_forca: float = 0.25        # 0..1: calmaria ... temporal (vem da agitação do mar; alimenta o vento das folhagens)
+
+# ---- v0.6.0: as noites de bruma. A primeira noite do jogo é limpa; depois, uma noite em cada três a bruma desce.
+# Longe das ilhas ela fecha muito mais (bruma_local = 1); perto de luzes e do facho do farol, bem menos (bruma_local = 0).
+const BRUMA_A_CADA := 3              # a noite do dia N tem bruma quando N % 3 == 1 (2ª, 5ª, 8ª noite...)
+var dias: int = 0                    # quantas meias-noites já passaram (salvo com a viagem)
+var bruma: float = 0.0               # 0..1: quanto a bruma já fechou (sobe e desce em ~12 s)
+var bruma_local: float = 1.0         # 0..1: quão longe de luz e terra o barco está (quem calcula é scripts/jogo.gd)
+var _bruma_ativa: bool = false
 
 func configurar(ceu: WorldEnvironment, sol: DirectionalLight3D, oceano: MeshInstance3D) -> void:
     _ceu = ceu
@@ -102,7 +111,15 @@ func _process(delta: float) -> void:
             _chuva.amount = qtd
     _chuva_mar = move_toward(_chuva_mar, _chuva_alvo(), delta * 0.30)
     if correndo and not hora_congelada:
+        var antes: float = hora
         hora = fposmod(hora + delta * 24.0 / DURACAO_DIA, 24.0)
+        if hora < antes:
+            dias += 1                                    # passou da meia-noite: começa um novo dia
+    bruma = move_toward(bruma, bruma_alvo(), delta / 12.0)
+    var fechou: bool = bruma > 0.45 if not _bruma_ativa else bruma > 0.30
+    if fechou != _bruma_ativa:
+        _bruma_ativa = fechou
+        bruma_mudou.emit(fechou)
     _relogio += delta
     if _relogio >= 0.2:                              # cinco vezes por segundo basta: o céu muda devagar
         _relogio = 0.0
@@ -119,9 +136,25 @@ func _chuva_alvo() -> float:
         return smoothstep(0.30, 0.90, float(_oceano.tempestade_nivel))
     return 0.0
 
-## Pula as transições lentas (chuva na água): para testes e fotos.
+## A noite que está valendo (a que começou às 19h do dia anterior, se já passou da meia-noite) é de bruma?
+func noite_de_bruma() -> bool:
+    var d: int = dias if hora >= 12.0 else dias - 1
+    return d >= 0 and d % BRUMA_A_CADA == 1
+
+## Quanta bruma o clima pede agora: 0 sem bruma; nas noites de bruma acompanha o escurecer. No modo "Bruma" (tecla K)
+## ela vem a qualquer hora, mesmo de dia.
+func bruma_alvo() -> float:
+    if modo_clima == 5:
+        return maxf(noite(), 0.65)
+    return noite() if noite_de_bruma() else 0.0
+
+func bruma_densa() -> bool:
+    return bruma > 0.55
+
+## Pula as transições lentas (chuva na água, bruma): para testes e fotos.
 func pular_transicoes() -> void:
     _chuva_mar = _chuva_alvo()
+    bruma = bruma_alvo()
     atualizar()
 
 ## K alterna as condições meteorológicas; o modo Automático restaura o clima natural.
@@ -132,7 +165,7 @@ func alternar_clima() -> String:
 func definir_clima(modo: int) -> void:
     modo_clima = clampi(modo, 0, TIPOS_CLIMA.size() - 1)
     if _oceano != null and _oceano.has_method("definir_clima_manual"):
-        _oceano.definir_clima_manual(modo_clima)
+        _oceano.definir_clima_manual(0 if modo_clima == 5 else modo_clima)      # o mar não tem um modo "Bruma": segue o automático
     atualizar()
 
 ## Chuva leve e temporal ao redor do barco. As partículas não bloqueiam a direção.
@@ -185,7 +218,10 @@ func nome_do_momento() -> String:
     return "fim de tarde"
 
 func avancar(horas: float) -> void:
+    var antes: float = hora
     hora = fposmod(hora + horas, 24.0)
+    if hora < antes:
+        dias += 1
     atualizar()
 
 ## Compatível com as versões antigas: pula para um momento pelo nome.
@@ -228,10 +264,24 @@ func atualizar() -> void:
     var env := _ceu.environment
     env.ambient_light_color = a.ambiente_cor
     env.ambient_light_energy = float(a.ambiente_energia) * (1.0 - 0.35 * escurecer) * estilo_ambiente
-    env.fog_light_color = a.nevoa_cor
     # a neblina da noite respira: fecha e abre bem devagar
-    env.fog_density = float(a.nevoa_densidade) * (1.0 + 0.22 * noite() * sin(_tempo * 0.17)) + 0.0028 * escurecer
-    env.fog_sky_affect = a.nevoa_no_ceu
+    var densidade: float = float(a.nevoa_densidade) * (1.0 + 0.22 * noite() * sin(_tempo * 0.17)) + 0.0028 * escurecer
+    var cor_nevoa: Color = a.nevoa_cor
+    var nevoa_ceu: float = float(a.nevoa_no_ceu)
+    if bruma > 0.001:
+        # v0.6.0: bruma. Mar aberto ≈ 2x a névoa da noite; perto de luz ≈ 1,25x. De dia (modo "Bruma"), um leite claro.
+        var longe: float = clampf(bruma_local, 0.0, 1.0)
+        densidade = densidade * (1.0 + bruma * (0.25 + 0.75 * longe))
+        densidade += 0.011 * bruma * (1.0 - noite()) * (0.40 + 0.60 * longe)
+        cor_nevoa = cor_nevoa.lerp(Color(0.27, 0.35, 0.37), bruma * 0.65 * noite())
+        cor_nevoa = cor_nevoa.lerp(Color(0.66, 0.71, 0.72), bruma * (1.0 - noite()) * 0.8)
+        nevoa_ceu = lerpf(nevoa_ceu, 1.0, bruma * 0.7)
+    env.fog_light_color = cor_nevoa
+    env.fog_density = densidade
+    env.fog_sky_affect = nevoa_ceu
+    # na bruma a névoa tem cor própria (leitosa) em vez de herdar o céu escuro: menos perspectiva aérea, mais luz na névoa
+    env.fog_aerial_perspective = lerpf(0.6, 0.12, bruma)
+    env.fog_light_energy = lerpf(0.9, 1.45, bruma * noite())
     # o sol cruza o céu do nascer ao pôr; fora disso quem ilumina é a lua, parada no alto
     var forca := 1.0
     if hora > NASCER and hora < POR:
@@ -289,7 +339,7 @@ func atualizar() -> void:
         _mar.set_shader_parameter("cobertura", escurecer)
         _mar.set_shader_parameter("chuva_mar", _chuva_mar)
         # os fiapos de neblina sobre a água respiram junto com a névoa do ar
-        _mar.set_shader_parameter("nevoa", float(a.mar.nevoa) * (0.85 + 0.15 * sin(_tempo * 0.17)))
+        _mar.set_shader_parameter("nevoa", maxf(float(a.mar.nevoa) * (0.85 + 0.15 * sin(_tempo * 0.17)), bruma * 0.9))
     var e_noite := noite() > 0.5
     if e_noite != _era_noite:
         _era_noite = e_noite

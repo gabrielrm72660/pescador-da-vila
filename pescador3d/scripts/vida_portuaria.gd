@@ -94,7 +94,7 @@ func _criar() -> void:
             _barcos.append(casco)
             fisica.animar(casco, 0.0, 1.0, false)
             contador += 1
-        _criar_pescadores(ilha)
+        # v0.6.0: os pescadores 3D do cais saíram (no lugar, os personagens aparecem ao atracar)
     # v0.5.12: cada barco começa indo para um pesqueiro (os primeiros já pescando, para o mar não começar vazio)
     for i in _barcos.size():
         var c = _barcos[i]

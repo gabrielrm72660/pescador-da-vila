@@ -5,6 +5,7 @@ signal tela_mudou
 signal qualidade_ajustada(texto: String)
 const ARQUIVO := "user://pescador_graficos.json"
 const Bancada = preload("res://scripts/bancada_gpu.gd")
+const T = preload("res://scripts/idioma.gd")
 const Cinema = preload("res://scripts/cinema.gd")
 static var modo_editor: bool = false     # Modo Construtor aberto: nada de vegetação desbastada (quem edita precisa ver tudo)
 const NOMES := ["Baixa", "Média", "Alta", "Ultra"]
@@ -460,7 +461,7 @@ func _ajuste_automatico(delta: float) -> void:
         if _qualidade_opcao != null:
             _qualidade_opcao.select(qualidade)
         _salvar()
-        qualidade_ajustada.emit("Quadros baixos (%d FPS): qualidade ajustada para %s. F10 muda." % [roundi(fps), NOMES[qualidade]])
+        qualidade_ajustada.emit(T.t("Quadros baixos (%d FPS): qualidade ajustada para %s. F10 muda.") % [roundi(fps), T.t(NOMES[qualidade])])
 
 func _carregar() -> void:
     if not FileAccess.file_exists(ARQUIVO):

@@ -1,4 +1,6 @@
 extends Node
+
+const T = preload("res://scripts/idioma.gd")
 ## Melhorias do barco, compradas no cais: motor, tanque, porão e vara. Cada uma tem três níveis
 ## (o primeiro é o de fábrica). Quem cobra é scripts/jogo.gd; aqui ficam a tabela e o efeito de cada nível.
 
@@ -70,8 +72,8 @@ func vitrine(dinheiro: int) -> Array:
         var t: Dictionary = TABELA[id]
         var n: int = int(nivel[id])
         if no_maximo(id):
-            saida.append({"id": id, "texto": "%s\n%s (máximo)" % [t.nome, t.descricao[n]], "pode": false})
+            saida.append({"id": id, "texto": T.t("%s\n%s (máximo)") % [T.t(String(t.nome)), T.t(String(t.descricao[n]))], "pode": false})
         else:
             var p: int = int(t.precos[n])
-            saida.append({"id": id, "texto": "[%d] %s\n%s → %s · R$ %d" % [t.tecla, t.nome, t.descricao[n], t.descricao[n + 1], p], "pode": dinheiro >= p})
+            saida.append({"id": id, "texto": T.t("[%d] %s\n%s → %s · R$ %d") % [t.tecla, T.t(String(t.nome)), T.t(String(t.descricao[n])), T.t(String(t.descricao[n + 1])), p], "pode": dinheiro >= p})
     return saida

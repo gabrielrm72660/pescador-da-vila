@@ -274,6 +274,14 @@ func _escrever(t: String, p: Vector2, tam: int, cor: Color = NANQUIM, titulo: bo
 		draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, tam, 5, Color(PAPEL_CLARO, 0.9))
 	draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, tam, cor)
 
+## Escreve o texto no tamanho pedido, ou menor (até 11) se não couber na largura dada.
+func _escrever_cabendo(t: String, p: Vector2, tam: int, cor: Color, largura: float) -> void:
+	var f: Font = Aq.FONTE_TEXTO
+	var t_tam: int = tam
+	while t_tam > 11 and f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, t_tam).x > largura:
+		t_tam -= 1
+	_escrever(t, p, t_tam, cor)
+
 func _centrar(t: String, c: Vector2, tam: int, cor: Color = NANQUIM, titulo: bool = false, contorno: bool = false) -> void:
 	var f: Font = Aq.FONTE_TITULO if titulo else Aq.FONTE_TEXTO
 	var larg: float = f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, tam).x
@@ -412,7 +420,7 @@ func _rotulo_ilha(item: Dictionary, area: Rect2) -> void:
 		var abaixo: float = float(ilha.raio) * 1.15 / _metros_por_pixel() + float(tam) * 0.8
 		var p: Vector2 = _posicao(c, area) + Vector2(0, abaixo)
 		if area.grow(-8.0).has_point(p):
-			_centrar(String(ilha.nome), p, tam, NANQUIM, true, true)
+			_centrar(T.t(String(ilha.nome)), p, tam, NANQUIM, true, true)
 	if ilha.tem_cais:
 		var pc: Vector2 = _posicao(Vector2(ilha.cais_ponta.x, ilha.cais_ponta.z), area)
 		if _zoom >= 1.6 and area.grow(-8.0).has_point(pc):
@@ -459,7 +467,7 @@ func _pontos(area: Rect2) -> void:
 				var q: Vector2 = p + Vector2.from_angle(float(k3) * 1.57 + 0.4) * raio_px * 0.45
 				draw_line(q - Vector2(3, 3), q + Vector2(3, 3), cor, 1.4)
 				draw_line(q - Vector2(3, -3), q + Vector2(3, -3), cor, 1.4)
-		_escrever(String(item.get("nome", "")), p + Vector2(raio_px + 6.0, 5.0), 15, Color(0.20, 0.33, 0.31), false, true)
+		_escrever(T.t(String(item.get("nome", ""))), p + Vector2(raio_px + 6.0, 5.0), 15, Color(0.20, 0.33, 0.31), false, true)
 
 func _rota(area: Rect2) -> void:
 	if not tem_marcador:
@@ -540,20 +548,29 @@ func _faixas(area: Rect2) -> void:
 func _cabecalho(f: Rect2) -> void:
 	_escrever(T.t("Carta náutica"), f.position + Vector2(40, 58), 38, NANQUIM, true)
 	_escrever(T.t("Arquipélagos de São Paulo e São Pedro"), f.position + Vector2(300, 54), 18, TINTA_SUAVE)
-	# legenda à direita do cabeçalho
-	var x: float = f.end.x - 470.0
+	# legenda à direita do cabeçalho: o espaçamento segue a largura de cada texto (inglês e chinês não cabem no passo do português)
+	var itens: Array = [["cais", T.t("Cais")], ["farol", T.t("Farol")], ["recife", T.t("Recife / banco")], ["casa", T.t("Casas")], ["voce", T.t("Você")]]
+	var fonte: Font = Aq.FONTE_TEXTO
+	var total: float = 0.0
+	for it in itens:
+		total += 20.0 + fonte.get_string_size(String(it[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 20.0
+	var x: float = f.end.x - 56.0 - total + 20.0
 	var y: float = f.position.y + 50.0
-	draw_circle(Vector2(x, y - 6), 5.0, PAPEL_CLARO)
-	draw_circle(Vector2(x, y - 6), 3.5, NANQUIM)
-	_escrever(T.t("Cais"), Vector2(x + 10, y), 16, TINTA_SUAVE)
-	draw_colored_polygon(PackedVector2Array([Vector2(x + 72, y - 13), Vector2(x + 76, y), Vector2(x + 68, y)]), Color(0.66, 0.20, 0.15))
-	_escrever(T.t("Farol"), Vector2(x + 82, y), 16, TINTA_SUAVE)
-	draw_arc(Vector2(x + 150, y - 6), 6.0, 0.0, TAU, 12, Color(0.25, 0.42, 0.40), 1.5)
-	_escrever(T.t("Recife / banco"), Vector2(x + 160, y), 16, TINTA_SUAVE)
-	draw_rect(Rect2(Vector2(x + 285, y - 10), Vector2(6, 6)), NANQUIM, true)
-	_escrever(T.t("Casas"), Vector2(x + 296, y), 16, TINTA_SUAVE)
-	draw_colored_polygon(PackedVector2Array([Vector2(x + 362, y - 6) + Vector2(8, 0), Vector2(x + 362, y - 6) + Vector2(-4, 5), Vector2(x + 362, y - 6) + Vector2(-4, -5)]), Color(0.82, 0.28, 0.16))
-	_escrever(T.t("Você"), Vector2(x + 372, y), 16, TINTA_SUAVE)
+	for it in itens:
+		match String(it[0]):
+			"cais":
+				draw_circle(Vector2(x + 5, y - 6), 5.0, PAPEL_CLARO)
+				draw_circle(Vector2(x + 5, y - 6), 3.5, NANQUIM)
+			"farol":
+				draw_colored_polygon(PackedVector2Array([Vector2(x + 5, y - 13), Vector2(x + 9, y), Vector2(x + 1, y)]), Color(0.66, 0.20, 0.15))
+			"recife":
+				draw_arc(Vector2(x + 6, y - 6), 6.0, 0.0, TAU, 12, Color(0.25, 0.42, 0.40), 1.5)
+			"casa":
+				draw_rect(Rect2(Vector2(x + 2, y - 10), Vector2(6, 6)), NANQUIM, true)
+			"voce":
+				draw_colored_polygon(PackedVector2Array([Vector2(x + 12, y - 6), Vector2(x, y - 1), Vector2(x, y - 11)]), Color(0.82, 0.28, 0.16))
+		_escrever(String(it[1]), Vector2(x + 20, y), 16, TINTA_SUAVE)
+		x += 20.0 + fonte.get_string_size(String(it[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 20.0
 
 func _rodape(f: Rect2, area: Rect2) -> void:
 	var y: float = f.end.y + 34.0
@@ -562,15 +579,17 @@ func _rodape(f: Rect2, area: Rect2) -> void:
 		var p := Vector2(barco.global_position.x, barco.global_position.z)
 		var texto: String = T.t("Posição %s   ·   E %+d m   N %+d m   ·   rumo %03d°") % [referencia(p), roundi(p.x), roundi(-p.y), int(barco.rumo())]
 		_escrever(texto, Vector2(f.position.x + 6.0, y), 19, cor)
-	var d: float = distancia_ate_destino()
-	if d >= 0.0:
-		_escrever(T.t("Destino a %d m (linha reta)") % roundi(d), Vector2(f.position.x + 560.0, y), 19, Color(0.98, 0.72, 0.55))
-	else:
-		_escrever(T.t("M fecha · roda: zoom · botão direito: arrastar · clique: destino · Shift+clique: limpa"), Vector2(f.position.x + 560.0, y), 17, Color(0.75, 0.80, 0.78))
-	# escala
+	# escala (calculada antes: o texto de ajuda encolhe para não bater nela)
 	var metros: float = _grade_m
 	var px: float = metros / _metros_por_pixel()
 	var base := Vector2(f.end.x - 20.0 - px, y - 6.0)
+	var d: float = distancia_ate_destino()
+	var x_ajuda: float = f.position.x + 470.0
+	var largura_ajuda: float = base.x - 18.0 - x_ajuda
+	if d >= 0.0:
+		_escrever_cabendo(T.t("Destino a %d m (linha reta)") % roundi(d), Vector2(x_ajuda, y), 19, Color(0.98, 0.72, 0.55), largura_ajuda)
+	else:
+		_escrever_cabendo(T.t("M fecha · roda: zoom · botão direito: arrastar · clique: destino · Shift+clique: limpa"), Vector2(x_ajuda, y), 17, Color(0.75, 0.80, 0.78), largura_ajuda)
 	draw_line(base, base + Vector2(px, 0), cor, 3.0)
 	draw_line(base + Vector2(0, -6), base + Vector2(0, 6), cor, 2.0)
 	draw_line(base + Vector2(px, -6), base + Vector2(px, 6), cor, 2.0)

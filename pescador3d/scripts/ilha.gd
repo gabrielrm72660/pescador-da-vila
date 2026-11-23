@@ -16,6 +16,7 @@ var pico := [-18.0, -8.0, 34.0, 22.0]          # configuração legada da ilha s
 var morro := [34.0, -32.0, 16.0, 26.0]         # colina secundária ao sul da vila
 var com_vila := true                           # falso: só um posto de pesca ao pé do cais
 var coqueiros := 85
+var bonus_especie: Dictionary = {}               # v0.6.0: quanto o cais paga a mais por certas espécies (Cioba: 1.6 = 60% a mais)
 var bonus_venda := 1.0                         # quanto o cais paga pelo peixe (1.3 = 30% a mais)
 var preco_diesel := 4                          # R$ por litro
 var tem_loja := true                           # vende melhorias do barco?
@@ -2350,6 +2351,25 @@ func acender(noite: float) -> void:
         _farol_feixe_mat.set_shader_parameter("forca", 0.5 * intensidade)
     if _farol_feixe != null:
         _farol_feixe.visible = intensidade > 0.02
+
+## v0.6.0: quanto o farol clareia a bruma em "pos" (0 nada, 1 por inteiro). O facho vale para quem está até ~560 m: perto
+## do farol (< 140 m) a bruma quase some; mais longe, ela se abre só quando o facho varre na direção do barco.
+func clareio_do_farol(pos: Vector3) -> float:
+    if not tem_farol or _farol_pivo == null or _farol_noite < 0.01:
+        return 0.0
+    var ate: Vector3 = pos - _farol_pivo.global_position
+    ate.y = 0.0
+    var d: float = ate.length()
+    if d > 560.0:
+        return 0.0
+    var perto: float = 1.0 - smoothstep(140.0, 380.0, d)
+    var facho: float = 0.0
+    if d > 1.0:
+        var frente_feixe: Vector3 = -_farol_pivo.global_transform.basis.z
+        frente_feixe.y = 0.0
+        facho = pow(maxf(frente_feixe.normalized().dot(ate / d), 0.0), 14.0)
+    var alcance: float = 1.0 - smoothstep(300.0, 560.0, d)
+    return clampf(maxf(perto, 0.80 * facho * alcance), 0.0, 1.0) * _farol_noite
 
 func _luz(pai: Node3D, pos: Vector3, forca: float, alcance: float) -> void:
     var luz := OmniLight3D.new()

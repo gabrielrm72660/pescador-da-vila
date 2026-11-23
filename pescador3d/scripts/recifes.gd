@@ -8,6 +8,8 @@ const LOCAIS := [
     {"nome": "Banco das Cavalas", "centro": Vector2(110.0, -720.0), "raio": 52.0, "zona": "banco"},
     {"nome": "Baixo das Garoupas", "centro": Vector2(-72.0, -745.0), "raio": 28.0, "zona": "recife"},
     {"nome": "Canal das Sardinhas", "centro": Vector2(360.0, -100.0), "raio": 62.0, "zona": "banco"},
+    # v0.6.0: ao lado do Ilhéu da Agulha (São Pedro). As pedras ficam logo abaixo da água: não aparecem, mas batem no casco.
+    {"nome": "Recife da Agulha", "centro": Vector2(-925.0, 335.0), "raio": 30.0, "zona": "recife", "topo": -0.35},
 ]
 
 func _ready() -> void:
@@ -72,7 +74,7 @@ func altura_em(pos: Vector3) -> float:
         var raio: float = float(local.raio)
         if d > raio * 1.8:
             continue
-        var topo: float = 0.9 if String(local.zona) == "recife" else -4.1
+        var topo: float = float(local.get("topo", 0.9 if String(local.zona) == "recife" else -4.1))
         var t: float = clampf(d / maxf(raio, 1.0), 0.0, 1.8)
         h = maxf(h, lerpf(topo, -15.0, smoothstep(0.12, 1.30, t)))
     return h

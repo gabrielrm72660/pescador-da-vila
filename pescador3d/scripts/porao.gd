@@ -26,7 +26,13 @@ const FORMAS := {
     "Arabaiana": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1)],
     "Namorado": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1), Vector2i(2, 1)],
     "Agulhão-vela": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1), Vector2i(2, 1)],
+    "Cioba": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1)],
+    "Olho-de-boi": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(1, 1)],
+    "Peixe-lua": [Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2)],
+    "Caixa de peças": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)],
 }
+## v0.6.0: carga de missão (caixa que um NPC entrega). Ocupa casas, mas não é peixe: não vende, não conta no peso.
+const CARGAS := ["Caixa de peças"]
 const CORES := {
     "Sardinha": Color(0.62, 0.76, 0.84), "Tainha": Color(0.74, 0.78, 0.66), "Xaréu": Color(0.90, 0.78, 0.40),
     "Cavala": Color(0.40, 0.66, 0.78), "Garoupa": Color(0.82, 0.52, 0.38), "Olho-de-cão": Color(0.90, 0.30, 0.28),
@@ -34,6 +40,8 @@ const CORES := {
     "Baiacu": Color(0.80, 0.72, 0.52), "Peixe-voador": Color(0.46, 0.64, 0.86), "Budião": Color(0.28, 0.78, 0.70),
     "Robalo": Color(0.66, 0.72, 0.52), "Peixe-anjo": Color(0.30, 0.56, 0.90), "Moreia": Color(0.58, 0.56, 0.30),
     "Arabaiana": Color(0.84, 0.76, 0.34), "Namorado": Color(0.52, 0.62, 0.78), "Agulhão-vela": Color(0.20, 0.34, 0.74),
+    "Caixa de peças": Color(0.62, 0.46, 0.26),
+    "Cioba": Color(0.80, 0.34, 0.26), "Olho-de-boi": Color(0.52, 0.64, 0.58), "Peixe-lua": Color(0.64, 0.70, 0.74),
 }
 
 var colunas: int = 5
@@ -151,10 +159,32 @@ func esvaziar() -> void:
     itens.clear()
     mudou.emit()
 
+static func eh_carga(especie: String) -> bool:
+    return especie in CARGAS
+
+## Vende/descarta só o peixe: a carga de missão fica a bordo.
+func esvaziar_peixes() -> void:
+    itens = itens.filter(func(item): return eh_carga(String(item.especie)))
+    mudou.emit()
+
+func carga_a_bordo() -> Dictionary:
+    for item in itens:
+        if eh_carga(String(item.especie)):
+            return item
+    return {}
+
+func n_peixes() -> int:
+    var n := 0
+    for item in itens:
+        if not eh_carga(String(item.especie)):
+            n += 1
+    return n
+
 func peso_total() -> float:
     var total := 0.0
     for item in itens:
-        total += float(item.peso)
+        if not eh_carga(String(item.especie)):
+            total += float(item.peso)
     return total
 
 func casas_ocupadas() -> int:
@@ -169,7 +199,8 @@ func valor(item: Dictionary) -> int:
 func valor_total(bonus: float = 1.0) -> int:
     var total := 0
     for item in itens:
-        total += roundi(valor(item) * bonus)
+        if not eh_carga(String(item.especie)):
+            total += roundi(valor(item) * bonus)
     return total
 
 func aumentar(novas_colunas: int, novas_linhas: int) -> void:

@@ -1,4 +1,6 @@
 extends Node
+
+const T = preload("res://scripts/idioma.gd")
 ## Cotações variáveis e encomendas do mercado local.
 ## Não altera a definição dos peixes nem as formas do porão.
 
@@ -14,10 +16,23 @@ const CONTRATOS := [
     {"especie": "Peixe-anjo", "quantidade": 2, "premio": 90},
     {"especie": "Namorado", "quantidade": 1, "premio": 140},
 ]
+## v0.6.0: o pedido fixo de certos cais (Dona Rosa, em São Pedro): sempre peixe de lá, e o pedido se renova ao cumprir.
+const CONTRATOS_LOCAIS := {
+    "Ilha de São Pedro": [
+        {"especie": "Cioba", "quantidade": 5, "premio": 380},
+        {"especie": "Olho-de-boi", "quantidade": 2, "premio": 300},
+        {"especie": "Cioba", "quantidade": 3, "premio": 260},
+    ],
+}
 var indice: int = 0
+var indice_local: int = 0
+var ilha_atual: String = ""
 var contratos_concluidos: int = 0
 
 func atual() -> Dictionary:
+    var local: Array = CONTRATOS_LOCAIS.get(ilha_atual, [])
+    if not local.is_empty():
+        return local[posmod(indice_local, local.size())]
     return CONTRATOS[posmod(indice, CONTRATOS.size())]
 
 ## Oscilação leve e determinística; sem saltos de cotação a cada atualização do HUD.
@@ -26,13 +41,15 @@ func fator_preco(especie: String, hora: float) -> float:
     var fase: float = float(indice_especie) * 0.61 + hora * 0.16
     return clampf(1.0 + 0.17 * sin(fase), 0.82, 1.18)
 
-func valor_porao(porao: Node, cardumes: Node, bonus_ilha: float, hora: float) -> int:
+func valor_porao(porao: Node, cardumes: Node, bonus_ilha: float, hora: float, bonus_especie: Dictionary = {}) -> int:
     var total: int = 0
     for item in porao.itens:
+        if porao.eh_carga(String(item.especie)):
+            continue
         var v: int = cardumes.valor(String(item.especie), float(item.peso))
         var grau: String = String(item.get("qualidade", "Regular"))
         var fator_grau: float = 1.28 if grau == "Excepcional" else (1.12 if grau == "Boa" else 1.0)
-        total += maxi(1, roundi(float(v) * bonus_ilha * fator_preco(String(item.especie), hora) * fator_grau))
+        total += maxi(1, roundi(float(v) * bonus_ilha * float(bonus_especie.get(String(item.especie), 1.0)) * fator_preco(String(item.especie), hora) * fator_grau))
     return total
 
 func quantidade_contrato(porao: Node) -> int:
@@ -48,15 +65,19 @@ func premio_venda(porao: Node) -> int:
     if quantidade_contrato(porao) < int(contrato.quantidade):
         return 0
     var valor: int = int(contrato.premio)
-    indice += 1
+    if CONTRATOS_LOCAIS.has(ilha_atual):
+        indice_local += 1
+    else:
+        indice += 1
     contratos_concluidos += 1
     return valor
 
 func texto_contrato(porao: Node) -> String:
     var contrato: Dictionary = atual()
-    return "Encomenda: %d %s (%d/%d) · bônus R$ %d" % [int(contrato.quantidade), String(contrato.especie),
+    return T.t("Encomenda: %d %s (%d/%d) · bônus R$ %d") % [int(contrato.quantidade), T.t(String(contrato.especie)),
         mini(quantidade_contrato(porao), int(contrato.quantidade)), int(contrato.quantidade), int(contrato.premio)]
 
 func zerar() -> void:
     indice = 0
+    indice_local = 0
     contratos_concluidos = 0

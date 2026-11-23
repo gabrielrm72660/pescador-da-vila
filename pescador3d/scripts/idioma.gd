@@ -1,12 +1,16 @@
 extends RefCounted
-## Idioma da interface (v0.5.6): português (padrão), español e english.
-## O texto em português é a chave: Idioma.t("Porão") devolve "Bodega" ou "Hold" conforme a escolha.
-## O que não está na tabela volta em português (missões e mensagens do diário, por enquanto).
+## Idioma da interface (v0.5.6): português (padrão), español e english. v0.6.0: 中文 e tradução de missões, falas e avisos.
+## O texto em português é a chave: Idioma.t("Porão") devolve "Bodega", "Hold" ou "货舱" conforme a escolha.
+## Tabelas: TABELA (abaixo, es/en dos menus), idioma_zh.gd (chinês dos menus) e idioma_conteudo.gd (es/en/zh de missões, falas, avisos).
+## O que não está em nenhuma tabela volta em português (chinês cai para o inglês antes). ferramentas/idioma/auditar.py lista o que falta.
 ## A escolha fica em user://pescador.cfg, seção "geral", chave "idioma".
 
+const Conteudo = preload("res://scripts/idioma_conteudo.gd")
+const Chines = preload("res://scripts/idioma_zh.gd")
+
 const ARQUIVO := "user://pescador.cfg"
-const IDIOMAS := ["pt", "es", "en"]
-const NOME_IDIOMA := {"pt": "Português", "es": "Español", "en": "English"}
+const IDIOMAS := ["pt", "es", "en", "zh"]
+const NOME_IDIOMA := {"pt": "Português", "es": "Español", "en": "English", "zh": "中文"}
 
 static var lingua: String = "pt"
 static var _carregado: bool = false
@@ -16,10 +20,31 @@ static func t(texto: String) -> String:
         carregar()
     if lingua == "pt":
         return texto
-    var linha = TABELA.get(texto)
-    if linha == null:
-        return texto
-    return String(linha[0 if lingua == "es" else 1])
+    var antiga = TABELA.get(texto)              # [es, en]
+    var nova = Conteudo.TABELA.get(texto)       # [es, en, zh]
+    if lingua == "es":
+        if antiga != null:
+            return String(antiga[0])
+        return String(nova[0]) if nova != null else texto
+    if lingua == "en":
+        if antiga != null:
+            return String(antiga[1])
+        return String(nova[1]) if nova != null else texto
+    # zh
+    if nova != null:
+        return String(nova[2])
+    var zh = Chines.TABELA.get(texto)
+    if zh != null:
+        return String(zh)
+    if antiga != null:
+        return String(antiga[1])
+    return texto
+
+## v0.6.0: o chinês precisa de fonte própria (a pintada do jogo não tem ideogramas). Quem desenha texto usa isto.
+static func chines() -> bool:
+    if not _carregado:
+        carregar()
+    return lingua == "zh"
 
 static func carregar() -> void:
     _carregado = true
@@ -104,7 +129,7 @@ const TABELA := {
     "Carteira: R$ %d   ·   Porão: %d peixe(s), %s kg   ·   Tanque: %d de %d L   ·   Casco: %d%%":
         ["Cartera: R$ %d   ·   Bodega: %d pez(es), %s kg   ·   Tanque: %d de %d L   ·   Casco: %d%%",
          "Wallet: R$ %d   ·   Hold: %d fish, %s kg   ·   Tank: %d of %d L   ·   Hull: %d%%"],
-    "Iscas: %s · kit R$ 25 [Q]": ["Carnadas: %s · kit R$ 25 [Q]", "Bait: %s · kit R$ 25 [Q]"],
+    "Iscas: %s · kit R$ 25 [Q]": ["Cebo: %s · kit R$ 25 [Q]", "Bait: %s · kit R$ 25 [Q]"],
     "Linha reforçada (máximo)": ["Sedal reforzado (máximo)", "Line reinforced (max)"],
     "Reforçar linha [U] · nível %d/4 · R$ %d": ["Reforzar sedal [U] · nivel %d/4 · R$ %d", "Reinforce line [U] · level %d/4 · R$ %d"],
     "Vender tudo por R$ %d  [1]": ["Vender todo por R$ %d  [1]", "Sell everything for R$ %d  [1]"],
