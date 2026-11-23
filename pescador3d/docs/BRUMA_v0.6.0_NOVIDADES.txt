@@ -21,7 +21,7 @@ O jogo agora se chama BRUMA (antes Pescador). A pasta de dados do usuário conti
 4) SÃO PEDRO COM CONTEÚDO (scripts/jogo.gd, cardumes.gd, ilha.gd)
 - O cais de São Pedro paga +25% e mais ainda por peixes da região (Cioba +60%, Olho-de-boi +50%, Peixe-lua +40%, Garoupa/Peixe-anjo +30%, Namorado +25%).
 - Espécies novas: Cioba e Olho-de-boi (só nascem perto de São Pedro) e Peixe-lua (só em noite de bruma).
-  (As imagens desses 3 peixes são provisórias, feitas por mim; troque os PNGs de mesmo nome quando tiver as definitivas.)
+  (Arte definitiva desses 3 peixes na v0.6.1.)
 
 5) CADA PEIXE LUTA DO SEU JEITO (scripts/pesca.gd)
 - Sete comportamentos no anel de pesca; a dica aparece no diário ao lançar a linha:

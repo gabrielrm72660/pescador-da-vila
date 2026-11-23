@@ -1,3 +1,8 @@
+BRUMA — Versão 0.6.1 (Godot 4.7)
+================================================
+NOVO NA 0.6.1 (detalhes em docs/BRUMA_v0.6.1_NOVIDADES.txt):
+- ARTE DEFINITIVA da Cioba, do Olho-de-boi e do Peixe-lua (de lado e de cima), no estilo dos outros peixes.
+
 BRUMA — Versão 0.6.0 (Godot 4.7)   [antes "Pescador"]
 ================================================
 NOVO NA 0.6.0 (detalhes em docs/BRUMA_v0.6.0_NOVIDADES.txt):

@@ -1,0 +1,11 @@
+BRUMA v0.6.1 — ARTE DEFINITIVA DOS PEIXES NOVOS
+================================================
+1) CIOBA, OLHO-DE-BOI E PEIXE-LUA COM ARTE DO SPRITECOOK (assets/texturas/peixes/porao/ e cima/)
+- As imagens provisórias da v0.6.0 foram trocadas por ilustrações em guache no mesmo estilo dos outros peixes:
+  vista de lado (porão e anel de pesca) e vista de cima (cardumes na água).
+- Folha original em arte_original/spritecook/novos_v060.png (3 de lado em cima, 3 de cima embaixo).
+  Para recortar de novo: python3 ferramentas/fatiar_peixes_novos.py
+
+NÃO TESTADO AQUI
+- Os cardumes das espécies novas na água foram conferidos só pelo arquivo (mesmo caminho e formato dos outros);
+  no porão foram vistos no jogo.
