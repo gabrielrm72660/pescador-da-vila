@@ -13,6 +13,8 @@ var pontos_extras: Array = []
 var marcador: Vector2 = Vector2.ZERO
 var tem_marcador: bool = false
 
+var _fundo: Control                 # v0.7.2: fundo escuro + folha, desenhados por trás do mar
+var _mar: ColorRect                 # v0.7.2: o mar da carta pintado igual ao do minimapa (aquarela "mar")
 var _contornos: Array = []          # por ilha: {ilha, costa, dentro, alto, raso, fundo}
 var _mundo: Node = null
 var _zoom: float = 1.0
@@ -43,6 +45,26 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
+	# camadas por trás do desenho da carta: 1) fundo escuro e a folha de papel; 2) o mar em aquarela, como no minimapa
+	_fundo = Control.new()
+	_fundo.show_behind_parent = true
+	_fundo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fundo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fundo.draw.connect(_desenhar_fundo)
+	add_child(_fundo)
+	var esq: Dictionary = Aq.esquema("mar")
+	var extra: Dictionary = (esq["extra"] as Dictionary).duplicate()
+	extra["alfa"] = 1.0
+	extra["irregular"] = 1.0
+	extra["raio"] = 2.0
+	extra["borda"] = 0.25
+	extra["seco"] = 0.0
+	extra["papel"] = 0.8          # numa área grande as manchas claras viravam camuflagem: aqui ficam só uma variação de tom
+	_mar = ColorRect.new()
+	_mar.show_behind_parent = true
+	_mar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mar.material = Aq.material(esq["cor"], esq["cor2"], 7.3, extra)
+	add_child(_mar)
 
 func configurar(p_barco: Node3D, p_ilhas: Array) -> void:
 	barco = p_barco
@@ -294,9 +316,8 @@ func _draw() -> void:
 		return
 	var area: Rect2 = _quadro()
 	var folha: Rect2 = _folha()
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.07, 0.86), true)
-	_papel_base(folha)
-	draw_rect(area, MAR_PAPEL, true)
+	_fundo.queue_redraw()
+	Aq.ajustar(_mar, area, 0.0)
 	_profundidades(area)
 	_grade(area)
 	for item in _contornos:
@@ -314,6 +335,12 @@ func _draw() -> void:
 	_cabecalho(folha)
 	_rodape(folha, area)
 
+func _desenhar_fundo() -> void:
+	if not visible or size.x < 420.0 or size.y < 350.0:
+		return
+	_fundo.draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.05, 0.07, 0.86), true)
+	_papel_base(_folha())
+
 ## A folha: papel com borda levemente rasgada e manchas de umidade.
 func _papel_base(f: Rect2) -> void:
 	var borda := PackedVector2Array()
@@ -330,10 +357,10 @@ func _papel_base(f: Rect2) -> void:
 	for k in n:
 		var t: float = float(k) / float(n)
 		borda.append(Vector2(f.position.x + sin(t * 41.0) * 1.8, f.end.y - f.size.y * t))
-	draw_colored_polygon(borda, PAPEL)
+	_fundo.draw_colored_polygon(borda, PAPEL)
 	# manchas largas e dobras (uma vertical e uma horizontal, como papel guardado dobrado)
-	draw_rect(Rect2(f.position + Vector2(f.size.x * 0.62, 0), Vector2(f.size.x * 0.38, f.size.y)), Color(PAPEL_ESCURO, 0.10), true)
-	draw_rect(Rect2(f.position + Vector2(0, f.size.y * 0.55), Vector2(f.size.x * 0.4, f.size.y * 0.45)), Color(PAPEL_ESCURO, 0.08), true)
+	_fundo.draw_rect(Rect2(f.position + Vector2(f.size.x * 0.62, 0), Vector2(f.size.x * 0.38, f.size.y)), Color(PAPEL_ESCURO, 0.10), true)
+	_fundo.draw_rect(Rect2(f.position + Vector2(0, f.size.y * 0.55), Vector2(f.size.x * 0.4, f.size.y * 0.45)), Color(PAPEL_ESCURO, 0.08), true)
 
 ## Por cima de tudo: as dobras do papel (passam sobre a carta), os cantos virados e a moldura (como no DREDGE).
 func _papel_detalhes(f: Rect2) -> void:

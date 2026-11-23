@@ -1,0 +1,9 @@
+BRUMA v0.7.2 — MAR DA CARTA NÁUTICA IGUAL AO DO MINIMAPA
+========================================================
+1) CARTA NÁUTICA (tecla M) — scripts/mapa_cartografico.gd
+- O fundo do mar da carta, que era bege como papel (muito parecido com o mapa do DREDGE), agora é pintado com a mesma
+  aquarela azul-petróleo do minimapa (o esquema "mar" de scripts/aquarela.gd), com as manchas suavizadas para não virarem
+  camuflagem numa área grande.
+- Todo o resto continua igual: a folha de papel, a moldura, a grade verde com letras e números, as ilhas, as linhas de
+  profundidade, os nomes, a rosa dos ventos, a legenda e o rodapé.
+- Por dentro: o fundo escuro e a folha passaram para uma camada por trás do mar (para o mar pintado ficar entre os dois).

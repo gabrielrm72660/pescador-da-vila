@@ -1,3 +1,7 @@
+BRUMA — Versão 0.7.2 (Godot 4.7)
+================================================
+NOVO NA 0.7.2: o mar da carta náutica (M) agora é pintado igual ao do minimapa; o resto da carta não mudou.
+
 BRUMA — Versão 0.7.1 (Godot 4.7)
 ================================================
 NOVO NA 0.7.1: no celular, o manche de acelerar/virar agora fica fixo no canto esquerdo (antes ia atrás do dedo).
