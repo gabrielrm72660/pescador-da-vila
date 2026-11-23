@@ -99,10 +99,9 @@ func _input(event: InputEvent) -> void:
 					return
 			if not mar or _por_cima_do_hud(event.position):
 				return
-			if event.position.x < _tela.size.x * 0.42 and _manche_dedo == -1:
-				_manche_dedo = event.index
-				_manche_centro = event.position
-				_manche_ponta = event.position
+			if _manche_dedo == -1 and event.position.distance_to(_centro_manche()) <= RAIO_MANCHE * 1.8:
+				_manche_dedo = event.index                   # v0.7.1: o manche é fixo; o toque precisa começar nele
+				_mover_manche(event.position)
 				get_viewport().set_input_as_handled()
 			elif _camera_dedo == -1:
 				_camera_dedo = event.index
@@ -119,12 +118,7 @@ func _input(event: InputEvent) -> void:
 				_camera_dedo = -1
 	elif event is InputEventScreenDrag:
 		if event.index == _manche_dedo:
-			var v: Vector2 = event.position - _manche_centro
-			if v.length() > RAIO_MANCHE:
-				_manche_centro = event.position - v.normalized() * RAIO_MANCHE      # o manche acompanha o dedo
-				v = v.normalized() * RAIO_MANCHE
-			_manche_ponta = _manche_centro + v
-			_aplicar_manche(v / RAIO_MANCHE)
+			_mover_manche(event.position)
 			get_viewport().set_input_as_handled()
 		elif event.index == _camera_dedo and jogo.camera_barco != null:
 			jogo.camera_barco.girar(-event.relative.x * 0.006, event.relative.y * 0.004)
@@ -133,6 +127,16 @@ func _input(event: InputEvent) -> void:
 func _por_cima_do_hud(p: Vector2) -> bool:
 	var s: Vector2 = _tela.size
 	return p.y > s.y - 130.0 and absf(p.x - s.x / 2.0) < 230.0
+
+## v0.7.1: o manche fica parado no canto esquerdo (antes ele nascia onde o dedo encostava e ia atrás do dedo).
+func _centro_manche() -> Vector2:
+	return Vector2(170.0, _tela.size.y - 320.0)
+
+func _mover_manche(dedo: Vector2) -> void:
+	_manche_centro = _centro_manche()
+	var v: Vector2 = (dedo - _manche_centro).limit_length(RAIO_MANCHE)
+	_manche_ponta = _manche_centro + v
+	_aplicar_manche(v / RAIO_MANCHE)
 
 func _aplicar_manche(v: Vector2) -> void:
 	_tecla(KEY_W, v.y < -0.35)
@@ -158,15 +162,17 @@ func _desenhar() -> void:
 		for b in _botoes_visiveis():
 			_botao(b)
 		return
-	# manche: um aro claro e o pino; parado, só a dica de onde encostar
-	if _manche_dedo != -1:
-		_tela.draw_circle(_manche_centro, RAIO_MANCHE, Color(0.02, 0.06, 0.10, 0.35))
-		_tela.draw_arc(_manche_centro, RAIO_MANCHE, 0.0, TAU, 48, Color(Aq.CREME, 0.55), 3.0, true)
-		_tela.draw_circle(_manche_ponta, 32.0, Color(Aq.CREME, 0.55))
-	else:
-		var c := Vector2(150.0, _tela.size.y - 330.0)
-		_tela.draw_arc(c, RAIO_MANCHE, 0.0, TAU, 48, Color(Aq.CREME, 0.22 + 0.06 * sin(_relogio * 2.0)), 2.5, true)
-		_centrar(T.t("Leme"), c + Vector2(0, 7), 20, Color(Aq.CREME, 0.45))
+	# manche fixo: o aro sempre no mesmo lugar; o pino vai até onde o dedo está, sem sair do aro
+	var c: Vector2 = _centro_manche()
+	var ativo: bool = _manche_dedo != -1
+	_tela.draw_circle(c, RAIO_MANCHE, Color(0.02, 0.06, 0.10, 0.40 if ativo else 0.25))
+	_tela.draw_arc(c, RAIO_MANCHE, 0.0, TAU, 48, Color(Aq.CREME, 0.6 if ativo else 0.3 + 0.06 * sin(_relogio * 2.0)), 3.0, true)
+	for k in 4:                                             # marquinhas: frente, ré e os dois lados
+		var d: Vector2 = Vector2.from_angle(TAU * k / 4.0)
+		_tela.draw_line(c + d * (RAIO_MANCHE - 12.0), c + d * (RAIO_MANCHE - 4.0), Color(Aq.CREME, 0.4), 2.0)
+	_tela.draw_circle(_manche_ponta if ativo else c, 32.0, Color(Aq.CREME, 0.6 if ativo else 0.3))
+	if not ativo:
+		_centrar(T.t("Leme"), c + Vector2(0, 7), 20, Color(Aq.NANQUIM, 0.7))
 	for b in BOTOES:
 		_botao(b)
 

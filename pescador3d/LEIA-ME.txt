@@ -1,3 +1,7 @@
+BRUMA — Versão 0.7.1 (Godot 4.7)
+================================================
+NOVO NA 0.7.1: no celular, o manche de acelerar/virar agora fica fixo no canto esquerdo (antes ia atrás do dedo).
+
 BRUMA — Versão 0.7.0 (Godot 4.7)
 ================================================
 NOVO NA 0.7.0 (detalhes em docs/BRUMA_v0.7.0_NOVIDADES.txt):

@@ -1,0 +1,10 @@
+BRUMA v0.7.1 — MANCHE FIXO NO CELULAR
+=====================================
+1) CONTROLES DE TOQUE (scripts/toque.gd)
+- Bug relatado no Android: o manche (acelerar/virar) nascia onde o dedo encostava e ia atrás do dedo, saindo andando pela tela.
+- Agora ele fica parado no canto esquerdo, sempre no mesmo lugar, com marquinhas de frente, ré e lados. O toque precisa
+  começar em cima dele (ou bem perto); arrastando para longe, o pino fica preso na borda do aro em vez de levar o manche junto.
+- Tocar fora do manche, à esquerda ou à direita, continua girando a câmera.
+
+NÃO TESTADO AQUI
+- Num celular de verdade: testado com toques simulados.
