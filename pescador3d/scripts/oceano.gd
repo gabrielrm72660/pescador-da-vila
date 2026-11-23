@@ -331,8 +331,10 @@ func _process(delta: float) -> void:
                 r = Vector4.ZERO
             _rastro[i] = r
     _relogio_rastro += delta
-    if _relogio_rastro >= INTERVALO_RASTRO:
-        _relogio_rastro = fmod(_relogio_rastro, INTERVALO_RASTRO)
+    # v0.7.0: com o motor de 30 nós a espuma saía em bolhas separadas; mais rápido, pontos mais próximos no tempo
+    var intervalo: float = INTERVALO_RASTRO * clampf(7.5 / maxf(absf(barco.velocidade), 0.1), 0.5, 1.0)
+    if _relogio_rastro >= intervalo:
+        _relogio_rastro = fmod(_relogio_rastro, intervalo)
         if fracao > 0.12:
             var atras: Vector3 = barco.global_position - frente * POPA * signf(barco.velocidade)
             var xz := Vector2(atras.x, atras.z)

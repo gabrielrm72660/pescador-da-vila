@@ -50,6 +50,9 @@ func _ready() -> void:
     if not FileAccess.file_exists(ARQUIVO):
         # Primeira vez: sem GPU de verdade (renderizador por software), comeca na Baixa.
         var placa: String = RenderingServer.get_video_adapter_name().to_lower()
+        if OS.has_feature("mobile"):                 # v0.7.0: celular começa na Baixa, com ajuste automático
+            qualidade = 0
+            automatica = true
         for nome in ["llvmpipe", "swiftshader", "software", "basic render", "softpipe"]:
             if placa.contains(nome):
                 qualidade = 0

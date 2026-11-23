@@ -137,6 +137,8 @@ func _chuva_alvo() -> float:
     return 0.0
 
 ## A noite que está valendo (a que começou às 19h do dia anterior, se já passou da meia-noite) é de bruma?
+var bruma_mansa: bool = false      # v0.7.0: final "luz": a bruma vira neblina comum (mais rala, sem fantasmas)
+
 func noite_de_bruma() -> bool:
     var d: int = dias if hora >= 12.0 else dias - 1
     return d >= 0 and d % BRUMA_A_CADA == 1
@@ -268,6 +270,7 @@ func atualizar() -> void:
     var densidade: float = float(a.nevoa_densidade) * (1.0 + 0.22 * noite() * sin(_tempo * 0.17)) + 0.0028 * escurecer
     var cor_nevoa: Color = a.nevoa_cor
     var nevoa_ceu: float = float(a.nevoa_no_ceu)
+    var bruma: float = self.bruma * (0.45 if bruma_mansa else 1.0)
     if bruma > 0.001:
         # v0.6.0: bruma. Mar aberto ≈ 2x a névoa da noite; perto de luz ≈ 1,25x. De dia (modo "Bruma"), um leite claro.
         var longe: float = clampf(bruma_local, 0.0, 1.0)

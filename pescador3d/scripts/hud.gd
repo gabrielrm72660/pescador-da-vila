@@ -15,8 +15,8 @@ const DOURADO := Color(0.98, 0.76, 0.33)
 const VERDE := Color(0.33, 0.83, 0.66)
 const LARANJA := Color(0.96, 0.62, 0.24)
 const APAGADO := Color(0.55, 0.62, 0.66, 0.55)
-const BOTOES := ["pescar", "porao", "diario"]           # a pausa saiu da barra: é o ESC
-const DICA := {"pescar": "Pescar  [F]", "porao": "Porão  [I]", "diario": "Diário de bordo  [TAB]"}
+const BOTOES := ["pescar", "porao", "caderno", "diario"]           # a pausa saiu da barra: é o ESC
+const DICA := {"pescar": "Pescar  [F]", "porao": "Porão  [I]", "diario": "Diário de bordo  [TAB]", "caderno": "Caderno de peixes  [P]"}
 const TAM_BOTAO := 74.0
 const PONTOS := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 
@@ -521,6 +521,7 @@ func _barra_botoes() -> void:
             "pescar": _icone_anzol(c, cor)
             "porao": _icone_caixa(c, cor)
             "diario": _icone_livro(c, cor)
+            "caderno": _icone_caderno(c, cor)
         if nome == _sobre:
             _texto(Vector2(r.position.x - 60.0, r.position.y - 14.0), T.t(DICA[nome]), 18, CREME, HORIZONTAL_ALIGNMENT_CENTER, TAM_BOTAO + 120.0)
 
@@ -980,6 +981,16 @@ func _icone_comportamento(tipo: String, c: Vector2, cor: Color) -> void:
         "colosso":
             draw_arc(c, 10.0, 0.0, TAU, 20, cor, 3.0, true)
             draw_arc(c, 4.5, 0.0, TAU, 12, cor, 2.4, true)
+
+## v0.7.0: botão do caderno de peixes: um peixinho de perfil.
+func _icone_caderno(c: Vector2, cor: Color) -> void:
+    var corpo := PackedVector2Array()
+    for i in 18:
+        var a := TAU * float(i) / 18.0
+        corpo.append(c + Vector2(cos(a) * 15.0 - 3.0, sin(a) * 8.5 * (0.75 + 0.25 * cos(a))))
+    draw_colored_polygon(corpo, cor)
+    draw_colored_polygon(PackedVector2Array([c + Vector2(9.0, 0.0), c + Vector2(21.0, -10.0), c + Vector2(18.0, 0.0), c + Vector2(21.0, 10.0)]), cor)
+    draw_circle(c + Vector2(-11.0, -2.0), 2.2, Color(TINTA, 0.9))
 
 func _icone_livro(c: Vector2, cor: Color) -> void:
     draw_polyline(PackedVector2Array([c + Vector2(-17, -18), c + Vector2(15, -18), c + Vector2(15, 12), c + Vector2(-11, 12)]), cor, 3.0)

@@ -23,6 +23,7 @@ signal dialogo_terminou                 # v0.6.0: acabou a conversa com o NPC do
 
 const HudPintado = preload("res://scripts/hud.gd")
 const CartaMapa = preload("res://scripts/mapa_cartografico.gd")
+const Caderno = preload("res://scripts/caderno.gd")
 const Aq = preload("res://scripts/aquarela.gd")
 const BotaoAq = preload("res://scripts/botao_aquarela.gd")
 const DeslizanteAq = preload("res://scripts/deslizante_aquarela.gd")
@@ -41,6 +42,8 @@ var botao_principal: Button
 var botao_reiniciar: Button
 var hud: Control
 var mapa: Control
+var caderno: Control             # v0.7.0: caderno de peixes (P)
+var final_ativo := false         # v0.7.0: o cartão do final da história está na tela
 var controles_volume: Dictionary = {}     # grupo -> {barra: HSlider, valor: Label}
 var botao_mudo: Button
 var porto: ColorRect
@@ -99,6 +102,9 @@ func _ready() -> void:
     add_child(raiz)
     _construir_hud()
     _construir_mapa()
+    caderno = Caderno.new()
+    caderno.name = "CadernoPeixes"
+    raiz.add_child(caderno)
     _construir_porto()
     dialogo = Dialogo.new()
     raiz.add_child(dialogo)
@@ -205,6 +211,16 @@ func alternar_mapa() -> bool:
     hud.painel_aberto = ""
     return mapa.alternar()
 
+func alternar_caderno() -> bool:
+    hud.soltar_peixe()
+    hud.painel_aberto = ""
+    if mapa_aberto():
+        mapa.fechar()
+    return caderno.alternar()
+
+func caderno_aberto() -> bool:
+    return caderno != null and caderno.aberto()
+
 func mapa_aberto() -> bool:
     return mapa != null and mapa.has_method("aberto") and mapa.aberto()
 
@@ -214,6 +230,8 @@ func _ao_apertar_botao(nome: String) -> void:
             pescar_pressed.emit()
         "porao", "diario":
             alternar_painel(nome)
+        "caderno":
+            alternar_caderno()
 
 ## Abre ou fecha o painel do porão (peixes pescados) ou do diário (últimas mensagens).
 func alternar_painel(nome: String) -> void:
@@ -222,11 +240,13 @@ func alternar_painel(nome: String) -> void:
     _preencher_painel()
 
 func fechar_painel() -> bool:
-    var estava: bool = hud.painel_aberto != "" or mapa_aberto()
+    var estava: bool = hud.painel_aberto != "" or mapa_aberto() or caderno_aberto()
     hud.soltar_peixe()
     hud.painel_aberto = ""
     if mapa_aberto():
         mapa.fechar()
+    if caderno_aberto():
+        caderno.fechar()
     return estava
 
 func _preencher_painel() -> void:
@@ -791,6 +811,6 @@ func atualizar(nos: float, rumo: int, distancia: float, peixes: int, peso: float
     hud.fracao_motor = fracao_motor
     hud.estado_pesca = pesca_status
     hud.pesca_ativa = pesca_ativa
-    hud.visible = not menu.visible and not esconder_hud and not mapa_aberto() and not (tela_inicial != null and tela_inicial.visible) and not dialogo_ativo()
+    hud.visible = not menu.visible and not esconder_hud and not mapa_aberto() and not (tela_inicial != null and tela_inicial.visible) and not dialogo_ativo() and not final_ativo and not caderno_aberto()
     if hud.painel_aberto != "":
         _preencher_painel()

@@ -4,6 +4,7 @@ extends Control
 ## abrir([{npc: id, texto: "..."}]) mostra as falas em sequência; terminou() sai quando acabam (ou com ESC).
 
 signal terminou
+signal escolheu(indice: int)          # v0.7.0: falas com "opcoes" pedem uma escolha antes de seguir
 
 const T = preload("res://scripts/idioma.gd")
 const Aq = preload("res://scripts/aquarela.gd")
@@ -31,6 +32,9 @@ var _entrada := 0.0
 var _liberado := 0.0
 var _relogio := 0.0
 var _saindo := false
+var _opcoes: HBoxContainer
+var _botoes_opcao: Array = []
+var _sel := 0
 
 func construir(interface_: Node) -> void:
 	ui = interface_
@@ -99,11 +103,21 @@ func construir(interface_: Node) -> void:
 	_botao = ui._botao_aq("", "turquesa", 61.0, Aq.NANQUIM, 24, Vector2(200, 42))
 	_botao.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pe.add_child(_botao)
+	_opcoes = HBoxContainer.new()
+	_opcoes.add_theme_constant_override("separation", 18)
+	_opcoes.alignment = BoxContainer.ALIGNMENT_END
+	_opcoes.visible = false
+	pe.add_child(_opcoes)
 	atualizar_textos()
 
 func atualizar_textos() -> void:
 	_botao.text = T.t("Continuar") + "  ▸"
 	_dica.text = T.t("F ou clique: continuar   •   ESC: pular")
+	if _escolhendo():
+		_dica.text = T.t("Escolha: A/D e F, ou clique")
+		var ops: Array = _linhas[_i].opcoes
+		for k in _botoes_opcao.size():
+			_botoes_opcao[k].text = T.t(String(ops[k]))
 	if ativo and _npc != "":
 		_nome.text = T.t(Npcs.DADOS[_npc].nome)
 		_papel.text = T.t(Npcs.DADOS[_npc].papel)
@@ -157,6 +171,34 @@ func _mostrar() -> void:
 	_total = _texto.text.length()
 	_letras = 0.0
 	_texto.visible_characters = 0
+	for b in _botoes_opcao:
+		b.queue_free()
+	_botoes_opcao.clear()
+	_opcoes.visible = false
+	_botao.visible = true
+	if fala.has("opcoes"):
+		_sel = 0
+		var ops: Array = fala.opcoes
+		for k in ops.size():
+			var b: Button = ui._botao_aq(T.t(String(ops[k])), "ouro" if k == 0 else "mar", 80.0 + k * 3.0, Aq.NANQUIM if k == 0 else CREME, 21, Vector2(300, 46))
+			b.pressed.connect(_escolher.bind(k))
+			b.mouse_entered.connect(func(): _sel = k)
+			_opcoes.add_child(b)
+			_botoes_opcao.append(b)
+		_botao.visible = false
+		_dica.text = T.t("Escolha: A/D e F, ou clique")
+	else:
+		_dica.text = T.t("F ou clique: continuar   •   ESC: pular")
+
+func _escolhendo() -> bool:
+	return ativo and _i < _linhas.size() and _linhas[_i].has("opcoes")
+
+func _escolher(k: int) -> void:
+	if not _escolhendo() or _texto.visible_characters != -1:
+		return
+	escolheu.emit(k)
+	_i = _linhas.size()
+	_encerrar()
 
 func _ajustar() -> void:
 	if _caixa == null:
@@ -198,16 +240,48 @@ func _process(delta: float) -> void:
 		var base := size.x * 0.5 - _retrato.size.x * 0.5 - _caixa.size.x * 0.15
 		_retrato.position.x = base - (1.0 - e) * 70.0
 	_botao.modulate.a = 0.78 + 0.22 * sin(_relogio * 4.0) if _texto.visible_characters == -1 else 0.35
+	if _escolhendo():
+		_opcoes.visible = _texto.visible_characters == -1
+		for k in _botoes_opcao.size():
+			var b: Button = _botoes_opcao[k]
+			b.modulate = Color(1, 1, 1, 1) if k == _sel else Color(0.72, 0.72, 0.72, 0.85)
+			b.scale = Vector2.ONE * (1.0 + (0.04 * sin(_relogio * 4.0) if k == _sel else 0.0))
 
 func _input(event: InputEvent) -> void:
 	if not ativo:
+		return
+	if _escolhendo() and _texto.visible_characters == -1:
+		var n: int = _botoes_opcao.size()
+		if event is InputEventKey and event.pressed and not event.echo:
+			match event.physical_keycode:
+				KEY_LEFT, KEY_UP, KEY_A, KEY_W: _sel = posmod(_sel - 1, n)
+				KEY_RIGHT, KEY_DOWN, KEY_D, KEY_S: _sel = posmod(_sel + 1, n)
+				KEY_1: _escolher(0)
+				KEY_2: _escolher(1)
+				KEY_F, KEY_E, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE: _escolher(_sel)
+			get_viewport().set_input_as_handled()
+		elif event is InputEventJoypadButton and event.pressed:
+			match event.button_index:
+				JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_UP: _sel = posmod(_sel - 1, n)
+				JOY_BUTTON_DPAD_RIGHT, JOY_BUTTON_DPAD_DOWN: _sel = posmod(_sel + 1, n)
+				JOY_BUTTON_A: _escolher(_sel)
+			get_viewport().set_input_as_handled()
+		elif event is InputEventJoypadMotion and event.axis == JOY_AXIS_LEFT_X and absf(event.axis_value) > 0.6:
+			_sel = 0 if event.axis_value < 0.0 else n - 1
+		return                                              # o clique do mouse vai direto para os botões
+	if event is InputEventJoypadButton and event.pressed:
+		match event.button_index:
+			JOY_BUTTON_A: _avancar()
+			JOY_BUTTON_B: _encerrar()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
 			KEY_F, KEY_E, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
 				_avancar()
 			KEY_ESCAPE:
-				_encerrar()
+				if not _escolhendo():
+					_encerrar()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_avancar()

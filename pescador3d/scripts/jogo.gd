@@ -16,8 +16,12 @@ var luz_barco: OmniLight3D
 var luz_ligada: bool = true
 const Baleias = preload("res://scripts/baleias.gd")
 var baleias: Node3D
+const Toque = preload("res://scripts/toque.gd")               # v0.7.0: controles de toque (celular)
+const Controle = preload("res://scripts/controle.gd")         # v0.7.0: controle (gamepad)
+const Historia = preload("res://scripts/historia.gd")         # v0.7.0: o compadre Bento e os dois finais
 const Fantasmas = preload("res://scripts/fantasmas.gd")      # v0.6.0: vultos e miragens da bruma
 var fantasmas: Node3D
+var historia: Node
 var _avisos_bruma: Dictionary = {"vulto": 0, "miragem": 0}
 const Ilha = preload("res://scripts/ilha.gd")
 var ilha: Node3D                  # a ilha do cais mais próximo do barco
@@ -65,6 +69,7 @@ var tempo_interface: float = 0.0
 var pedido_reinicio: float = -10.0   # instante do primeiro R; o segundo, em até 2,5 s, confirma
 var relogio: float = 0.0
 var explorados: Dictionary = {}
+var colecao: Dictionary = {}          # v0.7.0: caderno de peixes: especie -> {"n": pescados, "maior": kg}
 var relogio_exploracao: float = 0.0
 
 func _enter_tree() -> void:
@@ -266,6 +271,16 @@ func _ready() -> void:
     interface.consertar_pressed.connect(consertar)
     interface.conversar_pressed.connect(_conversar)
     interface.dialogo_terminou.connect(_ao_fim_do_dialogo)
+    historia = Historia.new()
+    add_child(historia)
+    historia.construir(self)
+    var controle := Controle.new()
+    add_child(controle)
+    controle.construir(self)
+    if Toque.ligado():
+        var toque := Toque.new()
+        add_child(toque)
+        toque.construir(self)
     interface.sair_pressed.connect(sair_do_jogo)
     interface.vender_pressed.connect(vender)
     interface.volume_mudou.connect(func(grupo, valor): som.definir_volume(grupo, valor))
@@ -336,7 +351,7 @@ func _process(delta: float) -> void:
     relogio += delta
     if no_titulo:
         _mover_camera_titulo(delta)
-    var pode_navegar: bool = iniciado and not em_pausa and not atracado and not graficos.esta_aberto() and not interface.dialogo_ativo()
+    var pode_navegar: bool = iniciado and not em_pausa and not atracado and not graficos.esta_aberto() and not interface.dialogo_ativo() and not interface.caderno_aberto() and not interface.final_ativo
     barco.ativo = pode_navegar
     pesca.ativo = pode_navegar
     oceano.simulando = pode_navegar
@@ -380,6 +395,9 @@ func _unhandled_input(event: InputEvent) -> void:
                 KEY_U: melhorar_linha()
                 KEY_R: consertar()
                 KEY_T: _conversar("")
+                KEY_P:
+                    interface.caderno.colecao = colecao
+                    interface.alternar_caderno()
                 KEY_M:
                     interface.aviso(Idioma.t("Carta náutica aberta. [M] fecha.") if interface.alternar_mapa() else Idioma.t("Carta náutica fechada."))
                 KEY_L:
@@ -404,6 +422,10 @@ func _unhandled_input(event: InputEvent) -> void:
             KEY_TAB:
                 if not em_pausa:
                     interface.alternar_painel("diario")
+            KEY_P:
+                if not em_pausa:
+                    interface.caderno.colecao = colecao
+                    interface.alternar_caderno()
             KEY_C:
                 if not em_pausa:
                     camera_barco.alternar()
@@ -453,7 +475,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.6.1] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.7.0] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 func alternar_luz() -> void:
@@ -550,6 +572,9 @@ func reiniciar() -> void:
     melhorias.aplicar(barco, porao, pesca, interface.hud)
     barco.zerar()
     _avisou_avaria = 10
+    for i in ilhas:                                  # recomeça sempre na Vila do Porto, mesmo saindo de longe
+        if String(i.nome) == "Vila do Porto":
+            ilha = i
     posicionar_no_cais()
     interface.limpar_partida()
     porao.esvaziar()
@@ -575,6 +600,9 @@ func reiniciar() -> void:
     missoes.zerar()
     economia.zerar()
     explorados.clear()
+    colecao.clear()
+    historia.zerar()
+    interface.caderno.paginas_bento = 0
     relogio_exploracao = 0.0
     dinheiro = DINHEIRO_INICIAL
     atracado = false
@@ -672,12 +700,27 @@ func _especies_da_missao() -> Array:
             return [String(c.get("especie", ""))]
     return []
 
+## v0.7.0: registra a captura no caderno de peixes; a primeira de cada espécie ganha aviso.
+func _anotar_no_caderno(especie: String, peso: float) -> void:
+    var d: Dictionary = colecao.get(especie, {"n": 0, "maior": 0.0})
+    var nova: bool = int(d.n) == 0
+    d.n = int(d.n) + 1
+    d.maior = maxf(float(d.maior), peso)
+    colecao[especie] = d
+    interface.caderno.colecao = colecao
+    if nova:
+        interface.caderno.ir_para_especie(especie)
+        interface.aviso(Idioma.t("Nova espécie no caderno: %s! [P]") % Idioma.t(especie))
+
 func _missao_cumprida(m: Dictionary) -> void:
     dinheiro += int(m.premio)
     som.tocar("peixe", -4.0, 1.5)
     var premio: String = Idioma.t(" Prêmio: R$ %d.") % int(m.premio) if int(m.premio) > 0 else ""
     var proxima: String = Idioma.t("Você está por conta própria: boa pesca!") if missoes.terminou() else Idioma.t("Próxima: %s.") % Idioma.t(String(missoes.atual().texto))
     interface.aviso(Idioma.t("Missão cumprida!%s %s") % [premio, proxima])
+    if not melhorias.motor_30_liberado and missoes.sao_pedro_concluido():
+        melhorias.motor_30_liberado = true
+        interface.aviso(Idioma.t("Missões de São Pedro concluídas! Nova melhoria na loja da Vila: motor de 30 nós."))
 
 # ------------------------------------------------------------------ cais: atracar, vender, abastecer
 
@@ -728,6 +771,15 @@ func _falar_no_cais(papo_com: String = "") -> bool:
         pesca.ativo = false
     interface.abrir_dialogo(r.falas)
     return true
+
+## v0.7.0: abre uma conversa fora do cais (página do diário, o Bento): o barco para enquanto ela dura.
+func abrir_falas(falas: Array) -> void:
+    _dar_carga_depois = false
+    _congelado_no_dialogo = not atracado
+    if _congelado_no_dialogo:
+        barco.ativo = false
+        pesca.ativo = false
+    interface.abrir_dialogo(falas)
 
 func _ao_fim_do_dialogo() -> void:
     if _dar_carga_depois:
@@ -932,6 +984,7 @@ func _ao_pescar(especie: String, peso: float) -> void:
         return
     som.tocar("peixe", -5.0)
     som.tocar("captura", -7.0)
+    _anotar_no_caderno(especie, peso)
     interface.aviso(Idioma.t("%s capturado — qualidade: %s.") % [Idioma.t(especie), Idioma.t(pesca.ultima_qualidade)])
     missoes.evento("pescar", especie)
 
@@ -969,7 +1022,7 @@ func atualizar_interface() -> void:
     cardumes.noite = escuro > 0.5
     _atualizar_bruma_local()
     cardumes.bruma = clima.bruma_densa()
-    interface.hud.instavel = clima.bruma * clima.bruma_local
+    interface.hud.instavel = 0.0 if clima.bruma_mansa else clima.bruma * clima.bruma_local
     interface.hud.hora = clima.texto_hora()
     interface.hud.noite = escuro
     interface.hud.radar_alvos = cardumes.relativos(barco) + (fantasmas.radar() if fantasmas != null else [])

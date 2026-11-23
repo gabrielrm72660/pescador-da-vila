@@ -4,6 +4,7 @@ extends Node3D
 ##  - miragens: cardumes-fantasma que aparecem no radar e somem quando o barco chega perto ("era só a bruma").
 ## Só existem em mar aberto com a bruma fechada. Com o clima limpo, ou perto das ilhas e do facho do farol, não aparecem.
 
+signal vulto_nasceu                     # v0.7.0: para o aviso do Estrela d'Alva (final "bruma")
 signal desfeito(tipo: String)           # "vulto" ou "miragem": o barco chegou perto e a coisa se desfez
 
 const MAX_VULTOS := 2
@@ -15,6 +16,7 @@ var barco: Node3D
 var clima: Node
 var mundo: Node                         # scripts/jogo.gd: distancia_da_costa(pos)
 var simulando: bool = false
+var desligados: bool = false            # v0.7.0: depois do final "luz" a bruma não traz mais vultos nem miragens
 
 var _vultos: Array = []                 # {no, luz, dir: Vector3, vel, vida, alfa, desfazendo, fase}
 var _miragens: Array = []               # {mundo: Vector2, rumo, vel, vida, alfa, fase}
@@ -52,7 +54,7 @@ func _process(delta: float) -> void:
     _tempo += delta
     var bruma: float = float(clima.bruma)
     var mar_aberto: float = float(clima.bruma_local)
-    var pode: bool = simulando and bruma > 0.6 and mar_aberto > 0.55
+    var pode: bool = simulando and not desligados and bruma > 0.6 and mar_aberto > 0.55
     if simulando:
         _espera_vulto -= delta
         if pode and _espera_vulto <= 0.0 and _vultos.size() < MAX_VULTOS:
@@ -89,6 +91,7 @@ func _nascer_vulto() -> void:
         var lamp: MeshInstance3D = no.get_node("Lampada")
         _vultos.append({"no": no, "lampada": lamp, "dir": dir, "vel": randf_range(1.4, 2.4), "vida": randf_range(55.0, 85.0),
                 "alfa": 0.0, "desfazendo": false, "fase": randf() * TAU})
+        vulto_nasceu.emit()
         return
 
 ## Um barco de pesca de caixotes: casco, proa, cabine, mastro e uma lâmpada fraca na popa.

@@ -13,6 +13,11 @@ const DADOS := {
 			"retrato": "res://assets/retratos/rosa.png", "cor": Color(0.88, 0.42, 0.50)},
 	"abilio": {"nome": "Seu Abílio", "papel": "Faroleiro", "ilha": "Ilha de São Pedro",
 			"retrato": "res://assets/retratos/abilio.png", "cor": Color(0.96, 0.78, 0.38)},
+	# v0.7.0: quem não mora em cais nenhum (ilha vazia: nunca aparecem no painel do cais)
+	"bento": {"nome": "Bento", "papel": "O compadre que a bruma levou", "ilha": "",
+			"retrato": "res://assets/retratos/bento.png", "cor": Color(0.70, 0.78, 0.86)},
+	"diario": {"nome": "Diário do Bento", "papel": "Uma página molhada", "ilha": "",
+			"retrato": "res://assets/retratos/diario.png", "cor": Color(0.86, 0.80, 0.62)},
 }
 
 ## Conversa fiada: uma fala por vez, em ordem, quando o jogador puxa papo e não há missão para tratar.

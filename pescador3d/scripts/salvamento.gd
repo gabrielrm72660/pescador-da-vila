@@ -28,6 +28,8 @@ static func salvar(jogo: Node) -> bool:
         "contrato_indice": jogo.economia.indice, "contrato_local": jogo.economia.indice_local,
         "contratos_concluidos": jogo.economia.contratos_concluidos,
         "explorados": jogo.explorados.duplicate(),
+        "colecao": jogo.colecao.duplicate(true),
+        "historia_paginas": jogo.historia.paginas, "historia_final": jogo.historia.final,
         "missao": jogo.missoes.indice, "missao_progresso": jogo.missoes.progresso,
         "missao_oferecidas": jogo.missoes.oferecidas.keys(), "missao_fim": jogo.missoes.fim_pendentes.duplicate(),
         "melhorias": jogo.melhorias.nivel.duplicate(),
@@ -71,6 +73,17 @@ static func carregar(jogo: Node) -> bool:
     jogo.economia.contratos_concluidos = maxi(0, int(d.get("contratos_concluidos", 0)))
     var descobertas = d.get("explorados", {})
     jogo.explorados = descobertas.duplicate() if typeof(descobertas) == TYPE_DICTIONARY else {}
+    var col = d.get("colecao", {})
+    jogo.colecao = {}
+    if typeof(col) == TYPE_DICTIONARY:
+        for k in col:
+            jogo.colecao[String(k)] = {"n": int(col[k].get("n", 0)), "maior": float(col[k].get("maior", 0.0))}
+    jogo.interface.caderno.colecao = jogo.colecao
+    jogo.historia.paginas = clampi(int(d.get("historia_paginas", 0)), 0, 5)
+    jogo.historia.final = String(d.get("historia_final", ""))
+    jogo.historia.aplicar_final()
+    jogo.melhorias.motor_30_liberado = jogo.missoes.sao_pedro_concluido()
+    jogo.interface.caderno.paginas_bento = jogo.historia.paginas
     if d.has("missao"):
         jogo.missoes.indice = clampi(int(d.missao), 0, jogo.missoes.LISTA.size())
         jogo.missoes.progresso = maxi(0, int(d.get("missao_progresso", 0)))

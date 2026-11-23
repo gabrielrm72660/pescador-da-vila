@@ -1,0 +1,54 @@
+BRUMA v0.7.0 — CADERNO DE PEIXES, HISTÓRIA FINAL, MOTOR DE 30 NÓS, CONTROLE E VERSÃO PARA CELULAR
+=================================================================================================
+
+1) CADERNO DE PEIXES (tecla P ou o botão de peixinho no HUD) — scripts/caderno.gd
+- Um caderno aberto, uma espécie por página, no espírito da enciclopédia do DREDGE. Antes da primeira captura a espécie
+  aparece como silhueta escura ("???"), com a zona e o horário como pista; pescada, ganha nome, desenho, descrição,
+  "onde", preço, recorde de peso, quantas já foram pescadas e o jeito de lutar.
+- Marcadores por zona: Costa, Recife, Mar aberto, Alto-mar, São Pedro, Bruma. "Descobertos: n/21".
+- Virar página: A/D, setas, Q/E, roda do mouse ou as setas na tela; W/S pula de zona; P ou ESC fecha. O jogo pausa enquanto ele está aberto.
+- A primeira captura de cada espécie avisa "Nova espécie no caderno". Fica salvo na viagem.
+- A última folha guarda as páginas do diário do Bento (item 2).
+
+2) HISTÓRIA FINAL: O COMPADRE QUE A BRUMA LEVOU — scripts/historia.gd, missoes.gd, final.gd
+- 3 missões novas depois das de São Pedro (24 ao todo):
+  22. Seu Abílio conta que o Estrela d'Alva era do Bento, que sumiu numa noite de bruma há três anos. Volte à Vila.
+  23. Seu Jacinto confessa e pede as páginas do diário: nas noites de bruma, chegar perto de um vulto o desfaz e deixa uma página (5 ao todo).
+  24. Com as páginas, Seu Abílio aponta o sino a oeste de São Pedro, fora da carta. Numa noite de bruma o sino toca de verdade
+      (som 3D: dá para seguir de ouvido) e lá está o barco do Bento, parado, com a lanterna acesa.
+- O Bento aparece em silhueta na bruma e você escolhe:
+  · Levar a lanterna ao farol: final "A LUZ DO FAROL". A bruma amansa para sempre (neblina mais rala, sem vultos, sem bússola
+    nem radar enlouquecendo), o Peixe-lua continua aparecendo e a viagem continua.
+  · Ficar na bruma com o Bento: final "O SINO". A viagem recomeça com outro pescador; dali em diante, nas noites de bruma,
+    um dos vultos é o Estrela d'Alva (fica gravado no computador, user://bruma_legado.cfg).
+- Retratos novos (gerados por código): a silhueta do Bento com a lanterna e uma página molhada do diário
+  (ferramentas/retratos/gerar_bento_diario.py). Dá para trocar por retratos pintados com o mesmo nome de arquivo.
+- A caixa de diálogo agora aceita escolhas (A/D e F, 1/2, clique ou controle).
+
+3) MOTOR DE 30 NÓS — scripts/melhorias.gd
+- Novo nível do motor (R$ 1800, tecla 3 na loja). Aparece trancado ("30 nós após as missões de São Pedro") e é liberado
+  quando a última missão de São Pedro (Juntar R$ 6000) termina.
+
+4) SUPORTE A CONTROLE (Xbox, PlayStation e genéricos) — scripts/controle.gd
+- No mar: analógico esquerdo ou RT/LT = motor e leme · A = pescar/atracar · RB = freio · X = porão · Y = caderno
+  (no porão aberto, Y arruma os peixes) · Select/View = diário · Start = menu · direcional: cima carta, baixo técnica,
+  esquerda isca, direita profundidade · LB = lanterna · analógico direito = câmera, R3 recentra, L3 modo da câmera · B fecha painel.
+- Menus, opções e cais: direcional escolhe (contorno dourado no botão escolhido), A confirma, B volta (no cais, B zarpa).
+- Diálogo: A continua, B pula. Caderno: LB/RB ou direcional viram a página. Carta: B ou cima fecha.
+- O barco agora lê ações próprias (barco_acelerar, barco_re, barco_esquerda, barco_direita): as setas do teclado continuam valendo.
+
+5) VERSÃO PARA CELULAR (Android) — scripts/toque.gd, export_presets.cfg, .github/workflows/bruma-android.yml
+- Controles de toque (só aparecem no celular): manche à esquerda (aparece onde o dedo encosta), PESCAR e FREAR grandes à
+  direita, botões de carta, isca, fundo, técnica, luz e menu; arrastar no resto da tela gira a câmera. Porão, caderno, diário,
+  cais, menus e diálogos funcionam com o toque.
+- No celular o jogo usa o renderizador de compatibilidade (OpenGL ES 3), começa na qualidade Baixa com ajuste automático,
+  em paisagem e tela cheia.
+- O APK é gerado no GitHub (Actions): este ambiente não tem o SDK do Android. O workflow também gera o Bruma.exe.
+- Tela mais larga que 16:9 (celulares, monitores ultrawide) agora usa a largura toda em vez de faixas pretas.
+
+NÃO TESTADO AQUI
+- Controle de verdade: testado com eventos de controle simulados (A, B, X, Y, RB, LB, direcional, analógicos).
+- Toque de verdade e desempenho em celular: testado com toques simulados num PC. O jogo é pesado; em celular fraco pode ficar lento
+  mesmo na Baixa. No porão, girar o peixe ainda pede R ou botão direito (sem equivalente no toque).
+- O som 3D do sino (não há áudio aqui).
+- Traduções novas em espanhol, inglês e chinês escritas por mim.

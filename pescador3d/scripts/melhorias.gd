@@ -8,8 +8,8 @@ signal mudou
 
 ## nome na loja, a tecla no cais, o preço para subir a cada nível e o que cada nível dá
 const TABELA := {
-    "motor": {"nome": "Motor", "tecla": 3, "precos": [130, 340], "niveis": [5.7, 6.6, 7.5],
-            "descricao": ["11 nós", "13 nós", "14,5 nós"]},
+    "motor": {"nome": "Motor", "tecla": 3, "precos": [130, 340, 1800], "niveis": [5.7, 6.6, 7.5, 15.43],
+            "descricao": ["11 nós", "13 nós", "14,5 nós", "30 nós"]},
     "tanque": {"nome": "Tanque", "tecla": 4, "precos": [90, 240], "niveis": [60.0, 90.0, 120.0],
             "descricao": ["60 L", "90 L", "120 L"]},
     "porao": {"nome": "Porão", "tecla": 5, "precos": [160, 420], "niveis": [Vector2i(5, 4), Vector2i(6, 4), Vector2i(6, 5)],
@@ -29,8 +29,21 @@ const ORDEM := ["motor", "tanque", "porao", "vara", "casco", "leme", "helice", "
 
 var nivel: Dictionary = {"motor": 0, "tanque": 0, "porao": 0, "vara": 0, "casco": 0, "leme": 0, "helice": 0, "radar": 0}
 
+## v0.7.0: o motor de 30 nós (último nível) só aparece na loja depois de todas as missões de São Pedro.
+var motor_30_liberado: bool = false
+
+func _teto(id: String) -> int:
+    var t: int = TABELA[id].niveis.size() - 1
+    if id == "motor" and not motor_30_liberado:
+        t -= 1
+    return t
+
 func no_maximo(id: String) -> bool:
-    return int(nivel[id]) >= TABELA[id].niveis.size() - 1
+    return int(nivel[id]) >= _teto(id)
+
+## O motor parou no 14,5 nós só porque os 30 nós ainda estão trancados?
+func motor_trancado() -> bool:
+    return not motor_30_liberado and int(nivel["motor"]) >= TABELA["motor"].niveis.size() - 2
 
 ## Preço do próximo nível, ou -1 se já está no máximo.
 func preco(id: String) -> int:
@@ -47,6 +60,7 @@ func valor(id: String):
 func zerar() -> void:
     for id in ORDEM:
         nivel[id] = 0
+    motor_30_liberado = false
     mudou.emit()
 
 ## Põe os níveis atuais no barco, no porão e na pesca.
@@ -71,7 +85,9 @@ func vitrine(dinheiro: int) -> Array:
     for id in ORDEM:
         var t: Dictionary = TABELA[id]
         var n: int = int(nivel[id])
-        if no_maximo(id):
+        if id == "motor" and motor_trancado():
+            saida.append({"id": id, "texto": T.t("%s\n%s · 30 nós após as missões de São Pedro") % [T.t(String(t.nome)), T.t(String(t.descricao[n]))], "pode": false})
+        elif no_maximo(id):
             saida.append({"id": id, "texto": T.t("%s\n%s (máximo)") % [T.t(String(t.nome)), T.t(String(t.descricao[n]))], "pode": false})
         else:
             var p: int = int(t.precos[n])

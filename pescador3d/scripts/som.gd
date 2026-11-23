@@ -41,6 +41,7 @@ var _tempo_ambiente: float = 0.0  # ciclo lento, evita volume de ambiente mecani
 var _filtros_bruma: Array = []              # [{bus, indice, filtro}]
 var _sino: AudioStreamPlayer
 var _prox_sino: float = 22.0
+var sino_ambiente: bool = true          # v0.7.0: desligado enquanto o sino de verdade (scripts/historia.gd) toca
 var _clima_ref: Node = null
 # O arquivo vento.ogg roda em laco, mas fica inaudivel entre rajadas.
 # Dessa maneira nao ha corte seco no meio do arquivo e o vento deixa de dominar o som.
@@ -124,7 +125,8 @@ func _bruma_do_som() -> float:
         _clima_ref = get_node_or_null("../Clima")
     if _clima_ref == null:
         return 0.0
-    return clampf(float(_clima_ref.bruma) * (0.40 + 0.60 * float(_clima_ref.bruma_local)), 0.0, 1.0)
+    var mansa: float = 0.35 if bool(_clima_ref.get("bruma_mansa")) else 1.0      # v0.7.0: depois do final "luz"
+    return clampf(float(_clima_ref.bruma) * (0.40 + 0.60 * float(_clima_ref.bruma_local)) * mansa, 0.0, 1.0)
 
 func _aplicar_bruma(delta: float, bruma: float) -> void:
     for f in _filtros_bruma:
@@ -134,7 +136,7 @@ func _aplicar_bruma(delta: float, bruma: float) -> void:
         (f.filtro as AudioEffectLowPassFilter).cutoff_hz = lerpf(20000.0, 2500.0, bruma)
     if _sino == null:
         return
-    if navegando and bruma > 0.45:
+    if navegando and bruma > 0.45 and sino_ambiente:
         _prox_sino -= delta
         if _prox_sino <= 0.0:
             _sino.volume_db = lerpf(-33.0, -23.0, bruma) + randf_range(-3.0, 1.0)

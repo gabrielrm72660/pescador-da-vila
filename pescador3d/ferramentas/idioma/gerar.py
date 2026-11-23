@@ -5,6 +5,7 @@ import re, json, sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from conteudo_a import A
 from conteudo_b import B
+from conteudo_c import C
 from zh_existente import ZH_POR_EN
 
 def unesc(s):
@@ -43,7 +44,7 @@ if faltou:
 
 # o texto sobre idiomas mudou: a chave antiga fica sem uso
 cont = {}
-for d in (A, B):
+for d in (A, B, C):
     for pt, v in d.items():
         if len(v) != 3:
             print('tupla errada:', pt)

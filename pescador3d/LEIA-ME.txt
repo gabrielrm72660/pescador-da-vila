@@ -1,3 +1,12 @@
+BRUMA — Versão 0.7.0 (Godot 4.7)
+================================================
+NOVO NA 0.7.0 (detalhes em docs/BRUMA_v0.7.0_NOVIDADES.txt):
+- CADERNO DE PEIXES (P): uma página por espécie, silhueta até você pescar, recorde, preço, zona e horário.
+- HISTÓRIA FINAL: o compadre Bento, as páginas do diário na bruma, o sino a oeste de São Pedro e dois finais.
+- MOTOR DE 30 NÓS: liberado depois de todas as missões de São Pedro.
+- CONTROLE: Xbox/PlayStation (A pesca, X porão, Y caderno, Start menu, RT/LT motor, RB freio).
+- CELULAR: controles de toque e APK de Android (gerado no GitHub Actions).
+
 BRUMA — Versão 0.6.1 (Godot 4.7)
 ================================================
 NOVO NA 0.6.1 (detalhes em docs/BRUMA_v0.6.1_NOVIDADES.txt):

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://hvcwe5epgddq"
 path.s3tc="res://.godot/imported/madeira.png-acb50f9732a8f4011beb53be6d3933dd.s3tc.ctex"
+path.etc2="res://.godot/imported/madeira.png-acb50f9732a8f4011beb53be6d3933dd.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/texturas/ilha/madeira.png"
-dest_files=["res://.godot/imported/madeira.png-acb50f9732a8f4011beb53be6d3933dd.s3tc.ctex"]
+dest_files=["res://.godot/imported/madeira.png-acb50f9732a8f4011beb53be6d3933dd.s3tc.ctex", "res://.godot/imported/madeira.png-acb50f9732a8f4011beb53be6d3933dd.etc2.ctex"]
 
 [params]
 

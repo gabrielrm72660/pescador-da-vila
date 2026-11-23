@@ -142,8 +142,9 @@ func _physics_process(delta: float) -> void:
     tempo_animacao += delta
     _recarga_batida = maxf(0.0, _recarga_batida - delta)
     if ativo:
-        var acelerador: float = Input.get_action_strength("ui_up")
-        var re: float = Input.get_action_strength("ui_down")
+        # v0.7.0: ações próprias (setas, analógico esquerdo e gatilhos do controle; ver scripts/controle.gd)
+        var acelerador: float = Input.get_action_strength("barco_acelerar") if InputMap.has_action("barco_acelerar") else Input.get_action_strength("ui_up")
+        var re: float = Input.get_action_strength("barco_re") if InputMap.has_action("barco_re") else Input.get_action_strength("ui_down")
         # Teclas físicas são independentes do layout do teclado (W/S).
         if Input.is_physical_key_pressed(KEY_W):
             acelerador = 1.0
@@ -209,10 +210,14 @@ func _physics_process(delta: float) -> void:
         velocidade *= exp(-0.018 * resistencia_mar * delta)
 
         leme = 0.0
-        if Input.is_physical_key_pressed(KEY_A) or Input.is_action_pressed("ui_left"):
+        var esq: String = "barco_esquerda" if InputMap.has_action("barco_esquerda") else "ui_left"
+        var dir: String = "barco_direita" if InputMap.has_action("barco_direita") else "ui_right"
+        if Input.is_physical_key_pressed(KEY_A):
             leme += 1.0
-        if Input.is_physical_key_pressed(KEY_D) or Input.is_action_pressed("ui_right"):
+        if Input.is_physical_key_pressed(KEY_D):
             leme -= 1.0
+        leme += Input.get_action_strength(esq) - Input.get_action_strength(dir)
+        leme = clampf(leme, -1.0, 1.0)
         var fator_giro: float = clampf(absf(velocidade) / 2.3, 0.0, 1.0)
         var giro_desejado: float = leme * giro_maximo * fator_giro * signf(velocidade)
         _giro_atual = lerpf(_giro_atual, giro_desejado, 1.0 - exp(-2.9 * delta))

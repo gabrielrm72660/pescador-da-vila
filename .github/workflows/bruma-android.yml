@@ -1,0 +1,92 @@
+# Gera o APK de Android do Bruma (pasta pescador3d/) e, junto, o Bruma.exe de Windows.
+# Roda sozinho a cada push na branch pescador-3d que mexa no jogo, ou pela aba Actions > "Bruma: Android e Windows" > Run workflow.
+# O APK sai assinado com uma chave de depuração gerada na hora: serve para instalar no celular (permitir "fontes desconhecidas"),
+# não para publicar na Play Store.
+name: "Bruma: Android e Windows"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [pescador-3d]
+    paths: ["pescador3d/**", ".github/workflows/bruma-android.yml"]
+
+jobs:
+  exportar:
+    runs-on: ubuntu-24.04
+    env:
+      GODOT_VERSAO: "4.7"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: SDK do Android (build-tools e plataforma)
+        run: sdkmanager "platform-tools" "build-tools;34.0.0" "platforms;android-34"
+
+      - name: Godot e modelos de exportação
+        run: |
+          set -e
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSAO}-stable"
+          wget -q "$base/Godot_v${GODOT_VERSAO}-stable_linux.x86_64.zip"
+          wget -q "$base/Godot_v${GODOT_VERSAO}-stable_export_templates.tpz"
+          unzip -q "Godot_v${GODOT_VERSAO}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSAO}-stable_linux.x86_64" godot
+          chmod +x godot
+          destino="$HOME/.local/share/godot/export_templates/${GODOT_VERSAO}.stable"
+          mkdir -p "$destino"
+          unzip -q "Godot_v${GODOT_VERSAO}-stable_export_templates.tpz"
+          mv templates/* "$destino/"
+          ls "$destino"
+
+      - name: Chave de depuração e configurações do editor
+        run: |
+          set -e
+          keytool -genkeypair -v -keystore "$HOME/debug.keystore" -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          mkdir -p "$HOME/.config/godot"
+          for f in editor_settings-4.tres "editor_settings-${GODOT_VERSAO}.tres"; do
+            {
+              echo '[gd_resource type="EditorSettings" format=3]'
+              echo ''
+              echo '[resource]'
+              echo "export/android/android_sdk_path = \"$ANDROID_SDK_ROOT\""
+              echo "export/android/java_sdk_path = \"$JAVA_HOME\""
+              echo "export/android/debug_keystore = \"$HOME/debug.keystore\""
+              echo 'export/android/debug_keystore_user = "androiddebugkey"'
+              echo 'export/android/debug_keystore_pass = "android"'
+            } > "$HOME/.config/godot/$f"
+          done
+          cat "$HOME/.config/godot/editor_settings-4.tres"
+
+      - name: Importar o projeto
+        working-directory: pescador3d
+        run: timeout 1200 ../godot --headless --path . --import || true
+
+      - name: Exportar APK (Android) e EXE (Windows)
+        working-directory: pescador3d
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /home/runner/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          mkdir -p build
+          ../godot --headless --path . --export-debug "Android" build/Bruma.apk
+          ../godot --headless --path . --export-release "Windows Desktop" build/Bruma.exe
+          ls -la build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bruma-Android
+          path: pescador3d/build/Bruma.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bruma-Windows
+          path: pescador3d/build/Bruma.exe
+          if-no-files-found: warn

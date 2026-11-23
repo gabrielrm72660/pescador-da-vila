@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://boungvqhnm2it"
 path.s3tc="res://.godot/imported/telhas.png-06257e0b34ce3c969b22cd37cb70d40e.s3tc.ctex"
+path.etc2="res://.godot/imported/telhas.png-06257e0b34ce3c969b22cd37cb70d40e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/texturas/ilha/telhas.png"
-dest_files=["res://.godot/imported/telhas.png-06257e0b34ce3c969b22cd37cb70d40e.s3tc.ctex"]
+dest_files=["res://.godot/imported/telhas.png-06257e0b34ce3c969b22cd37cb70d40e.s3tc.ctex", "res://.godot/imported/telhas.png-06257e0b34ce3c969b22cd37cb70d40e.etc2.ctex"]
 
 [params]
 

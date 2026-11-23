@@ -149,6 +149,34 @@ const LISTA := [
             "oferta": ["Sabe o que falta no seu barco? Um nome conhecido nas feiras de todo canto.",
                     "Junte seis mil e eu mesma ponho seu nome na lousa da feira."],
             "fim": ["Seis mil! Seu nome já está na lousa. Daqui para frente, o mar é seu."]},
+    # --- terceira parte: o compadre que a bruma levou (v0.7.0; a noite final fica em scripts/historia.gd)
+    {"texto": "Perguntar ao Seu Jacinto pelo Bento", "tipo": "atracar", "precisa_oferta": true, "alvo": "Vila do Porto", "quantos": 1, "premio": 100,
+            "dica": "Volte ao cais da Vila do Porto e fale com o Seu Jacinto.",
+            "dado_por": "abilio",
+            "oferta": ["Pescador, você sabe de quem era o barco que você herdou? O Estrela d'Alva era do Bento, compadre meu e do Jacinto.",
+                    "Faz três anos ele saiu numa noite de bruma e não voltou. Acharam só o barco, à deriva, com a lanterna apagada.",
+                    "O Jacinto não gosta de falar disso. Mas ele te deve essa conversa. Vá até a Vila."],
+            "fim_por": "jacinto",
+            "fim": ["O Abílio te contou, não foi? Pois é. O Bento não morreu no mar. Ele sumiu na bruma.",
+                    "Na véspera ele me disse: \"vou atrás do sino\". Eu achei que era conversa de quem bebeu demais.",
+                    "Ele escrevia tudo num diário de bordo, que nunca acharam. Se alguém achar, vai ser quem pesca na bruma."]},
+    {"texto": "Achar as páginas do diário do Bento", "tipo": "pagina", "precisa_oferta": true, "alvo": "", "quantos": 5, "premio": 300,
+            "dica": "Em noite de bruma, em mar aberto, chegue perto dos vultos.",
+            "dado_por": "jacinto",
+            "oferta": ["Dizem que a bruma devolve o que leva, aos pedaços.",
+                    "Aqueles vultos que você vê nas noites de neblina... chegue perto, se tiver coragem.",
+                    "O que achar do Bento, leve ao Abílio. Ele entende de luz e de bruma mais do que eu."],
+            "fim_por": "abilio",
+            "fim": ["Cinco páginas... É a letra dele, não tenho dúvida.",
+                    "Ele fala de um sino a oeste daqui, onde a carta não mostra nada. E de uma luz que não é a do meu farol.",
+                    "Se você for, vá numa noite de bruma. Eu deixo o facho virado para o oeste a noite inteira."]},
+    {"texto": "Seguir o sino na bruma", "tipo": "sino", "precisa_oferta": true, "alvo": "", "quantos": 1, "premio": 0,
+            "dica": "Numa noite de bruma, navegue a oeste de São Pedro e siga o som do sino.",
+            "dado_por": "abilio",
+            "oferta": ["Esqueça o radar: na bruma ele mente. Siga o sino, com a luz do farol nas suas costas.",
+                    "E, pescador... se encontrar o Bento, diga que o Abílio nunca apagou o farol."],
+            "fim": ["Eu vi a luz chegando do oeste e soube na hora.",
+                    "O farol nunca brilhou assim. O Bento está descansando, pescador. Graças a você."]},
 ]
 
 var indice: int = 0
@@ -156,6 +184,13 @@ var progresso: int = 0
 var oferecidas: Dictionary = {}          # índice da missão -> true: o NPC já apresentou a missão
 var fim_pendentes: Array = []            # missões cumpridas cuja fala final ainda não foi dita
 var _volta_papo: Dictionary = {}         # NPC -> próxima fala da conversa fiada
+
+## v0.7.0: as missões da Ilha de São Pedro (a "segunda parte") terminam em "Juntar R$ 6000".
+func sao_pedro_concluido() -> bool:
+    for i in LISTA.size():
+        if String(LISTA[i].texto) == "Juntar R$ 6000":
+            return indice > i
+    return false
 
 func terminou() -> bool:
     return indice >= LISTA.size()
@@ -171,7 +206,7 @@ func texto() -> String:
     if terminou():
         return T.t("Pescar, vender e melhorar o barco")
     var m: Dictionary = LISTA[indice]
-    if m.tipo == "entregar" and not oferecidas.has(indice):
+    if (m.tipo == "entregar" or m.get("precisa_oferta", false)) and not oferecidas.has(indice):
         var npc: Dictionary = Npcs.DADOS[m.dado_por]
         return T.t("Falar com %s (%s)") % [T.t(npc.nome), T.t(npc.ilha)]
     var base: String = T.t(m.texto)
@@ -183,7 +218,7 @@ func dica() -> String:
     if terminou():
         return ""
     var m: Dictionary = LISTA[indice]
-    if m.tipo == "entregar" and not oferecidas.has(indice):
+    if (m.tipo == "entregar" or m.get("precisa_oferta", false)) and not oferecidas.has(indice):
         return T.t("Ele (ela) passa a caixa para você quando você atraca no cais.")
     return T.t(str(m.dica))
 
@@ -194,7 +229,7 @@ func evento(tipo: String, alvo: String = "", quantidade: int = 1) -> void:
     var m: Dictionary = LISTA[indice]
     if m.tipo != tipo or (m.alvo != "" and m.alvo != alvo):
         return
-    if tipo == "entregar" and not oferecidas.has(indice):
+    if (tipo == "entregar" or m.get("precisa_oferta", false)) and not oferecidas.has(indice):
         return
     progresso = quantidade if tipo == "dinheiro" else progresso + quantidade
     if progresso >= int(m.quantos):
