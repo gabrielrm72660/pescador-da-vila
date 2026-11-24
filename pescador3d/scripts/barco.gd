@@ -124,6 +124,7 @@ func _refinar_materiais(no: Node) -> void:
             malha.set_surface_override_material(i, sm)
             continue
         var mat: BaseMaterial3D = original.duplicate()
+        mat.cull_mode = BaseMaterial3D.CULL_DISABLED      # v0.7.6: peças de face única (ver barco_usado.gdshader)
         mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
         mat.roughness = 0.96                       # tinta fosca, como pintura
         mat.metallic_specular = 0.12

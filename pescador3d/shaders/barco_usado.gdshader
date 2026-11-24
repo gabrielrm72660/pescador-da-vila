@@ -1,5 +1,7 @@
 shader_type spatial;
-render_mode diffuse_burley, cull_back;
+// v0.7.6: dois lados. As amuradas e o espelho de popa do modelo têm faces de um lado só; com cull_back, olhando de
+// cima ou de trás, a parede do outro lado sumia e o mar aparecia através da popa.
+render_mode diffuse_burley, cull_disabled;
 // v0.5.7: o barco do jogador com cara de barco de pesca usado, por cima das texturas de tinta do modelo.
 //  - tinta desbotada pelo sol e pelo sal (menos saturada, um pouco mais escura e amarelada);
 //  - manchas de sujeira e de mão nas partes de baixo;
