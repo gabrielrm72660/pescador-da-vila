@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode diffuse_burley, specular_schlick_ggx;
+render_mode diffuse_burley, specular_schlick_ggx, cull_disabled;   // v0.7.9: dois lados (popa transparente)
 // Pintura do barco do jogador com outra cor: mantém os traços e o desgaste da textura original
 // (só a claridade dela entra) e troca a cor. Usado nos barcos NPC (scripts/vida_portuaria.gd).
 uniform sampler2D tex_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;

@@ -66,6 +66,9 @@ func _ready() -> void:
         BarcoVisual.reformar(casco)
     _refinar_materiais(self)
     BarcoVisual.equipar(balanceio)
+    _radar = balanceio.find_child("Radar", true, false) as Node3D
+    for n in balanceio.find_children("Holofote", "SpotLight3D", true, false):
+        _holofotes.append(n)
     helice = find_child("Helice", true, false) as Node3D      # peças soltas do modelo
     pa_leme = find_child("Leme", true, false) as Node3D
     if respingo != null:
@@ -74,6 +77,22 @@ func _ready() -> void:
         # Espuma separada nos bordos: acompanha o balanço da proa e não fica presa no centro.
         _respingo_boreste = _criar_respingos_bordo("RespingoBoreste", 1.0)
         _respingo_bombordo = _criar_respingos_bordo("RespingoBombordo", -1.0)
+
+var _radar: Node3D
+var _holofotes: Array = []
+
+## v0.7.9: os dois holofotes do teto acendem junto com a lanterna do barco (forca 0 a 1; jogo.gd).
+func definir_holofotes(forca: float) -> void:
+    for h in _holofotes:
+        (h as SpotLight3D).light_energy = 7.0 * forca
+        (h as SpotLight3D).visible = forca > 0.01
+    if not _holofotes.is_empty():
+        var lente: StandardMaterial3D = _holofotes[0].get_meta("lente")
+        lente.emission_energy_multiplier = 3.0 * forca
+
+func _process(delta: float) -> void:
+    if _radar != null:
+        _radar.rotate_y(delta * 2.4)            # uma volta a cada ~2,6 s, como um radar de pesqueiro
 
 func _criar_respingos_bordo(nome: String, sinal: float) -> CPUParticles3D:
     var efeito := respingo.duplicate() as CPUParticles3D

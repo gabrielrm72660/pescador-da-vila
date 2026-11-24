@@ -4,7 +4,7 @@ config_version=5
 
 [application]
 config/name="Bruma"
-config/version="0.7.8"
+config/version="0.7.9"
 config/icon="res://assets/marca/icone.png"
 run/main_scene="res://cenas/Jogo.tscn"
 config/use_custom_user_dir=true
@@ -34,4 +34,8 @@ vento_forca={
 vento_dir={
 "type": "vec2",
 "value": Vector2(0.84, -0.54)
+}
+vento_fases={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
 }

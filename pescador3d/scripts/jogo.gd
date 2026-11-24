@@ -406,6 +406,8 @@ func _unhandled_input(event: InputEvent) -> void:
                     interface.aviso(Idioma.t("Carta náutica aberta. [M] fecha.") if interface.alternar_mapa() else Idioma.t("Carta náutica fechada."))
                 KEY_L:
                     alternar_luz()
+                KEY_H:
+                    buzinar()
                 KEY_K:
                     interface.aviso(Idioma.t("Clima: %s. [K] alternar") % Idioma.t(clima.alternar_clima()))
                 KEY_F, KEY_E, KEY_ESCAPE: zarpar()
@@ -463,6 +465,8 @@ func _unhandled_input(event: InputEvent) -> void:
                 _diagnostico_navegacao()
             KEY_L:
                 alternar_luz()
+            KEY_H:
+                buzinar()
             KEY_K:
                 interface.aviso(Idioma.t("Clima: %s. [K] alternar") % Idioma.t(clima.alternar_clima()))
             KEY_R:
@@ -479,8 +483,13 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.7.8] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.7.9] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
+
+## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).
+func buzinar() -> void:
+    if som != null and not som.tocando("buzina"):
+        som.tocar("buzina", -3.0, randf_range(0.98, 1.02))
 
 func alternar_luz() -> void:
     luz_ligada = not luz_ligada
@@ -1016,8 +1025,9 @@ func atualizar_interface() -> void:
     if interface == null:
         return
     clima.correndo = iniciado and not em_pausa and not atracado and not graficos.esta_aberto()
-    var escuro: float = clima.noite()
+    var escuro: float = clima.escuridao()             # v0.7.9: noite ou tempestade (antes só a noite)
     luz_barco.light_energy = 2.2 * escuro if luz_ligada else 0.0
+    barco.definir_holofotes(maxf(escuro, 0.35) if luz_ligada else 0.0)
     ilha = _ilha_do_cais_mais_perto()
     for i in ilhas:
         i.acender(escuro)

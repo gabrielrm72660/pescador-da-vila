@@ -82,7 +82,7 @@ func _ready() -> void:
     _guardar_avulso("onda_2", "mar")
     _guardar_avulso("onda_3", "mar")
     _guardar_avulso("trovao", "chuva")
-    for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura"]:
+    for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura", "buzina"]:
         _guardar_avulso(nome, "efeitos")
 
 func _preparar_bruma() -> void:
@@ -170,6 +170,10 @@ func _laco(nome: String, db: float, grupo: String) -> AudioStreamPlayer:
             p.stream.loop = true
         p.play()
     return p
+
+func tocando(nome: String) -> bool:
+    var p: AudioStreamPlayer = _avulsos.get(nome)
+    return p != null and p.playing
 
 ## Toca um som avulso ("pesca_lancar", "aviso", "peixe"...).
 func tocar(nome: String, db: float = -8.0, tom: float = 1.0) -> void:

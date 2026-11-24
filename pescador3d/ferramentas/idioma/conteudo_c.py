@@ -133,5 +133,6 @@ C = {
     "Fundo": ("Fondo", "Depth", "深度"),
     "Técnica": ("Técnica", "Technique", "技巧"),
     "Luz": ("Luz", "Light", "灯"),
+    "Buzina": ("Bocina", "Horn", "汽笛"),
     "Menu": ("Menú", "Menu", "菜单"),
 }

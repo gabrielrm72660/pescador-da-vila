@@ -45,6 +45,10 @@ var _velocidade: float = 0.80
 # v0.5.8: fase das ondas acumulada (fase += delta * velocidade). Antes era tempo * velocidade: quando o clima mudava,
 # a velocidade mudava e, com o tempo de jogo já grande, a fase disparava (ondas 8x mais rápidas na troca de clima).
 var fase_ondas: float = 0.0
+var _desl_larga := Vector2.ZERO
+var _desl_media := Vector2.ZERO
+var _desl_fina := Vector2.ZERO
+var _fase_vaga: float = 0.0
 var _costas: Array = []  # [{"centro": Vector2, "raio": float}]
 var simulando: bool = false
 var tempestade_nivel: float = 0.0
@@ -293,6 +297,10 @@ func _atualizar_uniformes() -> void:
     _material.set_shader_parameter("quantidade_espuma", lerpf(0.18, 0.49, agitacao))
     _material.set_shader_parameter("tempo_mar", tempo)
     _material.set_shader_parameter("fase_ondas", fase_ondas)
+    _material.set_shader_parameter("desl_larga", _desl_larga)
+    _material.set_shader_parameter("desl_media", _desl_media)
+    _material.set_shader_parameter("desl_fina", _desl_fina)
+    _material.set_shader_parameter("fase_vaga", _fase_vaga)
     _material.set_shader_parameter("tempestade_nivel", tempestade_nivel)
 
 func _process(delta: float) -> void:
@@ -313,8 +321,15 @@ func _process(delta: float) -> void:
     # A tempestade sobrepõe-se ao perfil automático ou manual e decai suavemente.
     alvo = maxf(alvo, lerpf(alvo, 0.99, tempestade_nivel))
     agitacao = lerpf(agitacao, alvo, 1.0 - exp(-0.55 * delta))
-    fase_ondas += delta * lerpf(0.63, 1.05, agitacao)      # mesma velocidade que _atualizar_uniformes() usa
+    var passo: float = delta * lerpf(0.63, 1.05, agitacao)
+    fase_ondas += passo      # mesma velocidade que _atualizar_uniformes() usa
     direcao_vento = Vector2(cos(-0.57 + tempo * 0.00042), sin(-0.57 + tempo * 0.00042))
+    # v0.7.9: o relevo desliza com a velocidade de AGORA (somado aos poucos); as texturas repetem a cada 1,0 de UV
+    var cruz := Vector2(-direcao_vento.y, direcao_vento.x)
+    _desl_larga = (_desl_larga + direcao_vento * passo * 0.008).posmod(1.0)
+    _desl_media = (_desl_media + direcao_vento * passo * (0.012 + agitacao * 0.012)).posmod(1.0)
+    _desl_fina = (_desl_fina + (direcao_vento + cruz * 0.24) * passo * (0.045 + agitacao * 0.045)).posmod(1.0)
+    _fase_vaga = fposmod(_fase_vaga + passo * (0.10 + agitacao * 0.07), 1.0)
     _atualizar_uniformes()
 
     if barco == null:

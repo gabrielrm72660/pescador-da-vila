@@ -8,16 +8,14 @@ const MODELO_BARCO := preload("res://assets/barco/PE3476_v4.glb")
 const SHADER_PINTURA := preload("res://shaders/pintura_npc.gdshader")
 
 ## Quais materiais do casco viram tinta nova, e qual o papel de cada um no esquema de cores.
-const PAPEL_TINTA := {"casco_vermelho": "casco", "pintura_vermelha": "casco", "pintura_azul": "faixa", "pintura_laranja": "teto",
-        "casco_branco": "claro", "pintura_creme": "claro"}
+## v0.7.9: costado e cabine separados (antes os dois eram "claro"), para os estilos do barco que o jogador não escolheu.
+const PAPEL_TINTA := {"casco_vermelho": "fundo", "pintura_vermelha": "fundo", "pintura_azul": "faixa", "pintura_laranja": "teto",
+        "casco_branco": "costado", "pintura_creme": "cabine"}
 ## Claridade média (linear) das texturas originais; o shader usa isso para manter o desgaste da pintura.
 const LUMA_REF := {"casco_vermelho": 0.110, "pintura_vermelha": 0.110, "pintura_azul": 0.101, "pintura_laranja": 0.285,
         "casco_branco": 0.703, "pintura_creme": 0.670}
-const ESQUEMAS := [
-    {"casco": Color(0.10, 0.38, 0.28), "faixa": Color(0.90, 0.74, 0.22), "teto": Color(0.08, 0.40, 0.38), "claro": Color(0.84, 0.93, 0.87)},    # verde, faixa amarela, teto verde-água
-    {"casco": Color(0.12, 0.25, 0.50), "faixa": Color(0.82, 0.22, 0.16), "teto": Color(0.92, 0.80, 0.38), "claro": Color(0.78, 0.87, 0.95)},    # azul-marinho, faixa vermelha, teto amarelo
-    {"casco": Color(0.80, 0.62, 0.16), "faixa": Color(0.14, 0.52, 0.58), "teto": Color(0.66, 0.22, 0.16), "claro": Color(0.96, 0.90, 0.74)},    # ocre, faixa turquesa, teto vermelho
-]
+const Estilos = preload("res://scripts/barcos_npc_estilos.gd")
+const ESQUEMAS := Estilos.ESTILOS        # antigo, saveiro, lagosteiro, madeira (v0.7.9) + verde, marinho, ocre
 const VELOCIDADE := [2.7, 3.3]        # m/s de cada barco da ilha
 const DISTANCIA_PERTO := 260.0        # m: até aqui o barco acompanha cada quadro; além disso, só de vez em quando
 const DISTANCIA_VISTA := 480.0        # m: além disso nem é desenhado (poupa chamadas de desenho)
@@ -36,6 +34,7 @@ var _oceano: Node = null
 var _cache_pintura: Dictionary = {}     # "esquema|papel" -> ShaderMaterial
 var _cache_tripulacao: Dictionary = {}  # "esquema|lado" -> malha da tripulação
 var _mat_tripulacao: StandardMaterial3D = null
+var _mat_equipamento: StandardMaterial3D = null
 var _cache_refinado: Dictionary = {}    # id do material original -> material com o acabamento do barco do jogador
 
 func configurar(ilhas: Array) -> void:
@@ -136,6 +135,22 @@ func _novo_barco(indice_esquema: int, lado: float = 1.0) -> Node3D:
     raiz.add_child(modelo)
     if OS.get_environment("PESCADOR_CASA_SIMPLES") != "1":
         raiz.add_child(_tripulacao(indice_esquema, lado))
+    var equip: ArrayMesh = Estilos.equipamento(indice_esquema)      # v0.7.9: pneus, tangones, covos, bandeirolas...
+    if equip != null:
+        if _mat_tripulacao == null:
+            _mat_tripulacao = StandardMaterial3D.new()
+            _mat_tripulacao.vertex_color_use_as_albedo = true
+            _mat_tripulacao.roughness = 0.9
+        if _mat_equipamento == null:
+            _mat_equipamento = _mat_tripulacao.duplicate()
+            _mat_equipamento.cull_mode = BaseMaterial3D.CULL_DISABLED      # bandeirolas são de um lado só
+        var eq := MeshInstance3D.new()
+        eq.name = "Equipamento"
+        eq.mesh = equip
+        eq.material_override = _mat_equipamento
+        eq.visibility_range_end = DISTANCIA_VISTA
+        eq.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+        raiz.add_child(eq)
     for no in modelo.find_children("*", "MeshInstance3D", true, false):
         var m := no as MeshInstance3D
         if m == null or m.mesh == null:
@@ -210,6 +225,7 @@ func _refinado(original: BaseMaterial3D) -> BaseMaterial3D:
     if _cache_refinado.has(id):
         return _cache_refinado[id]
     var mat: BaseMaterial3D = original.duplicate()
+    mat.cull_mode = BaseMaterial3D.CULL_DISABLED      # v0.7.9: peças de face única (a popa transparente da v0.7.7)
     mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
     mat.roughness = 0.96
     mat.metallic_specular = 0.12

@@ -61,6 +61,13 @@ uniform float luz_propria = 1.0;                     // a agua se acende um pouc
 // calcular a mesma onda e subir e descer junto com a agua.
 uniform float tempo_mar = 0.0;
 uniform float fase_ondas = 0.0;              // v0.5.8: fase acumulada no script (sem salto quando a velocidade muda)
+// v0.7.9: deslizamento das texturas de relevo e fase das vagas da costa, também acumulados no script. Antes eram
+// "fase * velocidade(agitacao)": no começo e no fim da tempestade a agitação muda e, com a fase já grande, as texturas
+// disparavam (o mar parecia correr 3x mais rápido).
+uniform vec2 desl_larga = vec2(0.0);
+uniform vec2 desl_media = vec2(0.0);
+uniform vec2 desl_fina = vec2(0.0);
+uniform float fase_vaga = 0.0;
 uniform vec2 barco_pos = vec2(0.0);
 uniform vec2 barco_frente = vec2(0.0, -1.0);
 uniform float barco_vel = 0.0;                 // 0 parado ... 1 velocidade maxima
@@ -192,9 +199,9 @@ void fragment() {
     vec2 pendente = inclinacao_onda(p, t);
     vec2 vento = normalize(direcao_vento);
     vec2 cruz = vec2(-vento.y, vento.x);
-    vec2 n_larga = texture(tex_ondas, p * 0.011 - vento * t * 0.008).xy * 2.0 - 1.0;
-    vec2 n_media = texture(tex_ondas, p * 0.037 - vento * t * (0.012 + agitacao_mar * 0.012)).xy * 2.0 - 1.0;
-    vec2 n_fina = texture(tex_marolas, p * 0.17 - (vento + cruz * 0.24) * t * (0.045 + agitacao_mar * 0.045)).xy * 2.0 - 1.0;
+    vec2 n_larga = texture(tex_ondas, p * 0.011 - desl_larga).xy * 2.0 - 1.0;
+    vec2 n_media = texture(tex_ondas, p * 0.037 - desl_media).xy * 2.0 - 1.0;
+    vec2 n_fina = texture(tex_marolas, p * 0.17 - desl_fina).xy * 2.0 - 1.0;
     vec2 relevo = (n_larga * 0.36 + n_media * 0.41 + n_fina * (0.20 + 0.25 * agitacao_mar) * perto) * forca_relevo;
     if (chuva_mar > 0.001) {
         // chuva: gotas em duas escalas + a superficie picada por gotas miudas (so perto, onde da para ver)
@@ -301,7 +308,7 @@ void fragment() {
     pedido = max(pedido, proa_espuma * avante * (0.38 + impacto_proa * 0.55));
 
     // ondas quebrando na praia: faixas de espuma que andam para a areia e uma linha fixa na beira
-    float vaga = fract(fundura * 0.36 + t * (0.10 + agitacao_mar * 0.07) + aquarela * 0.28);
+    float vaga = fract(fundura * 0.36 + fase_vaga + aquarela * 0.28);
     float arrebenta = smoothstep(0.63, 0.92, vaga) * (1.0 - smoothstep(0.92, 1.0, vaga))
                     * (1.0 - smoothstep(0.7, 4.0, fundura)) * smoothstep(-0.3, 0.5, fundura);
     pedido = max(pedido, arrebenta * (0.70 + 0.30 * agitacao_mar));

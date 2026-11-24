@@ -227,14 +227,36 @@ static func equipar(bal: Node3D) -> void:
 	# --- equipamentos do Alto-Mar, em cima do teto (que agora está em TETO_EM_CIMA)
 	var r: float = TETO_EM_CIMA
 	_haste(raiz, Vector3(0.38, r, 1.85), Vector3(0.38, r + 0.32, 1.85), 0.05, cinza)            # radar: coluna
-	_caixa(raiz, Vector3(0.38, r + 0.36, 1.85), Vector3(1.05, 0.07, 0.15), branco, Basis(Vector3.UP, 0.5))
+	var radar := Node3D.new()                     # v0.7.9: a antena do radar gira (barco.gd gira o nó "Radar")
+	radar.name = "Radar"
+	radar.position = Vector3(0.38, r + 0.36, 1.85)
+	radar.rotation.y = 0.5
+	raiz.add_child(radar)
+	_caixa(radar, Vector3.ZERO, Vector3(1.05, 0.07, 0.15), branco)
+	_caixa(radar, Vector3(0.0, -0.02, 0.0), Vector3(0.16, 0.06, 0.16), cinza)
 	for x in [-0.72, 0.72]:                                                                     # antenas
 		_caixa(raiz, Vector3(x, r + 0.05, 2.95), Vector3(0.10, 0.10, 0.10), cinza)
 		_haste(raiz, Vector3(x, r + 0.1, 2.95), Vector3(x, r + 2.2, 2.98), 0.016, branco)
+	var lente := _mat(Color(1.0, 0.95, 0.82), 0.3, 0.0, 0.0)          # v0.7.9: acende com a lanterna (barco.definir_holofotes)
+	lente.emission_enabled = true
+	lente.emission = Color(1.0, 0.92, 0.75)
+	lente.resource_name = "lente_holofote"
 	for x in [-0.55, 0.55]:                                                                     # holofotes
 		_caixa(raiz, Vector3(x, r + 0.05, 0.66), Vector3(0.06, 0.10, 0.06), cinza)
 		_caixa(raiz, Vector3(x, r + 0.14, 0.62), Vector3(0.24, 0.16, 0.14), cinza)
-		_caixa(raiz, Vector3(x, r + 0.14, 0.548), Vector3(0.19, 0.11, 0.01), _mat(Color(1.0, 0.95, 0.82), 0.3, 0.0, 1.6))
+		_caixa(raiz, Vector3(x, r + 0.14, 0.548), Vector3(0.19, 0.11, 0.01), lente)
+		var foco := SpotLight3D.new()
+		foco.name = "Holofote"
+		foco.light_color = Color(1.0, 0.93, 0.78)
+		foco.light_energy = 0.0
+		foco.spot_range = 60.0
+		foco.spot_angle = 22.0
+		foco.spot_attenuation = 0.9
+		foco.shadow_enabled = false
+		foco.position = Vector3(x, r + 0.14, 0.53)
+		foco.rotation.x = deg_to_rad(-7.0)                   # aponta para a proa (-Z), um pouco para baixo
+		foco.set_meta("lente", lente)
+		raiz.add_child(foco)
 	var balsa := CylinderMesh.new()                                                             # balsa salva-vidas
 	balsa.top_radius = 0.21
 	balsa.bottom_radius = 0.21

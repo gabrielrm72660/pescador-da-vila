@@ -110,6 +110,7 @@ func _process(delta: float) -> void:
         if _chuva.amount != qtd:
             _chuva.amount = qtd
     _chuva_mar = move_toward(_chuva_mar, _chuva_alvo(), delta * 0.30)
+    Vento.avancar(delta, vento_forca)                    # v0.7.9: balanço das folhagens sem salto na troca de clima
     if correndo and not hora_congelada:
         var antes: float = hora
         hora = fposmod(hora + delta * 24.0 / DURACAO_DIA, 24.0)
@@ -206,6 +207,18 @@ func _criar_chuva() -> void:
 ## Quanto é noite agora: 0 de dia, 1 noite fechada.
 func noite() -> float:
     return smoothstep(17.9, 19.4, hora) if hora > 12.0 else 1.0 - smoothstep(4.9, 6.1, hora)
+
+## v0.7.9: quanto está escuro para as LUZES (farol, janelas, boias, lanterna e holofotes do barco): a noite ou o céu
+## fechado da tempestade, o que for maior. Assim o farol gira e acende no temporal, mesmo de dia.
+func escuridao() -> float:
+    var e: float = 0.0
+    if _oceano != null:
+        e = 0.9 * smoothstep(0.15, 0.65, float(_oceano.tempestade_nivel))
+    if modo_clima == 4:
+        e = maxf(e, 0.9)
+    elif modo_clima == 3:
+        e = maxf(e, 0.45)
+    return maxf(noite(), e)
 
 func texto_hora() -> String:
     return "%02d:%02d" % [int(hora), int(fmod(hora, 1.0) * 6.0) * 10]
