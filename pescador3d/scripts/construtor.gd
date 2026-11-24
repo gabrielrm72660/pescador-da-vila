@@ -26,7 +26,7 @@ const CATEGORIAS := [
     ["ruas", "2  Ruas", KEY_2],
     ["postes", "3  Postes", KEY_3],
     ["props", "4  Props", KEY_4],
-    ["pinheiros", "5  Pinheiros", KEY_5],
+    ["pinheiros", "5  Mata", KEY_5],
     ["coqueiros", "6  Coqueiros", KEY_6],
     ["arvores", "7  Árvores", KEY_7],
     ["moitas", "8  Moitas", KEY_8],

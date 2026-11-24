@@ -2,6 +2,8 @@ extends Node3D
 const Mesclador = preload("res://scripts/mesclador.gd")
 const MundoDados = preload("res://scripts/mundo_dados.gd")
 const Vento = preload("res://scripts/vento.gd")
+const VegetacaoTropical = preload("res://scripts/vegetacao_tropical.gd")   # v0.8.5: castanhola, gameleira, mulungu, leucena
+const ESPECIES_MATA := ["castanhola", "gameleira", "mulungu", "leucena"]
 const VegetacaoMalhas = preload("res://scripts/vegetacao_malhas.gd")   # pinheiro, árvore, pedra e moita em níveis de detalhe 1 e 2
 const LayoutPrincipal = preload("res://scripts/layout_principal.gd")   # ruas, casas e pinheiros da Vila do Porto (desenho do Gabriel)
 const Arq = preload("res://scripts/arquitetura_malhas.gd")             # casas, capela, armazém, mercado, farol e cais detalhados (v0.5.1)
@@ -750,7 +752,14 @@ func _materiais_arq(cor: Color) -> Dictionary:
         f.roughness = 1.0
         f.metallic_specular = 0.08
         _mats_arq["flat"] = f
-    return {"parede": _mats_arq[k], "telhado": _mats_arq["telhado"], "acab": _mats_arq["flat"], "mad": _mats_arq["flat"]}
+    if not _mats_arq.has("mad"):
+        # v0.8.5: portas, janelas, venezianas e beirais em madeira pintada a guache (a cor do vértice tinge a tábua)
+        var md: StandardMaterial3D = _material(Color.WHITE, "res://assets/texturas/ilha/madeira_pintada.png", 0.85, "res://assets/texturas/ilha/madeira_pintada_normal.png")
+        md.vertex_color_use_as_albedo = true
+        md.albedo_color = Color(1.2, 1.2, 1.2)      # a tábua média é ~0,8: devolve o tom da tinta de antes
+        md.normal_scale = 0.6
+        _mats_arq["mad"] = md
+    return {"parede": _mats_arq[k], "telhado": _mats_arq["telhado"], "acab": _mats_arq["flat"], "mad": _mats_arq["mad"]}
 
 ## O desenho antigo (caixas e dois planos de telhado), mantido só para comparação.
 func _casa_simples(pai: Node3D, pos: Vector3, giro: float, tam: Vector3, cor: Color, cor_madeira: Color) -> Node3D:
@@ -1334,26 +1343,58 @@ func _gerar_pinheiros() -> Array:
         _ocupado.append(Vector3(l[0], l[1], 2.4))
     return lista
 
+## v0.8.5: a "mata" das ilhas. A lista continua sendo "pinheiros" (mundo salvo, Construtor), mas cada ponto vira uma
+## árvore de Noronha: no alto do morro mais gameleiras; embaixo castanholas e mulungus; leucenas em touceira de três.
+## A espécie sai da semente do ponto, então é sempre a mesma árvore no mesmo lugar.
+static func especie_da_mata(semente_ponto: int, altura: float) -> String:
+    var r := RandomNumberGenerator.new()
+    r.seed = semente_ponto
+    var x: float = r.randf()
+    if altura > 11.0:
+        return "gameleira" if x < 0.30 else ("castanhola" if x < 0.55 else ("mulungu" if x < 0.70 else "leucena"))
+    return "castanhola" if x < 0.42 else ("leucena" if x < 0.74 else ("mulungu" if x < 0.88 else "gameleira"))
+
 func _construir_pinheiros() -> void:
     _limpar_no("Pinheiros")
+    for esp in ESPECIES_MATA:
+        _limpar_no("Mata_" + esp)
     var lista: Array = _em_terra(mundo["pinheiros"], 1.0)
-    var mm := MultiMesh.new()
-    mm.transform_format = MultiMesh.TRANSFORM_3D
-    mm.mesh = malha_para("pinheiro", nivel_detalhe)
-    mm.instance_count = lista.size()
-    for i in mm.instance_count:
-        var d: Array = lista[i]
-        var h: float = _altura_local(float(d[0]), float(d[1]))
+    var grupos: Dictionary = {}
+    for esp in ESPECIES_MATA:
+        grupos[esp] = []
+    for d in lista:
+        var x: float = float(d[0])
+        var z: float = float(d[1])
+        var h: float = _altura_local(x, z)
         var r := _rng_de(int(d[2]))
-        var sc: float = r.randf_range(0.78, 1.22)
-        var inclina := Basis.from_euler(Vector3(r.randf_range(-0.04, 0.04), r.randf_range(0.0, TAU), r.randf_range(-0.04, 0.04)))
-        mm.set_instance_transform(i, Transform3D(inclina.scaled(Vector3(sc * r.randf_range(0.9, 1.1), sc * r.randf_range(0.95, 1.2), sc * r.randf_range(0.9, 1.1))), Vector3(float(d[0]), h - 0.25, float(d[1]))))
-    var inst := MultiMeshInstance3D.new()
-    inst.name = "Pinheiros"
-    inst.multimesh = mm
-    inst.set_meta("sem_reducao", true)
-    _equipar_vegetacao(inst, "pinheiro")
-    add_child(inst)
+        var esp: String = especie_da_mata(int(d[2]), h)
+        var sc: float = {"castanhola": r.randf_range(0.85, 1.2), "gameleira": r.randf_range(0.75, 1.05),
+                "mulungu": r.randf_range(0.85, 1.2), "leucena": r.randf_range(0.9, 1.35)}[esp]
+        var inclina := Basis.from_euler(Vector3(r.randf_range(-0.03, 0.03), r.randf_range(0.0, TAU), r.randf_range(-0.03, 0.03)))
+        grupos[esp].append(Transform3D(inclina.scaled(Vector3(sc, sc * r.randf_range(0.92, 1.1), sc)), Vector3(x, h - 0.15, z)))
+        if esp == "leucena":                               # touceira: mais duas dentro do espaço reservado do ponto
+            for k in 2:
+                var o := Vector2(r.randf_range(-1.8, 1.8), r.randf_range(-1.8, 1.8))
+                var hl: float = _altura_local(x + o.x, z + o.y)
+                if hl > 1.0:
+                    grupos["leucena"].append(Transform3D(Basis(Vector3.UP, r.randf_range(0.0, TAU)).scaled(Vector3.ONE * r.randf_range(0.7, 1.05)), Vector3(x + o.x, hl - 0.15, z + o.y)))
+    for esp in ESPECIES_MATA:
+        var ts: Array = grupos[esp]
+        if ts.is_empty():
+            continue
+        var mm := MultiMesh.new()
+        mm.transform_format = MultiMesh.TRANSFORM_3D
+        mm.mesh = malha_para(esp, nivel_detalhe)
+        mm.instance_count = ts.size()
+        for i in ts.size():
+            mm.set_instance_transform(i, ts[i])
+        var inst := MultiMeshInstance3D.new()
+        inst.name = "Mata_" + esp
+        inst.multimesh = mm
+        if esp != "leucena":
+            inst.set_meta("sem_reducao", true)             # as árvores seguram o morro cheio; a leucena rareia na Baixa
+        _equipar_vegetacao(inst, esp)
+        add_child(inst)
 
 ## Malhas de vegetação são caras de montar: cada tipo é feito uma vez e reaproveitado a cada reconstrução.
 ## Nível 0 = as malhas leves de sempre (e coqueiros, que têm uma só); níveis 1 e 2 = vegetacao_malhas.gd.
@@ -1363,7 +1404,9 @@ func malha_para(chave: String, nivel: int) -> Mesh:
         n = 0
     var k: String = chave if n == 0 else "%s_n%d" % [chave, n]
     if not _malhas.has(k):
-        if n == 0:
+        if chave in ESPECIES_MATA:
+            _malhas[k] = VegetacaoTropical.criar(chave, n)
+        elif n == 0:
             match chave:
                 "pinheiro": _malhas[k] = _malha_pinheiro()
                 "coqueiro0": _malhas[k] = _malha_coqueiro(0)
@@ -1458,6 +1501,8 @@ func _material_palmeira(vento: bool) -> Material:
     return mat
 
 func _familia_veg(chave: String) -> String:
+    if chave in ESPECIES_MATA:
+        return "arvore"
     return "coqueiro" if chave.begins_with("coqueiro") else chave
 
 ## Põe num grupo (MultiMeshInstance3D) a malha e o material do nível de detalhe atual. A chave fica no grupo
