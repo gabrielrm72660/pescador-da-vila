@@ -61,7 +61,11 @@ var helice: Node3D
 var pa_leme: Node3D
 
 func _ready() -> void:
+    var casco := find_child("Casco", true, false) as MeshInstance3D      # v0.7.8: Pesqueiro de Alto-Mar
+    if casco != null:
+        BarcoVisual.reformar(casco)
     _refinar_materiais(self)
+    BarcoVisual.equipar(balanceio)
     helice = find_child("Helice", true, false) as Node3D      # peças soltas do modelo
     pa_leme = find_child("Leme", true, false) as Node3D
     if respingo != null:
@@ -90,12 +94,13 @@ func _criar_respingos_bordo(nome: String, sinal: float) -> CPUParticles3D:
 ## pintura do modelo (desbotado, lascas, ferrugem escorrendo, limo na linha d'água, sal). Vidro, luzes e bandeira ficam
 ## como estão (só o vidro escurece um pouco). A placa de nome vira "Estrela d'Alva".
 const SHADER_USADO := preload("res://shaders/barco_usado.gdshader")
-const PLACA_NOME := "res://assets/barco/estrela_dalva_nome.png"
+const BarcoVisual := preload("res://scripts/barco_visual.gd")
+const PLACA_NOME := "res://assets/barco/altomar/nome_claro.png"
 const TIPO_DESGASTE := {
     "casco_vermelho": 0, "casco_branco": 0, "pintura_azul": 0, "pintura_creme": 0, "pintura_laranja": 0, "pintura_amarela": 0,
     "pintura_vermelha": 0, "madeira_escura": 1, "conves": 1, "metal": 2, "preto": 2, "corda": 3, "rede": 3, "lona": 3,
     "plastico_branco": 4, "plastico_azul": 4, "boia_laranja": 4}
-@export var desgaste: float = 1.0          # 0 = barco novo, 1 = usado
+@export var desgaste: float = BarcoVisual.DESGASTE   # 0 = barco novo, 1 = usado (v0.7.8: Alto-Mar, bem cuidado)
 
 func _refinar_materiais(no: Node) -> void:
     for filho in no.get_children():
@@ -118,6 +123,14 @@ func _refinar_materiais(no: Node) -> void:
             sm.set_shader_parameter("tem_normal", original.normal_enabled and original.normal_texture != null)
             if original.normal_texture != null:
                 sm.set_shader_parameter("tex_normal", original.normal_texture)
+            var nova: Array = BarcoVisual.pintura(nome)
+            if not nova.is_empty():                                   # v0.7.8: texturas do Alto-Mar
+                sm.set_shader_parameter("cor", nova[2])
+                sm.set_shader_parameter("tem_textura", true)
+                sm.set_shader_parameter("tex_albedo", nova[0])
+                sm.set_shader_parameter("tem_normal", nova[1] != null)
+                if nova[1] != null:
+                    sm.set_shader_parameter("tex_normal", nova[1])
             sm.set_shader_parameter("tipo", float(TIPO_DESGASTE[nome]))
             sm.set_shader_parameter("desgaste", desgaste)
             sm.set_shader_parameter("semente", float(i) * 1.37)
