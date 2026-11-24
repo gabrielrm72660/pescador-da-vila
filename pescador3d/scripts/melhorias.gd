@@ -85,11 +85,19 @@ func vitrine(dinheiro: int) -> Array:
     for id in ORDEM:
         var t: Dictionary = TABELA[id]
         var n: int = int(nivel[id])
+        var base := {"id": id, "nome": T.t(String(t.nome)), "tecla": int(t.tecla), "nivel": n, "total": _teto(id) + 1,
+                "agora": T.t(String(t.descricao[n])), "depois": "", "preco": -1, "trancado": false}
         if id == "motor" and motor_trancado():
-            saida.append({"id": id, "texto": T.t("%s\n%s · 30 nós após as missões de São Pedro") % [T.t(String(t.nome)), T.t(String(t.descricao[n]))], "pode": false})
+            base["total"] = t.niveis.size()
+            base["trancado"] = true
+            base.merge({"texto": T.t("%s\n%s · 30 nós após as missões de São Pedro") % [T.t(String(t.nome)), T.t(String(t.descricao[n]))], "pode": false}, true)
+            saida.append(base)
         elif no_maximo(id):
-            saida.append({"id": id, "texto": T.t("%s\n%s (máximo)") % [T.t(String(t.nome)), T.t(String(t.descricao[n]))], "pode": false})
+            base.merge({"texto": T.t("%s\n%s (máximo)") % [T.t(String(t.nome)), T.t(String(t.descricao[n]))], "pode": false}, true)
+            saida.append(base)
         else:
             var p: int = int(t.precos[n])
-            saida.append({"id": id, "texto": T.t("[%d] %s\n%s → %s · R$ %d") % [t.tecla, T.t(String(t.nome)), T.t(String(t.descricao[n])), T.t(String(t.descricao[n + 1])), p], "pode": dinheiro >= p})
+            base.merge({"texto": T.t("[%d] %s\n%s → %s · R$ %d") % [t.tecla, T.t(String(t.nome)), T.t(String(t.descricao[n])), T.t(String(t.descricao[n + 1])), p],
+                    "pode": dinheiro >= p, "depois": T.t(String(t.descricao[n + 1])), "preco": p}, true)
+            saida.append(base)
     return saida

@@ -402,7 +402,10 @@ func _unhandled_input(event: InputEvent) -> void:
                 KEY_T: _conversar("")
                 KEY_P:
                     interface.caderno.colecao = colecao
-                    interface.alternar_caderno()
+                    interface.alternar_livro("peixes")
+                KEY_TAB:
+                    interface.caderno.colecao = colecao
+                    interface.alternar_livro()
                 KEY_M:
                     interface.aviso(Idioma.t("Carta náutica aberta. [M] fecha.") if interface.alternar_mapa() else Idioma.t("Carta náutica fechada."))
                 KEY_L:
@@ -426,13 +429,14 @@ func _unhandled_input(event: InputEvent) -> void:
             KEY_I:
                 if not em_pausa:
                     interface.alternar_painel("porao")
-            KEY_TAB:
+            KEY_TAB:                                     # v0.8.4: o diário de bordo virou o Livro do Pescador
                 if not em_pausa:
-                    interface.alternar_painel("diario")
+                    interface.caderno.colecao = colecao
+                    interface.alternar_livro()
             KEY_P:
                 if not em_pausa:
                     interface.caderno.colecao = colecao
-                    interface.alternar_caderno()
+                    interface.alternar_livro("peixes")
             KEY_C:
                 if not em_pausa:
                     camera_barco.alternar()
@@ -484,7 +488,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.8.3] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.8.4] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 ## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).
@@ -864,7 +868,8 @@ func _atualizar_porto() -> void:
         return
     var falta: float = barco.tanque - barco.combustivel
     interface.mostrar_porto({"nome": ilha.nome, "dinheiro": dinheiro, "peixes": porao.n_peixes(), "npcs": Npcs.da_ilha(ilha.nome),
-            "peso": porao.peso_total(), "valor": _valor_do_porao(), "litros": barco.combustivel, "tanque": barco.tanque,
+            "peso": porao.peso_total(), "valor": _valor_do_porao(),
+            "ocupado": float(porao.casas_ocupadas()) / float(maxi(1, porao.colunas * porao.linhas)), "litros": barco.combustivel, "tanque": barco.tanque,
             "falta_litros": falta, "preco_litro": ilha.preco_diesel,
             "litros_possiveis": minf(falta, floorf(float(dinheiro) / ilha.preco_diesel)),
             "loja": melhorias.vitrine(dinheiro) if ilha.tem_loja else [],

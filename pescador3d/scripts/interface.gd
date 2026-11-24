@@ -218,6 +218,19 @@ func alternar_caderno() -> bool:
         mapa.fechar()
     return caderno.alternar()
 
+## v0.8.4: o Livro do Pescador (manual + peixes + diário de bordo). secao: "" = onde parou, "peixes", "manual", "diario".
+func alternar_livro(secao: String = "") -> bool:
+    if caderno.aberto():
+        caderno.fechar()
+        return false
+    caderno.diario = diario
+    if secao == "peixes":
+        if caderno._secao(caderno.pagina) in ["manual", "diario"]:
+            caderno.ir_para_zona("costa")
+    elif secao != "":
+        caderno.ir_para_zona(secao)
+    return alternar_caderno()
+
 func caderno_aberto() -> bool:
     return caderno != null and caderno.aberto()
 
@@ -228,10 +241,12 @@ func _ao_apertar_botao(nome: String) -> void:
     match nome:
         "pescar":
             pescar_pressed.emit()
-        "porao", "diario":
+        "porao":
             alternar_painel(nome)
+        "diario":
+            alternar_livro()
         "caderno":
-            alternar_caderno()
+            alternar_livro("peixes")
 
 ## Abre ou fecha o painel do porão (peixes pescados) ou do diário (últimas mensagens).
 func alternar_painel(nome: String) -> void:
@@ -309,7 +324,7 @@ func _construir_menu() -> void:
     principal.add_child(_ornamento(12.0, Color(Aq.NANQUIM, 0.35)))
     var atalhos := _nova_label("", 18, COR_SUAVE, true)
     atalhos.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _t(atalhos, "W A S D  navegar   •   ESPAÇO  frear\nF  pescar e atracar no cais   •   I  inventário (porão)\nTAB  diário de bordo   •   M  carta náutica   •   ESC  menu")
+    _t(atalhos, "W A S D  navegar   •   ESPAÇO  frear\nF  pescar e atracar no cais   •   I  inventário (porão)\nTAB  livro do pescador   •   M  carta náutica   •   ESC  menu")
     principal.add_child(atalhos)
 
     # ---- Opções
@@ -436,8 +451,7 @@ func _aplicar_idioma() -> void:
     _atualizar_graficos()
     if porto != null and porto.visible and not _ultimo_porto.is_empty():
         mostrar_porto(_ultimo_porto)
-    if porto_rotulo_loja != null:
-        porto_rotulo_loja.text = T.t("MELHORIAS DO BARCO")
+    pass
     if porto_sair != null:
         porto_sair.text = T.t("Zarpar   [F]")
     _preencher_painel()
@@ -534,6 +548,153 @@ func _atualizar_graficos() -> void:
     _botao_fps_tela.text = T.t("Mostrar FPS (F3)") + ": " + (lig if graficos.mostrar_fps else des)
     _botao_fps_tela.marcar(graficos.mostrar_fps)
 
+## v0.8.4: painel do cais reorganizado. Em cima, quatro mostradores (carteira, porão, tanque, casco) e a encomenda numa
+## fita; no meio, duas abas: Serviços (uma linha por serviço: situação à esquerda, ação à direita; o que não tem nada a
+## fazer vira um "ok" discreto) e Oficina do barco (as melhorias em duas colunas: agora → depois, nível e preço);
+## embaixo, quem mora no cais (com retrato) e o Zarpar. Os atalhos de teclado continuam os mesmos.
+var porto_aba := "servicos"
+var _porto_abas: Dictionary = {}           # "servicos"/"oficina" -> botão
+var _porto_conteudo: Dictionary = {}       # "servicos"/"oficina" -> Control
+var _porto_mostr: Dictionary = {}          # "carteira"/"porao"/"tanque"/"casco" -> {valor: Label, barra: Control}
+var _porto_linhas: Dictionary = {}         # "peixe"/"diesel"/"casco"/"iscas"/"linha" -> {raiz, sit: Label, botao: Button}
+var _porto_cel: Dictionary = {}            # id da melhoria -> {pontos: Label, sit: RichTextLabel, nome: Label}
+var _porto_fita: PanelContainer
+var _porto_fita_texto: Label
+var _porto_linha_abas: HBoxContainer
+const COR_OK := Color(0.16, 0.46, 0.34)
+
+func _fio_porto(alfa: float = 0.16) -> Control:
+    var r := ColorRect.new()
+    r.color = Color(Aq.NANQUIM, alfa)
+    r.custom_minimum_size = Vector2(0, 1.5)
+    r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    return r
+
+func _mostrador_porto(id: String, legenda: String, com_barra: bool) -> Control:
+    var v := VBoxContainer.new()
+    v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    v.add_theme_constant_override("separation", -4)
+    var a := _nova_label(T.t(legenda).to_upper(), 14, COR_SUAVE)
+    a.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    v.add_child(a)
+    a.set_meta("legenda", legenda)
+    var b := _nova_label("", 30, COR_TEXTO, false, true)
+    b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    v.add_child(b)
+    var barra := Control.new()
+    barra.custom_minimum_size = Vector2(0, 10)
+    barra.set_meta("fracao", -1.0)
+    barra.set_meta("cor", Aq.TURQUESA)
+    barra.draw.connect(func():
+        var f: float = float(barra.get_meta("fracao"))
+        if f < 0.0:
+            return
+        var w: float = barra.size.x * 0.62
+        var x0: float = (barra.size.x - w) * 0.5
+        barra.draw_rect(Rect2(x0, 3, w, 5), Color(Aq.NANQUIM, 0.15))
+        barra.draw_rect(Rect2(x0, 3, w * clampf(f, 0.0, 1.0), 5), barra.get_meta("cor")))
+    v.add_child(barra)
+    _porto_mostr[id] = {"valor": b, "barra": barra if com_barra else null, "legenda": a}
+    return v
+
+func _barra_porto(id: String, fracao: float, cor: Color) -> void:
+    var barra: Control = _porto_mostr[id]["barra"]
+    if barra == null:
+        return
+    barra.set_meta("fracao", fracao)
+    barra.set_meta("cor", cor)
+    barra.queue_redraw()
+
+func _linha_porto(id: String, nome: String, esquema: String, semente: float, acao: Callable) -> Control:
+    var h := HBoxContainer.new()
+    h.custom_minimum_size = Vector2(0, 46)
+    h.add_theme_constant_override("separation", 14)
+    var n := _nova_label(T.t(nome), 26, COR_TITULO, false, true)
+    n.custom_minimum_size = Vector2(118, 0)
+    n.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    _textos.append([n, nome])
+    h.add_child(n)
+    var sit := _nova_label("", 19, COR_TEXTO)
+    sit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    sit.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    sit.clip_text = true
+    h.add_child(sit)
+    var cor_txt: Color = Aq.NANQUIM if esquema in ["ouro", "turquesa"] else Aq.CREME
+    var b := _botao_aq("", esquema, semente, cor_txt, 18, Vector2(236, 40))
+    b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    b.clip_text = true
+    b.pressed.connect(acao)
+    h.add_child(b)
+    _porto_linhas[id] = {"raiz": h, "sit": sit, "botao": b}
+    return h
+
+## Ajusta uma linha de serviço: botao_texto vazio = nada a fazer (o botão some e a situação fica verde se ok).
+func _porto_situacao(id: String, situacao: String, botao_texto: String, pode: bool, ok: bool = false) -> void:
+    var l: Dictionary = _porto_linhas[id]
+    (l.sit as Label).text = situacao
+    (l.sit as Label).add_theme_color_override("font_color", COR_OK if ok else COR_TEXTO)
+    (l.botao as Button).visible = botao_texto != ""
+    (l.botao as Button).text = botao_texto
+    (l.botao as Button).disabled = not pode
+
+func _celula_oficina(id: String, semente: float) -> Control:
+    var h := HBoxContainer.new()
+    h.custom_minimum_size = Vector2(0, 62)
+    h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    h.add_theme_constant_override("separation", 8)
+    var col := VBoxContainer.new()
+    col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    col.add_theme_constant_override("separation", -4)
+    col.alignment = BoxContainer.ALIGNMENT_CENTER
+    var l1 := HBoxContainer.new()
+    l1.add_theme_constant_override("separation", 8)
+    var nome := _nova_label("", 23, COR_TITULO, false, true)
+    l1.add_child(nome)
+    var pontos := _nova_label("", 12, COR_SECAO)
+    pontos.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    l1.add_child(pontos)
+    col.add_child(l1)
+    var sit := RichTextLabel.new()
+    sit.bbcode_enabled = true
+    sit.fit_content = true
+    sit.scroll_active = false
+    sit.autowrap_mode = TextServer.AUTOWRAP_OFF
+    sit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    sit.add_theme_font_override("normal_font", Aq.FONTE_TEXTO)
+    sit.add_theme_font_override("bold_font", Aq.FONTE_TEXTO)
+    sit.add_theme_font_size_override("normal_font_size", 17)
+    sit.add_theme_font_size_override("bold_font_size", 17)
+    sit.add_theme_color_override("default_color", COR_TEXTO)
+    col.add_child(sit)
+    h.add_child(col)
+    var b := _botao_aq("", "turquesa", semente, Aq.NANQUIM, 17, Vector2(118, 38))
+    b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    b.pressed.connect(func(): melhoria_pressed.emit(id))
+    h.add_child(b)
+    porto_loja[id] = b
+    _porto_cel[id] = {"nome": nome, "pontos": pontos, "sit": sit}
+    return h
+
+## Troca a tinta de um botão de aquarela já montado (compra possível = turquesa; sem dinheiro = azul-mar apagado).
+func _tingir(b: BotaoAq, esquema: String, cor_texto: Color) -> void:
+    if b.lavagem == null:
+        return
+    var esq: Dictionary = Aq.esquema(esquema)
+    var m: ShaderMaterial = b.lavagem.material
+    m.set_shader_parameter("cor", esq["cor"])
+    m.set_shader_parameter("cor2", esq["cor2"])
+    for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+        b.add_theme_color_override(c, cor_texto)
+    b.add_theme_color_override("font_disabled_color", Color(cor_texto, 0.55))
+
+func mostrar_aba_porto(nome: String) -> void:
+    if nome == "oficina" and not _porto_linha_abas.visible:
+        nome = "servicos"
+    porto_aba = nome
+    for k in _porto_abas:
+        (_porto_abas[k] as BotaoAq).marcar(k == nome)
+        (_porto_conteudo[k] as Control).visible = k == nome
+
 func _construir_porto() -> void:
     porto = ColorRect.new()
     porto.color = Color(0.017, 0.061, 0.09, 0.40)
@@ -545,125 +706,216 @@ func _construir_porto() -> void:
     central.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     porto.add_child(central)
     var cartao := PanelContainer.new()
-    cartao.custom_minimum_size = Vector2(700, 0)
+    cartao.custom_minimum_size = Vector2(760, 0)
     _cartao_papel(cartao, 7.0)
     central.add_child(cartao)
     _encaixar(cartao)
     var margem := MarginContainer.new()
-    margem.add_theme_constant_override("margin_left", 30)
-    margem.add_theme_constant_override("margin_right", 30)
-    margem.add_theme_constant_override("margin_top", 20)
+    margem.add_theme_constant_override("margin_left", 34)
+    margem.add_theme_constant_override("margin_right", 34)
+    margem.add_theme_constant_override("margin_top", 18)
     margem.add_theme_constant_override("margin_bottom", 22)
     cartao.add_child(margem)
     var col := VBoxContainer.new()
-    col.add_theme_constant_override("separation", 5)
+    col.add_theme_constant_override("separation", 8)
     margem.add_child(col)
-    porto_titulo = _nova_label("Cais", 46, COR_TITULO, false, true)
+    porto_titulo = _nova_label("Cais", 44, COR_TITULO, false, true)
     col.add_child(porto_titulo)
-    col.add_child(_ornamento(10.0))
-    porto_texto = _nova_label("", 18, COR_TEXTO, true)
-    col.add_child(porto_texto)
-    # Vender e Abastecer lado a lado; iscas e linha também: o painel inteiro cabe nos 720 px da janela.
-    var fila_a := HBoxContainer.new()
-    fila_a.add_theme_constant_override("separation", 10)
-    col.add_child(fila_a)
-    porto_vender = _botao_aq("Vender", "turquesa", 13.0, Aq.NANQUIM, 21, Vector2(300, 44))
-    porto_vender.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    porto_vender.pressed.connect(func(): vender_pressed.emit())
-    fila_a.add_child(porto_vender)
-    porto_abastecer = _botao_aq("Abastecer", "ouro", 17.0, Aq.NANQUIM, 21, Vector2(300, 44))
-    porto_abastecer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    porto_abastecer.pressed.connect(func(): abastecer_pressed.emit())
-    fila_a.add_child(porto_abastecer)
-    var fila_b := HBoxContainer.new()
-    fila_b.add_theme_constant_override("separation", 10)
-    col.add_child(fila_b)
-    porto_iscas = _botao_aq("Comprar iscas [Q]", "mar", 19.0, Aq.CREME, 17, Vector2(300, 38))
-    porto_iscas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    porto_iscas.clip_text = true
-    porto_iscas.pressed.connect(func(): comprar_iscas_pressed.emit())
-    fila_b.add_child(porto_iscas)
-    porto_linha = _botao_aq("Reforçar linha [U]", "mar", 23.0, Aq.CREME, 17, Vector2(300, 38))
-    porto_linha.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    porto_linha.clip_text = true
-    porto_linha.pressed.connect(func(): melhorar_linha_pressed.emit())
-    fila_b.add_child(porto_linha)
-    porto_consertar = _botao_aq("", "ocre", 25.0, Aq.CREME, 19, Vector2(600, 40))
-    porto_consertar.clip_text = true
-    porto_consertar.pressed.connect(func(): consertar_pressed.emit())
-    col.add_child(porto_consertar)
-    porto_rotulo_loja = _nova_label(T.t("MELHORIAS DO BARCO"), 20, COR_SECAO, false, true)
-    col.add_child(porto_rotulo_loja)
-    var grade_oficina := GridContainer.new()
-    grade_oficina.columns = 2
-    grade_oficina.add_theme_constant_override("h_separation", 10)
-    grade_oficina.add_theme_constant_override("v_separation", 7)
-    col.add_child(grade_oficina)
-    var n_loja: float = 0.0
-    for id in ["motor", "tanque", "porao", "vara", "casco", "leme", "helice", "radar"]:
-        n_loja += 1.0
-        var b := _botao_aq(id, "mar", 30.0 + n_loja * 3.7, Aq.CREME, 17, Vector2(300, 50))    # duas linhas: nome da melhoria e "antes -> depois · preço"
-        b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        b.clip_text = true
-        b.pressed.connect(func(): melhoria_pressed.emit(id))
-        grade_oficina.add_child(b)
-        porto_loja[id] = b
+    # mostradores
+    var faixa := HBoxContainer.new()
+    faixa.add_theme_constant_override("separation", 0)
+    var ids := [["carteira", "Carteira", false], ["porao", "Porão", true], ["tanque", "Tanque", true], ["casco", "Casco", true]]
+    for i in ids.size():
+        if i > 0:
+            var v := ColorRect.new()
+            v.color = Color(Aq.NANQUIM, 0.18)
+            v.custom_minimum_size = Vector2(1.5, 0)
+            faixa.add_child(v)
+        faixa.add_child(_mostrador_porto(ids[i][0], ids[i][1], ids[i][2]))
+    col.add_child(faixa)
+    # fita da encomenda (e do bônus do posto)
+    _porto_fita = PanelContainer.new()
+    _porto_fita.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+    var eo: Dictionary = Aq.esquema("ouro")
+    var ex: Dictionary = eo["extra"].duplicate()
+    ex["alfa"] = 0.35
+    Aq.fundo(_porto_fita, eo["cor"], eo["cor2"], 3.0, ex, 6.0)
+    var fm := MarginContainer.new()
+    fm.add_theme_constant_override("margin_left", 14)
+    fm.add_theme_constant_override("margin_right", 10)
+    fm.add_theme_constant_override("margin_top", 2)
+    fm.add_theme_constant_override("margin_bottom", 2)
+    _porto_fita.add_child(fm)
+    _porto_fita_texto = _nova_label("", 19, COR_TEXTO)
+    _porto_fita_texto.clip_text = true
+    fm.add_child(_porto_fita_texto)
+    col.add_child(_porto_fita)
+    # abas
+    _porto_linha_abas = HBoxContainer.new()
+    _porto_linha_abas.add_theme_constant_override("separation", 10)
+    for par in [["servicos", "Serviços"], ["oficina", "Oficina do barco"]]:
+        var aba: String = par[0]
+        var b := _botao_aq(T.t(par[1]), "mar", 50.0 + aba.length(), Aq.CREME, 20, Vector2(210, 40))
+        _textos.append([b, par[1]])
+        b.pressed.connect(func(): mostrar_aba_porto(aba))
+        _porto_abas[aba] = b
+        _porto_linha_abas.add_child(b)
+    col.add_child(_porto_linha_abas)
+    col.add_child(_fio_porto(0.3))
+    # aba Serviços
+    var servicos := VBoxContainer.new()
+    servicos.add_theme_constant_override("separation", 2)
+    servicos.custom_minimum_size = Vector2(0, 280)
+    servicos.add_child(_linha_porto("peixe", "Peixe", "turquesa", 13.0, func(): vender_pressed.emit()))
+    servicos.add_child(_fio_porto())
+    servicos.add_child(_linha_porto("diesel", "Diesel", "ouro", 17.0, func(): abastecer_pressed.emit()))
+    servicos.add_child(_fio_porto())
+    servicos.add_child(_linha_porto("casco", "Casco", "ocre", 25.0, func(): consertar_pressed.emit()))
+    servicos.add_child(_fio_porto())
+    servicos.add_child(_linha_porto("iscas", "Iscas", "mar", 19.0, func(): comprar_iscas_pressed.emit()))
+    var fio_linha := _fio_porto()
+    servicos.add_child(fio_linha)
+    servicos.add_child(_linha_porto("linha", "Linha", "mar", 23.0, func(): melhorar_linha_pressed.emit()))
+    _porto_linhas["linha"]["fio"] = fio_linha
+    porto_vender = _porto_linhas["peixe"]["botao"]
+    porto_abastecer = _porto_linhas["diesel"]["botao"]
+    porto_consertar = _porto_linhas["casco"]["botao"]
+    porto_iscas = _porto_linhas["iscas"]["botao"]
+    porto_linha = _porto_linhas["linha"]["botao"]
+    col.add_child(servicos)
+    _porto_conteudo["servicos"] = servicos
+    # aba Oficina: esquerda motor, tanque, porão, vara; direita estabilizadores, leme, hélice, radar
+    var oficina := VBoxContainer.new()
+    oficina.add_theme_constant_override("separation", 2)
+    oficina.custom_minimum_size = Vector2(0, 280)
+    var grade := GridContainer.new()
+    grade.columns = 3
+    grade.add_theme_constant_override("h_separation", 14)
+    grade.add_theme_constant_override("v_separation", 0)
+    oficina.add_child(grade)
+    var ordem := ["motor", "tanque", "porao", "vara", "casco", "leme", "helice", "radar"]
+    for i in ordem.size():
+        var id: String = ordem[(i % 2) * 4 + i / 2]
+        if i % 2 == 1:
+            var v := ColorRect.new()
+            v.color = Color(Aq.NANQUIM, 0.14)
+            v.custom_minimum_size = Vector2(1.5, 0)
+            grade.add_child(v)
+        grade.add_child(_celula_oficina(id, 30.0 + i * 3.7))
+    var nota := _nova_label(T.t("● comprado · ○ por comprar · atalho: a tecla entre colchetes"), 15, COR_SUAVE)
+    nota.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    oficina.add_child(nota)
+    col.add_child(oficina)
+    _porto_conteudo["oficina"] = oficina
+    porto_rotulo_loja = _nova_label("", 1, COR_SECAO)      # compatibilidade (o título da loja virou a aba)
+    porto_rotulo_loja.visible = false
+    col.add_child(_fio_porto(0.3))
+    # rodapé: moradores do cais + zarpar
+    var pe := HBoxContainer.new()
+    pe.add_theme_constant_override("separation", 12)
     porto_npcs = HBoxContainer.new()
-    porto_npcs.add_theme_constant_override("separation", 10)
-    porto_npcs.visible = false
-    col.add_child(porto_npcs)
-    porto_sair = _botao_aq(T.t("Zarpar   [F]"), "terracota", 41.0, Aq.CREME, 22, Vector2(300, 44))
+    porto_npcs.add_theme_constant_override("separation", 12)
+    porto_npcs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    pe.add_child(porto_npcs)
+    porto_sair = _botao_aq(T.t("Zarpar   [F]"), "terracota", 41.0, Aq.CREME, 24, Vector2(210, 52))
     porto_sair.pressed.connect(func(): zarpar_pressed.emit())
-    col.add_child(porto_sair)
+    pe.add_child(porto_sair)
+    col.add_child(pe)
+    mostrar_aba_porto("servicos")
 
-## Abre (ou atualiza) o painel do cais. dados: nome, dinheiro, peixes, peso, valor, falta_litros, preco_litro, litros_possiveis
+## Abre (ou atualiza) o painel do cais. dados: nome, dinheiro, peixes, peso, valor, falta_litros, preco_litro, litros_possiveis...
 func mostrar_porto(d: Dictionary) -> void:
+    var abrindo: bool = not porto.visible
     _ultimo_porto = d
     porto.visible = true
     _atualizar_npcs_do_porto(d.get("npcs", []))
     porto_titulo.text = T.t("Cais de %s") % T.t(String(d.nome))
-    porto_rotulo_loja.visible = not d.get("loja", []).is_empty()
-    for id in porto_loja:
-        porto_loja[id].visible = porto_rotulo_loja.visible
     var saude: float = float(d.get("saude", 100.0))
-    porto_texto.text = T.t("Carteira: R$ %d   ·   Porão: %d peixe(s), %s kg   ·   Tanque: %d de %d L   ·   Casco: %d%%") % [d.dinheiro, d.peixes,
-            ("%.1f" % d.peso).replace(".", ","), roundi(d.litros), roundi(d.tanque), floori(saude)] + "\n%s%s" % [d.get("contrato", ""), d.get("nota", "")]
-    porto_iscas.text = T.t("Iscas: %s · kit R$ 25 [Q]") % d.get("iscas", "")
-    porto_iscas.disabled = not bool(d.get("pode_comprar_iscas", false))
-    var preco_linha: int = int(d.get("preco_linha", -1))
-    porto_linha.visible = bool(d.get("tem_oficina", false))
-    porto_linha.disabled = preco_linha < 0 or int(d.dinheiro) < preco_linha
-    porto_linha.text = T.t("Linha reforçada (máximo)") if preco_linha < 0 else T.t("Reforçar linha [U] · nível %d/4 · R$ %d") % [int(d.get("nivel_linha", 0)) + 1, preco_linha]
-    porto_vender.text = T.t("Vender tudo por R$ %d  [1]") % d.valor if d.peixes > 0 else T.t("Nada para vender")
-    porto_vender.disabled = d.peixes == 0
-    # conserto do casco: R$ por ponto; se o dinheiro não der, conserta o que der
+    # mostradores
+    for k in _porto_mostr:
+        var lg: Label = _porto_mostr[k]["legenda"]
+        lg.text = T.t(String(lg.get_meta("legenda"))).to_upper()
+    (_porto_mostr["carteira"]["valor"] as Label).text = "R$ %d" % int(d.dinheiro)
+    (_porto_mostr["porao"]["valor"] as Label).text = (T.t("%d peixes") % int(d.peixes)) if int(d.peixes) != 1 else T.t("1 peixe")
+    _barra_porto("porao", float(d.get("ocupado", 0.0)), Aq.OCRE)
+    (_porto_mostr["tanque"]["valor"] as Label).text = "%d / %d L" % [roundi(d.litros), roundi(d.tanque)]
+    _barra_porto("tanque", float(d.litros) / maxf(1.0, float(d.tanque)), Aq.OURO)
+    (_porto_mostr["casco"]["valor"] as Label).text = "%d%%" % floori(saude)
+    _barra_porto("casco", saude / 100.0, Aq.VERDE if saude > 60.0 else Aq.TERRACOTA)
+    var fita: String = String(d.get("contrato", ""))
+    var nota: String = String(d.get("nota", "")).strip_edges()
+    if nota != "":
+        fita = (fita + "   ·   " + nota) if fita != "" else nota
+    _porto_fita.visible = fita != ""
+    _porto_fita_texto.text = fita
+    # Serviços
+    if int(d.peixes) > 0:
+        _porto_situacao("peixe", T.t("%d peixe(s) · %s kg") % [int(d.peixes), ("%.1f" % d.peso).replace(".", ",")],
+                T.t("Vender por R$ %d   [1]") % int(d.valor), true)
+    else:
+        _porto_situacao("peixe", T.t("Porão vazio"), "", false)
+    if d.falta_litros < 1.0:
+        _porto_situacao("diesel", "✓  " + T.t("Tanque cheio"), "", false, true)
+    elif d.litros_possiveis < 1.0:
+        _porto_situacao("diesel", T.t("faltam %d L · R$ %d o litro") % [roundi(d.falta_litros), int(d.preco_litro)], T.t("Sem dinheiro"), false)
+    else:
+        var tudo: bool = d.litros_possiveis >= d.falta_litros - 0.5
+        _porto_situacao("diesel", T.t("faltam %d L · R$ %d o litro") % [roundi(d.falta_litros), int(d.preco_litro)],
+                (T.t("Encher · R$ %d   [2]") % roundi(d.litros_possiveis * d.preco_litro)) if tudo else (T.t("Pôr %d L · R$ %d   [2]") % [roundi(d.litros_possiveis), roundi(d.litros_possiveis * d.preco_litro)]), true)
     var preco_ponto: int = int(d.get("preco_reparo", 3))
     var falta: float = ceilf(100.0 - saude - 0.001)
     var pontos_possiveis: float = minf(falta, floorf(float(d.dinheiro) / float(preco_ponto)))
     if falta < 1.0:
-        porto_consertar.text = T.t("Casco em ordem (100%)")
-        porto_consertar.disabled = true
+        _porto_situacao("casco", "✓  " + T.t("Em ordem"), "", false, true)
     elif pontos_possiveis < 1.0:
-        porto_consertar.text = T.t("Conserto do casco: R$ %d por ponto — sem dinheiro") % preco_ponto
-        porto_consertar.disabled = true
+        _porto_situacao("casco", T.t("%d%% → 100%% · R$ %d por ponto") % [floori(saude), preco_ponto], T.t("Sem dinheiro"), false)
     else:
-        porto_consertar.text = T.t("Consertar casco: %d%% → %d%% · R$ %d  [R]") % [floori(saude), mini(100, floori(saude + pontos_possiveis + 0.001)), roundi(pontos_possiveis) * preco_ponto]
-        porto_consertar.disabled = false
-    if d.falta_litros < 1.0:
-        porto_abastecer.text = T.t("Tanque cheio")
-        porto_abastecer.disabled = true
-    elif d.litros_possiveis < 1.0:
-        porto_abastecer.text = T.t("Diesel R$ %d/L — sem dinheiro") % d.preco_litro
-        porto_abastecer.disabled = true
+        _porto_situacao("casco", T.t("%d%% → %d%% · R$ %d por ponto") % [floori(saude), mini(100, floori(saude + pontos_possiveis + 0.001)), preco_ponto],
+                T.t("Consertar · R$ %d   [R]") % (roundi(pontos_possiveis) * preco_ponto), true)
+    _porto_situacao("iscas", String(d.get("iscas", "")) + "   " + T.t("(veja o livro, TAB)"),
+            T.t("Kit · R$ 25   [Q]"), bool(d.get("pode_comprar_iscas", false)))
+    var tem_oficina: bool = bool(d.get("tem_oficina", false))
+    (_porto_linhas["linha"]["raiz"] as Control).visible = tem_oficina
+    (_porto_linhas["linha"]["fio"] as Control).visible = tem_oficina
+    var preco_linha: int = int(d.get("preco_linha", -1))
+    if preco_linha < 0:
+        _porto_situacao("linha", "✓  " + T.t("Linha reforçada (máximo)"), "", false, true)
     else:
-        porto_abastecer.text = T.t("Abastecer %d L · R$ %d  [2]") % [roundi(d.litros_possiveis), roundi(d.litros_possiveis * d.preco_litro)]
-        porto_abastecer.disabled = false
-    for linha in d.get("loja", []):
+        _porto_situacao("linha", T.t("nível %d de 4 · aguenta peixe maior") % (int(d.get("nivel_linha", 0)) + 1),
+                T.t("Reforçar · R$ %d   [U]") % preco_linha, int(d.dinheiro) >= preco_linha)
+    # Oficina
+    var loja: Array = d.get("loja", [])
+    _porto_linha_abas.visible = not loja.is_empty()
+    for linha in loja:
         var b: Button = porto_loja.get(linha.id)
-        if b != null:
-            b.text = linha.texto
-            b.tooltip_text = linha.texto
-            b.disabled = not linha.pode
+        var cel: Dictionary = _porto_cel.get(linha.id, {})
+        if b == null or cel.is_empty():
+            continue
+        (cel.nome as Label).text = String(linha.get("nome", linha.id))
+        var n: int = int(linha.get("nivel", 0))
+        var total: int = int(linha.get("total", 3))
+        (cel.pontos as Label).text = "●".repeat(n + 1) + "○".repeat(maxi(0, total - n - 1))
+        var preco: int = int(linha.get("preco", -1))
+        if bool(linha.get("trancado", false)):
+            (cel.sit as RichTextLabel).text = "[b]%s[/b] · [color=#5a6473]%s[/color]" % [linha.agora, T.t("30 nós depois de São Pedro")]
+            b.text = T.t("trancado")
+        elif preco < 0:
+            (cel.sit as RichTextLabel).text = "[b]%s[/b] · [color=#2a7556]%s[/color]" % [linha.agora, T.t("máximo")]
+            b.text = "✓"
+        else:
+            (cel.sit as RichTextLabel).text = "[color=#5a6473]%s[/color]  →  [b]%s[/b]" % [linha.agora, linha.depois]
+            b.text = "R$ %d  [%d]" % [preco, int(linha.tecla)]
+        b.tooltip_text = String(linha.get("texto", ""))
+        b.disabled = not bool(linha.pode)
+        if bool(linha.pode):
+            _tingir(b as BotaoAq, "turquesa", Aq.NANQUIM)
+        else:
+            _tingir(b as BotaoAq, "mar", Aq.CREME)
+        b.visible = true
+    if abrindo:
+        mostrar_aba_porto("servicos")
+    elif loja.is_empty():
+        mostrar_aba_porto("servicos")
 
 func esconder_porto() -> void:
     porto.visible = false
@@ -680,8 +932,9 @@ func _atualizar_npcs_do_porto(lista: Array) -> void:
         b.visible = false
     for i in lista.size():
         if i >= _botoes_npc.size():
-            var novo := _botao_aq("", "ocre", 70.0 + i * 3.1, Aq.CREME, 17, Vector2(300, 38))
-            novo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+            var novo := _botao_aq("", "ocre", 70.0 + i * 3.1, Aq.CREME, 17, Vector2(176, 52))    # v0.8.4: com o retrato
+            novo.expand_icon = true
+            novo.add_theme_constant_override("icon_max_width", 40)
             novo.clip_text = true
             porto_npcs.add_child(novo)
             _botoes_npc.append(novo)
@@ -690,7 +943,9 @@ func _atualizar_npcs_do_porto(lista: Array) -> void:
         for conexao in b.pressed.get_connections():
             b.pressed.disconnect(conexao.callable)
         b.pressed.connect(func(): conversar_pressed.emit(id))
-        b.text = T.t("Conversar com %s") % T.t(Npcs.DADOS[id].nome) + ("  [T]" if i == 0 else "")
+        b.text = " " + T.t(Npcs.DADOS[id].nome) + ("  [T]" if i == 0 else "")
+        b.icon = Npcs.retrato(id)
+        b.tooltip_text = T.t("Conversar com %s") % T.t(Npcs.DADOS[id].nome)
         b.visible = true
     porto_npcs.visible = not lista.is_empty()
 

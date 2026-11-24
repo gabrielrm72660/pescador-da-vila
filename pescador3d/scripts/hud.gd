@@ -16,7 +16,7 @@ const VERDE := Color(0.33, 0.83, 0.66)
 const LARANJA := Color(0.96, 0.62, 0.24)
 const APAGADO := Color(0.55, 0.62, 0.66, 0.55)
 const BOTOES := ["pescar", "porao", "caderno", "diario"]           # a pausa saiu da barra: é o ESC
-const DICA := {"pescar": "Pescar  [F]", "porao": "Porão  [I]", "diario": "Diário de bordo  [TAB]", "caderno": "Caderno de peixes  [P]"}
+const DICA := {"pescar": "Pescar  [F]", "porao": "Porão  [I]", "diario": "Livro do Pescador  [TAB]", "caderno": "Peixes  [P]"}
 const TAM_BOTAO := 74.0
 const PONTOS := ["N", "NE", "L", "SE", "S", "SO", "O", "NO"]
 

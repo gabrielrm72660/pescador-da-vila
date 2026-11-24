@@ -1,5 +1,9 @@
 extends Control
-## v0.7.0: Caderno de Peixes (tecla P), no espírito da enciclopédia do DREDGE: um caderno aberto, uma espécie por página.
+## v0.8.4: Livro do Pescador (TAB; P abre direto nos peixes). Junta o antigo diário de bordo e o caderno de peixes:
+##   MANUAL  - como pescar, iscas e anzol, quem come o quê, técnica e linha, jeitos de lutar, qualidade e dicas do mar;
+##   PEIXES  - uma espécie por página, por zona (agora com a isca e o anzol que cada uma prefere);
+##   DIÁRIO  - as páginas do Bento e o diário de bordo (as últimas mensagens da viagem).
+## v0.7.0: Caderno de Peixes, no espírito da enciclopédia do DREDGE: um caderno aberto, uma espécie por página.
 ## Antes da primeira captura a espécie aparece só como silhueta, com a zona e o horário como pista; depois de pescada
 ## ganha nome, desenho, descrição, preço, recorde de peso e quantas já foram pescadas.
 ## Virar página: A/D, setas, Q/E, roda do mouse, as setas na tela ou, no controle, o direcional e LB/RB.
@@ -20,6 +24,39 @@ const ZONAS := [
 	{"id": "alto", "nome": "Alto-mar", "cor": Color(0.12, 0.30, 0.50), "onde": "Alto-mar, a mais de 300 m da terra."},
 	{"id": "sao_pedro", "nome": "São Pedro", "cor": Color(0.70, 0.46, 0.16), "onde": "Só em volta do arquipélago de São Pedro."},
 	{"id": "bruma", "nome": "Bruma", "cor": Color(0.42, 0.44, 0.52), "onde": "Alto-mar, só nas noites de bruma."},
+]
+const MARCA_MANUAL := {"id": "manual", "nome": "Manual", "cor": Color(0.55, 0.20, 0.13)}
+const MARCA_DIARIO := {"id": "diario", "nome": "Diário", "cor": Color(0.22, 0.22, 0.34)}
+
+## Páginas do manual: título + parágrafos ("-" no começo vira um tópico). "anel", "tabela" e "lutas" são desenhos especiais.
+const MANUAL := [
+	{"titulo": "Como pescar", "extra": "anel", "texto": [
+		"- Ache um cardume no radar e chegue devagar: acima de 2 nós o peixe foge.",
+		"- F lança a linha. Um ponteiro gira no anel: aperte F quando ele passar por uma faixa verde. O miolo dourado vale o dobro.",
+		"- Apertar fora da faixa solta linha e trava o anzol por um instante.",
+		"- Sem acertar nada o peixe vem sozinho, só que bem devagar.",
+		"- Acelerou o barco ou o cardume foi embora: peixe perdido."]},
+	{"titulo": "Iscas e anzol", "texto": [
+		"- B troca a isca. A Comum é de graça e não acaba. Camarão e Lula vêm no kit do cais (R$ 25: 6 camarões e 3 lulas); cada lance gasta uma.",
+		"- N muda o anzol: Superfície, Meia-água ou Fundo.",
+		"- Isca que o peixe gosta: +24%. As faixas verdes ficam mais largas e ele sobe mais depressa.",
+		"- Cada camada de anzol errada: -18%.",
+		"- Só com a isca certa, no anzol certo e sem esticar a linha sai peixe Excepcional.",
+		"- A lista de quem come o quê está na página ao lado, e cada peixe repete a dele na sua página."]},
+	{"titulo": "Quem come o quê", "extra": "tabela", "texto": []},
+	{"titulo": "Técnica e linha", "texto": [
+		"- J troca a técnica. Suave: estica pouco a linha, mas puxa menos. Equilibrada: o meio-termo. Firme: cada acerto puxa 22% a mais, só que a linha sofre.",
+		"- Cada acerto estica a linha (a tensão). Passou do limite, ela arrebenta e o peixe vai embora. Um apito avisa quando está perto.",
+		"- A linha se gasta a cada luta e o limite cai. Reforçar no cais (U) aumenta o limite e zera o desgaste.",
+		"- Peixe pesado puxa a tensão para cima sozinho: use a técnica Suave."]},
+	{"titulo": "Jeitos de lutar", "extra": "lutas", "texto": []},
+	{"titulo": "Qualidade e dicas do mar", "texto": [
+		"- Qualidade: Excepcional vale 28% a mais, Boa 12% a mais, Regular o preço da tabela.",
+		"- Sardinha, barracuda e peixe-voador só aparecem de dia; olho-de-cão e moreia só de noite. A garoupa sai mais à noite.",
+		"- O posto da Ilha das Rocas paga 30% a mais pelo peixe. Em São Pedro, a cioba vale mais.",
+		"- Encomenda cumprida na venda rende o bônus junto.",
+		"- No radar, o peixe da missão pisca em dourado.",
+		"- O peixe-lua só sobe nas noites de bruma."]},
 ]
 
 ## ordem das páginas: zona por zona
@@ -49,7 +86,9 @@ const FICHAS := [
 
 var colecao: Dictionary = {}        # especie -> {"n": int, "maior": float}  (vem de scripts/jogo.gd)
 var paginas_bento: int = 0          # páginas do diário do Bento já achadas (scripts/historia.gd)
-var pagina: int = 0                 # índice da página da esquerda (sempre par)
+var pagina: int = 0                 # índice da folha da esquerda (sempre par)
+var diario: Array = []              # mensagens da viagem (scripts/interface.gd)
+var _folhas: Array = []             # o livro inteiro: {"tipo": "manual"|"peixe"|"bento"|"diario"|"branco", "i": int}
 var _texturas: Dictionary = {}
 var _rel: float = 0.0
 var _zonas_ret: Array = []          # [Rect2, índice da primeira ficha]
@@ -65,6 +104,16 @@ const TINTA_SUAVE := Color(0.36, 0.31, 0.25)
 const OURO := Color(0.90, 0.68, 0.26)
 
 func _ready() -> void:
+	for k in MANUAL.size():
+		_folhas.append({"tipo": "manual", "i": k})
+	if _folhas.size() % 2 == 1:
+		_folhas.append({"tipo": "branco", "i": 0})
+	for k in FICHAS.size():
+		_folhas.append({"tipo": "peixe", "i": k})
+	if _folhas.size() % 2 == 1:
+		_folhas.append({"tipo": "colecao", "i": 0})
+	_folhas.append({"tipo": "diario", "i": 0})
+	_folhas.append({"tipo": "bento", "i": 0})
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
@@ -100,25 +149,56 @@ func descobertos() -> int:
 	return n
 
 func paginas() -> int:
-	return int(ceil(FICHAS.size() / 2.0))
+	return int(ceil(_folhas.size() / 2.0))
 
 func virar(passo: int) -> void:
 	pagina = clampi(pagina + passo * 2, 0, (paginas() - 1) * 2)
 	queue_redraw()
 
+func _primeira(tipo: String, i := -1) -> int:
+	for k in _folhas.size():
+		if _folhas[k].tipo == tipo and (i < 0 or int(_folhas[k].i) == i):
+			return k
+	return 0
+
+## "manual", "diario" ou o id de uma zona de peixes.
 func ir_para_zona(id_zona: String) -> void:
-	for i in FICHAS.size():
-		if FICHAS[i][1] == id_zona:
-			pagina = i - (i % 2)
-			break
+	var k := 0
+	if id_zona == "manual":
+		k = 0
+	elif id_zona == "diario":
+		k = _primeira("diario")
+	else:
+		for i in FICHAS.size():
+			if FICHAS[i][1] == id_zona:
+				k = _primeira("peixe", i)
+				break
+	pagina = k - (k % 2)
 	queue_redraw()
 
 func ir_para_especie(especie: String) -> void:
 	for i in FICHAS.size():
 		if FICHAS[i][0] == especie:
-			pagina = i - (i % 2)
+			var k := _primeira("peixe", i)
+			pagina = k - (k % 2)
 			break
 	queue_redraw()
+
+## A seção da folha (para a marca acesa e para W/S).
+func _secao(k: int) -> String:
+	var f: Dictionary = _folhas[clampi(k, 0, _folhas.size() - 1)]
+	match String(f.tipo):
+		"manual": return "manual"
+		"peixe": return String(FICHAS[int(f.i)][1])
+		"diario", "bento": return "diario"
+		"colecao": return "bruma"
+	return "manual" if k < _primeira("peixe") else "diario"
+
+func _marcas() -> Array:
+	var lista: Array = [MARCA_MANUAL]
+	lista.append_array(ZONAS)
+	lista.append(MARCA_DIARIO)
+	return lista
 
 func _process(delta: float) -> void:
 	if visible:
@@ -128,7 +208,7 @@ func _process(delta: float) -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:                      # v0.7.4: seta dourada sobre o que dá para clicar
 		var p: Vector2 = event.position
-		var clicavel: bool = (_seta_esq.has_point(p) and pagina > 0) or (_seta_dir.has_point(p) and pagina + 2 < FICHAS.size()) or _fechar_ret.has_point(p)
+		var clicavel: bool = (_seta_esq.has_point(p) and pagina > 0) or (_seta_dir.has_point(p) and pagina + 2 < _folhas.size()) or _fechar_ret.has_point(p)
 		for z in _zonas_ret:
 			clicavel = clicavel or Rect2(z[0]).has_point(p)
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if clicavel else Control.CURSOR_ARROW
@@ -144,7 +224,7 @@ func _gui_input(event: InputEvent) -> void:
 				else:
 					for z in _zonas_ret:
 						if Rect2(z[0]).has_point(p):
-							pagina = int(z[1]) - int(z[1]) % 2
+							ir_para_zona(String(z[1]))
 							break
 		accept_event()
 
@@ -157,7 +237,7 @@ func _input(event: InputEvent) -> void:
 			KEY_D, KEY_RIGHT, KEY_E, KEY_N: virar(1)
 			KEY_W, KEY_UP: _zona_vizinha(-1)
 			KEY_S, KEY_DOWN: _zona_vizinha(1)
-			KEY_P, KEY_ESCAPE: fechar()
+			KEY_P, KEY_ESCAPE, KEY_TAB: fechar()
 			_: return
 		get_viewport().set_input_as_handled()
 	elif event is InputEventJoypadButton and event.pressed:
@@ -166,17 +246,18 @@ func _input(event: InputEvent) -> void:
 			JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_DPAD_RIGHT: virar(1)
 			JOY_BUTTON_DPAD_UP: _zona_vizinha(-1)
 			JOY_BUTTON_DPAD_DOWN: _zona_vizinha(1)
-			JOY_BUTTON_B, JOY_BUTTON_Y, JOY_BUTTON_START: fechar()
+			JOY_BUTTON_B, JOY_BUTTON_Y, JOY_BUTTON_START, JOY_BUTTON_BACK: fechar()
 			_: return
 		get_viewport().set_input_as_handled()
 
 func _zona_vizinha(passo: int) -> void:
-	var atual: String = FICHAS[pagina][1]
+	var lista := _marcas()
+	var atual: String = _secao(pagina)
 	var iz := 0
-	for i in ZONAS.size():
-		if ZONAS[i].id == atual:
+	for i in lista.size():
+		if lista[i].id == atual:
 			iz = i
-	ir_para_zona(String(ZONAS[clampi(iz + passo, 0, ZONAS.size() - 1)].id))
+	ir_para_zona(String(lista[clampi(iz + passo, 0, lista.size() - 1)].id))
 
 func _zona(id: String) -> Dictionary:
 	for z in ZONAS:
@@ -208,45 +289,189 @@ func _draw() -> void:
 		draw_line(Vector2(meio + k * 2.0 * esc, livro.position.y), Vector2(meio + k * 2.0 * esc, livro.end.y), Color(0, 0, 0, a), 2.0 * esc)
 	# cabeçalho
 	var topo := Vector2(livro.position.x, livro.position.y - 34.0 * esc)
-	_rotulo(Rect2(topo + Vector2(30.0 * esc, -26.0 * esc), Vector2(250.0 * esc, 44.0 * esc)), T.t("Caderno de peixes"), CAPA.lightened(0.15), 26, esc, true)
-	var info := T.t("Página %d/%d") % [pagina / 2 + 1, paginas()] + "     " + T.t("Descobertos: %d/%d") % [descobertos(), FICHAS.size()]
+	_rotulo(Rect2(topo + Vector2(30.0 * esc, -26.0 * esc), Vector2(250.0 * esc, 44.0 * esc)), T.t("Livro do Pescador"), CAPA.lightened(0.15), 26, esc, true)
+	var info := T.t("Página %d/%d") % [pagina / 2 + 1, paginas()] + "     " + T.t("Peixes descobertos: %d/%d") % [descobertos(), FICHAS.size()]
 	_rotulo(Rect2(topo + Vector2(300.0 * esc, -26.0 * esc), Vector2(440.0 * esc, 44.0 * esc)), info, Color(0.08, 0.08, 0.10, 0.92), 22, esc, false)
 	_fechar_ret = Rect2(Vector2(livro.end.x - 34.0 * esc, livro.position.y - 60.0 * esc), Vector2(44.0 * esc, 44.0 * esc))
 	draw_circle(_fechar_ret.get_center(), 20.0 * esc, Color(0.08, 0.08, 0.10, 0.9))
 	var cx: Vector2 = _fechar_ret.get_center()
 	draw_line(cx + Vector2(-7, -7) * esc, cx + Vector2(7, 7) * esc, Aq.CREME, 3.0 * esc)
 	draw_line(cx + Vector2(7, -7) * esc, cx + Vector2(-7, 7) * esc, Aq.CREME, 3.0 * esc)
-	# marcas das zonas, à esquerda
+	# marcas à esquerda: manual, as zonas dos peixes e o diário
 	_zonas_ret.clear()
-	var zona_atual: String = FICHAS[pagina][1]
-	for i in ZONAS.size():
-		var z: Dictionary = ZONAS[i]
+	var secao_atual: String = _secao(pagina)
+	var marcas := _marcas()
+	for i in marcas.size():
+		var z: Dictionary = marcas[i]
 		var largura_marca: float = 150.0 * esc
-		var r := Rect2(Vector2(livro.position.x - 14.0 * esc - largura_marca, livro.position.y + 30.0 * esc + i * 54.0 * esc), Vector2(largura_marca, 44.0 * esc))
-		if z.id == zona_atual:
+		var r := Rect2(Vector2(livro.position.x - 14.0 * esc - largura_marca, livro.position.y + 18.0 * esc + i * 52.0 * esc), Vector2(largura_marca, 44.0 * esc))
+		if z.id == secao_atual:
 			r = r.grow_side(SIDE_LEFT, 14.0 * esc)
-		draw_colored_polygon(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y), Vector2(r.position.x + 10.0 * esc, r.get_center().y)]), Color(z.cor).darkened(0.0 if z.id == zona_atual else 0.25))
+		draw_colored_polygon(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y), Vector2(r.position.x + 10.0 * esc, r.get_center().y)]), Color(z.cor).darkened(0.0 if z.id == secao_atual else 0.25))
 		_centrar(T.t(String(z.nome)).to_upper(), r.get_center() + Vector2(4.0 * esc, 8.0 * esc), 20, Aq.CREME, esc, true)
-		var primeira := 0
-		for k in FICHAS.size():
-			if FICHAS[k][1] == z.id:
-				primeira = k
-				break
-		_zonas_ret.append([r, primeira])
-	# as duas páginas
-	_pagina(esq.grow(-22.0 * esc), pagina, esc)
-	if pagina + 1 < FICHAS.size():
-		_pagina(dir.grow(-22.0 * esc), pagina + 1, esc)
-	else:
-		_pagina_bento(dir.grow(-22.0 * esc), esc)
+		_zonas_ret.append([r, z.id])
+	# as duas folhas
+	_folha(esq.grow(-22.0 * esc), pagina, esc)
+	if pagina + 1 < _folhas.size():
+		_folha(dir.grow(-22.0 * esc), pagina + 1, esc)
 	# setas de virar
 	_seta_esq = Rect2(Vector2(livro.position.x + 6.0 * esc, livro.end.y - 50.0 * esc), Vector2(44.0 * esc, 40.0 * esc))
 	_seta_dir = Rect2(Vector2(livro.end.x - 50.0 * esc, livro.end.y - 50.0 * esc), Vector2(44.0 * esc, 40.0 * esc))
 	if pagina > 0:
 		_seta(_seta_esq, -1.0, esc)
-	if pagina + 2 < FICHAS.size():
+	if pagina + 2 < _folhas.size():
 		_seta(_seta_dir, 1.0, esc)
-	_centrar(T.t("A/D: virar página  ·  W/S: zona  ·  P ou ESC: fechar"), Vector2(esq.get_center().x, livro.end.y - 16.0 * esc), 16, Color(TINTA_SUAVE, 0.9), esc, false)
+	_centrar(T.t("A/D: virar página  ·  W/S: seção  ·  TAB ou ESC: fechar"), Vector2(esq.get_center().x, livro.end.y - 16.0 * esc), 16, Color(TINTA_SUAVE, 0.9), esc, false)
+
+func _folha(r: Rect2, k: int, esc: float) -> void:
+	var f: Dictionary = _folhas[k]
+	match String(f.tipo):
+		"manual": _pagina_manual(r, int(f.i), esc)
+		"peixe": _pagina(r, int(f.i), esc)
+		"bento": _pagina_bento(r, esc)
+		"diario": _pagina_diario(r, int(f.i), esc)
+		"colecao": _pagina_colecao(r, esc)
+
+const QUEBRA := TextServer.BREAK_WORD_BOUND | TextServer.BREAK_MANDATORY
+
+## Escreve um parágrafo e devolve a altura usada.
+func _paragrafo(t: String, p: Vector2, largura: float, tam: int, cor: Color, esc: float) -> float:
+	var px: int = int(tam * esc)
+	var h: float = Aq.FONTE_TEXTO.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, largura, px, -1, QUEBRA).y
+	draw_multiline_string(Aq.FONTE_TEXTO, p, t, HORIZONTAL_ALIGNMENT_LEFT, largura, px, -1, cor, QUEBRA)
+	return h
+
+func _titulo_pagina(r: Rect2, titulo: String, esc: float, sub: String = "") -> float:
+	_centrar(titulo, Vector2(r.get_center().x, r.position.y + 30.0 * esc), 32, TINTA, esc, true)
+	var lt: float = Aq.FONTE_TITULO.get_string_size(titulo, HORIZONTAL_ALIGNMENT_LEFT, -1, int(32 * esc)).x
+	draw_line(Vector2(r.get_center().x - lt / 2.0, r.position.y + 40.0 * esc), Vector2(r.get_center().x + lt / 2.0, r.position.y + 40.0 * esc), Color(TINTA, 0.7), 2.0)
+	if sub != "":
+		_centrar(sub, Vector2(r.get_center().x, r.position.y + 64.0 * esc), 17, TINTA_SUAVE, esc, false)
+		return r.position.y + 92.0 * esc
+	return r.position.y + 74.0 * esc
+
+func _pagina_manual(r: Rect2, k: int, esc: float) -> void:
+	var m: Dictionary = MANUAL[k]
+	var y: float = _titulo_pagina(r, T.t(String(m.titulo)), esc)
+	var extra: String = String(m.get("extra", ""))
+	if extra == "anel":
+		y = _desenho_anel(Vector2(r.get_center().x, y + 62.0 * esc), esc) + 18.0 * esc
+	for linha in m.texto:
+		var t: String = T.t(String(linha))
+		var topico: bool = t.begins_with("- ")
+		var x: float = r.position.x + (18.0 * esc if topico else 0.0)
+		if topico:
+			t = t.substr(2)
+			draw_circle(Vector2(r.position.x + 6.0 * esc, y - 6.0 * esc), 3.0 * esc, Color(CAPA, 0.85))
+		y += _paragrafo(t, Vector2(x, y), r.end.x - x, 18, TINTA, esc) + 9.0 * esc
+	if extra == "tabela":
+		_tabela_iscas(r, y, esc)
+	elif extra == "lutas":
+		_tabela_lutas(r, y, esc)
+
+## O anel do minijogo, desenhado no papel: faixa verde, miolo dourado e o ponteiro.
+func _desenho_anel(c: Vector2, esc: float) -> float:
+	var raio: float = 52.0 * esc
+	draw_arc(c, raio, 0.0, TAU, 64, Color(TINTA, 0.55), 7.0 * esc, true)
+	for faixa in [[-0.9, 0.62], [1.5, 0.5], [3.4, 0.55]]:
+		var a0: float = float(faixa[0]) - float(faixa[1]) / 2.0
+		draw_arc(c, raio, a0, a0 + float(faixa[1]), 16, Color(0.30, 0.66, 0.36), 9.0 * esc, true)
+		var d: float = float(faixa[1]) * 0.3
+		draw_arc(c, raio, float(faixa[0]) - d / 2.0, float(faixa[0]) + d / 2.0, 8, Color(0.90, 0.68, 0.20), 9.0 * esc, true)
+	var ang: float = -0.95 + sin(_rel * 1.3) * 0.25
+	draw_line(c, c + Vector2.from_angle(ang) * (raio + 10.0 * esc), CAPA, 3.0 * esc, true)
+	draw_circle(c, 5.0 * esc, CAPA)
+	_escrever(T.t("faixa verde"), c + Vector2(raio + 18.0 * esc, -24.0 * esc), 15, Color(0.22, 0.48, 0.26), esc, false)
+	_escrever(T.t("miolo dourado: vale o dobro"), c + Vector2(raio + 18.0 * esc, -4.0 * esc), 15, Color(0.62, 0.44, 0.10), esc, false)
+	_escrever(T.t("ponteiro"), c + Vector2(-raio - 92.0 * esc, -30.0 * esc), 15, TINTA_SUAVE, esc, false)
+	return c.y + raio + 10.0 * esc
+
+const COR_ISCA := [Color(0.40, 0.36, 0.30), Color(0.80, 0.38, 0.24), Color(0.42, 0.30, 0.62)]
+
+## Duas colunas: quem prefere camarão e quem prefere lula, com o anzol de cada um.
+func _tabela_iscas(r: Rect2, y: float, esc: float) -> void:
+	var meio: float = r.position.x + r.size.x / 2.0
+	for col in 2:
+		var isca: int = col + 1
+		var x: float = r.position.x + (0.0 if col == 0 else r.size.x / 2.0 + 10.0 * esc)
+		var cab := Rect2(Vector2(x, y), Vector2(r.size.x / 2.0 - 10.0 * esc, 34.0 * esc))
+		draw_rect(cab, COR_ISCA[isca])
+		_centrar(T.t(String(Pesca.ISCAS[isca])).to_upper(), cab.get_center() + Vector2(0, 8.0 * esc), 22, Aq.CREME, esc, true)
+		var yy: float = cab.end.y + 24.0 * esc
+		for f in FICHAS:
+			var perfil: Dictionary = Pesca.PERFIL.get(String(f[0]), {})
+			if int(perfil.get("isca", 0)) != isca:
+				continue
+			_escrever(T.t(String(f[0])), Vector2(x + 6.0 * esc, yy), 18, TINTA, esc, false)
+			var prof: String = T.t(String(Pesca.PROFUNDIDADES[int(perfil.get("prof", 1))])).to_lower()
+			var lp: float = Aq.FONTE_TEXTO.get_string_size(prof, HORIZONTAL_ALIGNMENT_LEFT, -1, int(15 * esc)).x
+			_escrever(prof, Vector2(cab.end.x - lp - 4.0 * esc, yy), 15, TINTA_SUAVE, esc, false)
+			yy += 27.0 * esc
+	draw_line(Vector2(meio, y + 40.0 * esc), Vector2(meio, r.end.y - 30.0 * esc), Color(TINTA, 0.15), 1.5)
+
+## Os sete jeitos de lutar, com a cor do anel de cada um.
+func _tabela_lutas(r: Rect2, y: float, esc: float) -> void:
+	for id in ["bando", "corredor", "pesado", "arisco", "escorregadio", "saltador", "colosso"]:
+		var info: Dictionary = Pesca.INFO_COMPORTAMENTO[id]
+		draw_circle(Vector2(r.position.x + 10.0 * esc, y - 6.0 * esc), 8.0 * esc, info.cor)
+		draw_arc(Vector2(r.position.x + 10.0 * esc, y - 6.0 * esc), 8.0 * esc, 0.0, TAU, 16, Color(TINTA, 0.5), 1.5, true)
+		var t: String = T.t(String(info.dica))
+		y += _paragrafo(t, Vector2(r.position.x + 28.0 * esc, y), r.size.x - 28.0 * esc, 17, TINTA, esc) + 10.0 * esc
+
+## Diário de bordo: as mensagens da viagem, a mais nova primeiro. Folha 0 = as mais novas; folha 1 = as anteriores.
+func _pagina_diario(r: Rect2, lado: int, esc: float) -> void:
+	var y: float
+	if lado == 0:
+		y = _titulo_pagina(r, T.t("Diário de bordo"), esc, T.t("O que aconteceu na viagem, do mais novo ao mais antigo.")) + 14.0 * esc
+	else:
+		y = r.position.y + 26.0 * esc
+	var lista: Array = diario.duplicate()
+	lista.reverse()
+	if lista.is_empty():
+		if lado == 0:
+			_centrar(T.t("Nada anotado ainda."), Vector2(r.get_center().x, y + 30.0 * esc), 18, TINTA_SUAVE, esc, false)
+		return
+	# a folha da direita continua de onde a da esquerda parou
+	var inicio := 0
+	if lado == 1:
+		inicio = _cabem_no_diario(r, lista, r.position.y + 92.0 * esc, esc)
+	for k in range(inicio, lista.size()):
+		var t: String = String(lista[k])
+		var h: float = Aq.FONTE_TEXTO.get_multiline_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 20.0 * esc, int(17 * esc), -1, QUEBRA).y
+		if y + h > r.end.y - 30.0 * esc:
+			break
+		draw_circle(Vector2(r.position.x + 5.0 * esc, y - 6.0 * esc), 2.5 * esc, Color(TINTA, 0.5 if k > 0 else 0.9))
+		_paragrafo(t, Vector2(r.position.x + 16.0 * esc, y), r.size.x - 20.0 * esc, 17, TINTA if k < 3 else TINTA_SUAVE, esc)
+		y += h + 8.0 * esc
+
+## Depois do último peixe: a coleção inteira numa folha (quantos, recorde), "???" para o que falta pescar.
+func _pagina_colecao(r: Rect2, esc: float) -> void:
+	var y: float = _titulo_pagina(r, T.t("Sua coleção"), esc, T.t("Peixes descobertos: %d/%d") % [descobertos(), FICHAS.size()])
+	var x_n: float = r.position.x + r.size.x * 0.58
+	var x_r: float = r.position.x + r.size.x * 0.78
+	_escrever(T.t("Pescados"), Vector2(x_n, y), 14, TINTA_SUAVE, esc, false)
+	_escrever(T.t("Recorde"), Vector2(x_r, y), 14, TINTA_SUAVE, esc, false)
+	y += 22.0 * esc
+	for f in FICHAS:
+		var d: Dictionary = colecao.get(String(f[0]), {})
+		var n: int = int(d.get("n", 0))
+		var cor := TINTA if n > 0 else Color(TINTA, 0.35)
+		draw_rect(Rect2(Vector2(r.position.x, y - 12.0 * esc), Vector2(8.0 * esc, 8.0 * esc)), Color(_zona(String(f[1])).cor, 0.9 if n > 0 else 0.3))
+		_escrever(T.t(String(f[0])) if n > 0 else "???", Vector2(r.position.x + 16.0 * esc, y), 17, cor, esc, false)
+		if n > 0:
+			_escrever(str(n), Vector2(x_n, y), 17, cor, esc, false)
+			_escrever(("%.1f" % float(d.get("maior", 0.0))).replace(".", ",") + " kg", Vector2(x_r, y), 17, cor, esc, false)
+		y += 21.5 * esc
+
+func _cabem_no_diario(r: Rect2, lista: Array, y: float, esc: float) -> int:
+	var n := 0
+	for t in lista:
+		var h: float = Aq.FONTE_TEXTO.get_multiline_string_size(String(t), HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 20.0 * esc, int(17 * esc), -1, QUEBRA).y
+		if y + h > r.end.y - 30.0 * esc:
+			break
+		y += h + 8.0 * esc
+		n += 1
+	return n
 
 func _pagina(r: Rect2, i: int, esc: float) -> void:
 	var nome: String = FICHAS[i][0]
@@ -259,7 +484,7 @@ func _pagina(r: Rect2, i: int, esc: float) -> void:
 	var lt: float = Aq.FONTE_TITULO.get_string_size(titulo, HORIZONTAL_ALIGNMENT_LEFT, -1, int(32 * esc)).x
 	draw_line(Vector2(r.get_center().x - lt / 2.0, r.position.y + 40.0 * esc), Vector2(r.get_center().x + lt / 2.0, r.position.y + 40.0 * esc), Color(TINTA, 0.7), 2.0)
 	# moldura do desenho
-	var quadro := Rect2(r.position + Vector2(0, 56.0 * esc), Vector2(r.size.x, 190.0 * esc))
+	var quadro := Rect2(r.position + Vector2(0, 56.0 * esc), Vector2(r.size.x, 166.0 * esc))
 	draw_rect(quadro, Color(PAPEL_SOMBRA, 0.45))
 	draw_rect(quadro, Color(TINTA, 0.25), false, 1.5)
 	var tex: Texture2D = _texturas.get(nome)
@@ -304,11 +529,23 @@ func _pagina(r: Rect2, i: int, esc: float) -> void:
 	_escrever(T.t("Luta"), Vector2(x1, y), 16, TINTA_SUAVE, esc, false)
 	var comp: String = String(Pesca.COMPORTAMENTO.get(nome, "bando"))
 	_escrever(T.t(String(Pesca.INFO_COMPORTAMENTO[comp].nome)) if conhecido else "?", Vector2(x1 + 70.0 * esc, y), 20, TINTA, esc, true)
+	# v0.8.4: a isca e o anzol que a espécie prefere (o que todo pescador do cais sabe, mesmo antes da primeira)
+	y += 34.0 * esc
+	var perfil: Dictionary = Pesca.PERFIL.get(nome, {"prof": 1, "isca": 0})
+	var isca: int = int(perfil.isca)
+	_escrever(T.t("Isca"), Vector2(x0, y), 16, TINTA_SUAVE, esc, false)
+	var nome_isca: String = T.t(String(Pesca.ISCAS[isca]))
+	var li: float = Aq.FONTE_TITULO.get_string_size(nome_isca, HORIZONTAL_ALIGNMENT_LEFT, -1, int(20 * esc)).x
+	draw_rect(Rect2(Vector2(x0 + 88.0 * esc, y - 20.0 * esc), Vector2(li + 12.0 * esc, 26.0 * esc)), Color(COR_ISCA[isca], 0.85))
+	_escrever(nome_isca, Vector2(x0 + 94.0 * esc, y), 20, Aq.CREME, esc, true)
+	_escrever(T.t("Anzol"), Vector2(x1, y), 16, TINTA_SUAVE, esc, false)
+	_escrever(T.t(String(Pesca.PROFUNDIDADES[int(perfil.prof)])), Vector2(x1 + 70.0 * esc, y), 20, TINTA, esc, true)
 
 ## A última folha: as páginas molhadas do diário do Bento, coladas no caderno conforme aparecem na bruma.
 func _pagina_bento(r: Rect2, esc: float) -> void:
 	if paginas_bento <= 0:
-		_centrar(T.t("Fim do caderno."), r.get_center(), 22, TINTA_SUAVE, esc, false)
+		_titulo_pagina(r, T.t("Páginas soltas"), esc)
+		_centrar(T.t("Nada colado aqui... ainda."), r.get_center(), 20, TINTA_SUAVE, esc, false)
 		return
 	_centrar(T.t("Diário do Bento"), Vector2(r.get_center().x, r.position.y + 30.0 * esc), 32, TINTA, esc, true)
 	_centrar(T.t("Páginas achadas: %d de %d") % [paginas_bento, Historia.PAGINAS.size()], Vector2(r.get_center().x, r.position.y + 62.0 * esc), 18, TINTA_SUAVE, esc, false)

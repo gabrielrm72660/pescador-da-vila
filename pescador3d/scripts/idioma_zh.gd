@@ -12,7 +12,7 @@ const TABELA := {
 	"OPÇÕES": "选项",
 	"SAIR DO JOGO": "退出游戏",
 	"CONFIRMAR: APAGAR A VIAGEM SALVA?": "确认：删除已保存的航行？",
-	"W A S D  navegar   •   ESPAÇO  frear\nF  pescar e atracar no cais   •   I  inventário (porão)\nTAB  diário de bordo   •   M  carta náutica   •   ESC  menu": "W A S D  航行   •   空格  刹车\nF  捕鱼 / 在码头靠岸   •   I  背包（货舱）\nTAB  航海日志   •   M  海图   •   ESC  菜单",
+	"W A S D  navegar   •   ESPAÇO  frear\nF  pescar e atracar no cais   •   I  inventário (porão)\nTAB  livro do pescador   •   M  carta náutica   •   ESC  menu": "W A S D  航行   •   空格  刹车\nF  捕鱼 / 在码头靠岸   •   I  背包（货舱）\nTAB  渔夫之书   •   M  海图   •   ESC  菜单",
 	"Ajuste o jogo do seu jeito.": "按你的喜好调整游戏。",
 	"GERAL": "常规",
 	"ÁUDIO": "音频",

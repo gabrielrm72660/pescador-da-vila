@@ -76,9 +76,9 @@ const TABELA := {
     "OPÇÕES": ["OPCIONES", "OPTIONS"],
     "SAIR DO JOGO": ["SALIR DEL JUEGO", "QUIT GAME"],
     "CONFIRMAR: APAGAR A VIAGEM SALVA?": ["¿CONFIRMAR: BORRAR EL VIAJE GUARDADO?", "CONFIRM: DELETE SAVED VOYAGE?"],
-    "W A S D  navegar   •   ESPAÇO  frear\nF  pescar e atracar no cais   •   I  inventário (porão)\nTAB  diário de bordo   •   M  carta náutica   •   ESC  menu":
-        ["W A S D  navegar   •   ESPACIO  frenar\nF  pescar y atracar en el muelle   •   I  inventario (bodega)\nTAB  diario de a bordo   •   M  carta náutica   •   ESC  menú",
-         "W A S D  sail   •   SPACE  brake\nF  fish and dock at the pier   •   I  inventory (hold)\nTAB  logbook   •   M  nautical chart   •   ESC  menu"],
+    "W A S D  navegar   •   ESPAÇO  frear\nF  pescar e atracar no cais   •   I  inventário (porão)\nTAB  livro do pescador   •   M  carta náutica   •   ESC  menu":
+        ["W A S D  navegar   •   ESPACIO  frenar\nF  pescar y atracar en el muelle   •   I  inventario (bodega)\nTAB  libro del pescador   •   M  carta náutica   •   ESC  menú",
+         "W A S D  sail   •   SPACE  brake\nF  fish and dock at the pier   •   I  inventory (hold)\nTAB  fisher's book   •   M  nautical chart   •   ESC  menu"],
     # opções
     "Ajuste o jogo do seu jeito.": ["Ajusta el juego a tu manera.", "Set up the game your way."],
     "GERAL": ["GENERAL", "GENERAL"],
