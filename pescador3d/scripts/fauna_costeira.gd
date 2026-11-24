@@ -12,11 +12,18 @@ func _ready() -> void:
     _barco = get_node_or_null("../Barco") as Node3D
     _oceano = get_node_or_null("../Oceano") as Node3D
     _mundo = get_parent()
-    for especie in ["golfinho", "golfinho", "tartaruga", "ave", "ave", "ave"]:     # dois golfinhos: um par nadando
+    for especie in ["tartaruga", "ave", "ave", "ave"]:     # v0.8.0: os golfinhos agora são um grupo à parte (golfinhos.gd)
         var modelo: Node3D = _modelo(especie)
         add_child(modelo)
         _animais.append({"especie": especie, "no": modelo, "rumo": randf_range(0.0, TAU), "vel": randf_range(0.7, 1.7), "fase": randf() * TAU})
+    _golfinhos = Golfinhos.new()
+    _golfinhos.name = "Golfinhos"
+    add_child(_golfinhos)
+    _golfinhos.construir(_barco, _oceano, _mundo)
     reiniciar()
+
+const Golfinhos = preload("res://scripts/golfinhos.gd")
+var _golfinhos: Node3D
 
 const Mesclador = preload("res://scripts/mesclador.gd")
 const Arq = preload("res://scripts/arquitetura_malhas.gd")
@@ -102,6 +109,8 @@ func _posicao_segura(dist_min: float, dist_max: float) -> Vector3:
     return origem + Vector3(120, 0, 40)
 
 func reiniciar() -> void:
+    if _golfinhos != null:
+        _golfinhos.reiniciar()
     for animal in _animais:
         var no: Node3D = animal.no
         var pos: Vector3 = _posicao_segura(65.0, 175.0)
@@ -112,6 +121,8 @@ func reiniciar() -> void:
         animal.fase = randf_range(0.0, TAU)
 
 func _process(delta: float) -> void:
+    if _golfinhos != null:
+        _golfinhos.simulando = simulando
     if not simulando or _barco == null:
         return
     _tempo += delta
