@@ -4,7 +4,7 @@ config_version=5
 
 [application]
 config/name="Bruma"
-config/version="0.8.0"
+config/version="0.8.1"
 config/icon="res://assets/marca/icone.png"
 run/main_scene="res://cenas/Jogo.tscn"
 config/use_custom_user_dir=true

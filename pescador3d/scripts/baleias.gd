@@ -3,7 +3,7 @@ extends Node3D
 ## Modelo: malha feita da pintura de lado do SpriteCook (ferramentas/cetaceos.py), com o corpo inteiro ondulando no
 ## shader (shaders/cetaceo.gdshader). Comportamento de uma aparicao (~64 s):
 ##   sobe do fundo -> nada na superficie soprando (3 sopros) -> mergulha mostrando a cauda (a cauda sobe fora d'agua).
-##   Em ~40% das aparicoes ela SALTA no meio: afunda, vira de bico para cima, sai quase inteira da agua, gira de lado
+##   (desligado em v0.8.1, SALTA = false) Em ~40% das aparicoes ela SALTA no meio: afunda, vira de bico para cima, sai quase inteira da agua, gira de lado
 ##   e cai com um estouro de espuma.
 
 const FaunaMalha = preload("res://scripts/fauna_malha.gd")
@@ -15,6 +15,7 @@ const T_SALTO := 24.0
 const DURACAO_SALTO := 8.0
 const DIST_MIN := 115.0
 const DIST_MAX := 220.0
+const SALTA := false                # v0.8.1: o Gabriel prefere a baleia só nadando (o salto fica pronto, desligado)
 const PROF_SUPERFICIE := -0.70      # centro do corpo abaixo da agua: so o dorso (~0,6 m) fica de fora
 
 var simulando: bool = false
@@ -177,7 +178,7 @@ func _tentar_aparecer(teste: bool = false) -> bool:
         _sopros = 0
         _proximo_sopro = randf_range(13.5, 17.5)
         _proxima_curva = randf_range(12.0, 23.0)
-        _vai_saltar = teste or randf() < 0.4
+        _vai_saltar = SALTA and (teste or randf() < 0.4)
         _espirros_feitos = 0
         _anel_tempo = -1.0
         _anel.visible = false
