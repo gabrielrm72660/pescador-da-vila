@@ -483,7 +483,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.8.1] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.8.2] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 ## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).
@@ -1044,6 +1044,8 @@ func atualizar_interface() -> void:
     var ate_cais: Vector3 = ilha.cais_ponta - barco.global_position
     interface.hud.cais_rel = Vector2(ate_cais.dot(barco.global_transform.basis.x), ate_cais.dot(-barco.global_transform.basis.z))
     interface.hud.cais_mundo = Vector2(ilha.cais_ponta.x, ilha.cais_ponta.z)
+    # v0.8.2: o destino marcado na carta também aparece no radar (traço até ele)
+    interface.hud.destino_mundo = interface.mapa.marcador if interface.mapa.tem_marcador else Vector2.INF
     interface.hud.cais_dist = ilha.distancia_do_cais(barco.global_position)
     interface.hud.dinheiro = dinheiro
     interface.hud.dica = (Idioma.t("F: atracar em %s") % Idioma.t(String(ilha.nome))) if (iniciado and not em_pausa and pode_atracar()) else ""

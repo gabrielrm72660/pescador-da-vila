@@ -50,6 +50,7 @@ var radar_alvos: Array = []     # {pos: Vector2(m a boreste, m à frente), mundo
 var barco_ref: Node3D = null     # o radar lê a posição e o rumo do barco a cada quadro (gira sem engasgar)
 var radar_ilhas: Array = []     # por ilha: {centro, raio, raso, linha, alto: contornos no mundo, cais: [inicio, ponta]}
 var cais_mundo := Vector2.INF   # ponta do cais mais próximo (x, z no mundo)
+var destino_mundo := Vector2.INF   # v0.8.2: destino marcado na carta (x, z no mundo); INF = sem rota
 var radar_boias: Array = []     # boias de sinalização: {mundo: Vector2(x, z), cor: Color}
 var alcance_radar: float = 150.0    # metros até a borda do radar
 var instavel: float = 0.0       # v0.6.0: 0..1, bruma longe das ilhas: a bússola oscila e o radar chia
@@ -369,6 +370,27 @@ func _rel_barco(mundo: Vector2) -> Vector2:
     var d := mundo - Vector2(barco_ref.global_position.x, barco_ref.global_position.z)
     return Vector2(d.dot(Vector2(base.x.x, base.x.z)), d.dot(Vector2(-base.z.x, -base.z.z)))
 
+## v0.8.2: a rota marcada na carta, no radar: tracejado do barco até o destino (o mesmo vermelho da carta, mais
+## claro para ler sobre o mar). Destino dentro do alcance: um X; fora: o traço vai até a borda e termina numa seta.
+func _rota_radar(c: Vector2, raio: float) -> void:
+    var cor := Color(0.96, 0.46, 0.32, 0.95)
+    var rel := _rel_barco(destino_mundo)
+    var p := Vector2(rel.x, -rel.y) / alcance_radar * raio
+    var dentro: bool = p.length() <= raio - 12.0
+    var fim: Vector2 = p if dentro else p.normalized() * (raio - 14.0)
+    if fim.length() > 4.0:
+        draw_dashed_line(c, c + fim, Color(TINTA, 0.7), 4.6, 9.0, true)
+        draw_dashed_line(c, c + fim, cor, 2.4, 9.0, true)
+    if dentro:
+        for s in [-1.0, 1.0]:
+            draw_line(c + p + Vector2(-6, -6 * s), c + p + Vector2(6, 6 * s), Color(TINTA, 0.8), 5.0)
+            draw_line(c + p + Vector2(-6, -6 * s), c + p + Vector2(6, 6 * s), cor, 3.0)
+    else:
+        var d := p.normalized()
+        var lat := Vector2(-d.y, d.x)
+        var ponta := c + d * (raio - 4.0)
+        draw_colored_polygon(PackedVector2Array([ponta, ponta - d * 12.0 + lat * 7.0, ponta - d * 12.0 - lat * 7.0]), cor)
+
 ## Contorno do mundo -> pixels do radar (proa para cima), cortado pelo círculo do radar.
 func _poligono_radar(contorno: PackedVector2Array, c: Vector2, raio: float, disco: PackedVector2Array) -> Array:
     var pontos := PackedVector2Array()
@@ -411,6 +433,8 @@ func _radar() -> void:
             if pb_boia.distance_to(c) < raio - 5.0:
                 draw_circle(pb_boia, 4.2, Color(TINTA, 0.95))
                 draw_circle(pb_boia, 2.9, boia.cor)
+    if barco_ref != null and destino_mundo != Vector2.INF:      # v0.8.2: rota da carta — traço até o destino
+        _rota_radar(c, raio)
     draw_arc(c, raio, 0.0, TAU, 72, CREME, 2.5, true)
     for i in 28:                                               # círculo tracejado: metade do alcance
         if i % 2 == 0:

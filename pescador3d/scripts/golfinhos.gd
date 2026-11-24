@@ -23,6 +23,11 @@ var _proxima_curva := 8.0
 var _surfando := 0.0              # s que ainda vão ficar na proa do barco
 var _tempo := 0.0
 var _respingo: CPUParticles3D
+# v0.8.2: aparecem de vez em quando (antes ficavam sempre por perto): somem 4 a 7 min, ficam 70 a 110 s
+const AUSENTE := Vector2(240.0, 420.0)
+const PRESENTE := Vector2(70.0, 110.0)
+var _presente := false
+var _relogio := 0.0
 
 func construir(barco: Node3D, oceano: Node, mundo: Node) -> void:
 	_barco = barco
@@ -72,6 +77,16 @@ func construir(barco: Node3D, oceano: Node, mundo: Node) -> void:
 func reiniciar() -> void:
 	if _barco == null:
 		return
+	_presente = false
+	_relogio = randf_range(AUSENTE.x, AUSENTE.y)
+	_mostrar(false)
+	_espalhar()
+
+func _mostrar(sim: bool) -> void:
+	for b in _bichos:
+		(b.no as Node3D).visible = sim
+
+func _espalhar() -> void:
 	_lider = _posicao_segura(70.0, 170.0)
 	_rumo = Vector2.from_angle(randf_range(0.0, TAU))
 	_rumo_alvo = _rumo.angle()
@@ -106,11 +121,28 @@ func _process(delta: float) -> void:
 		return
 	var dt: float = minf(delta, 0.05)
 	_tempo += dt
+	_relogio -= dt
+	if not _presente:
+		if _relogio <= 0.0:
+			_presente = true
+			_relogio = randf_range(PRESENTE.x, PRESENTE.y)
+			_espalhar()
+			_mostrar(true)
+		return
+	if _relogio <= 0.0 and _surfando <= 0.0:
+		var no_ar := false
+		for b in _bichos:
+			no_ar = no_ar or bool(b.no_ar)
+		if not no_ar:                      # vão embora mergulhando (nenhum some no meio de um salto)
+			_presente = false
+			_relogio = randf_range(AUSENTE.x, AUSENTE.y)
+			_mostrar(false)
+			return
 	# ---- líder: passeia, foge da costa; se o barco passa rápido e perto, vem para a proa dele
 	var barco_pos: Vector3 = _barco.global_position
 	var dist: float = Vector2(_lider.x - barco_pos.x, _lider.z - barco_pos.z).length()
 	if dist > 300.0:
-		reiniciar()
+		_espalhar()
 		return
 	var vel_barco: float = float(_barco.velocidade) if "velocidade" in _barco else 0.0
 	if _surfando <= 0.0 and absf(vel_barco) > 4.0 and dist < 70.0 and randf() < dt * 0.4:

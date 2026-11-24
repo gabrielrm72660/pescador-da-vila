@@ -7,8 +7,8 @@ extends Node3D
 ##   e cai com um estouro de espuma.
 
 const FaunaMalha = preload("res://scripts/fauna_malha.gd")
-const PRIMEIRA_APARICAO := Vector2(75.0, 120.0)
-const INTERVALO := Vector2(195.0, 320.0)
+const PRIMEIRA_APARICAO := Vector2(300.0, 480.0)   # v0.8.2: bem mais rara (antes 75-120 s e depois a cada 195-320 s)
+const INTERVALO := Vector2(600.0, 960.0)
 const VIDA := 64.0
 const T_MERGULHO := 43.0
 const T_SALTO := 24.0
@@ -298,7 +298,7 @@ func _process(delta: float) -> void:
     if not _ativo:
         _contagem -= delta
         if _contagem <= 0.0:
-            _contagem = randf_range(45.0, 85.0) if not _tentar_aparecer() else randf_range(INTERVALO.x, INTERVALO.y)
+            _contagem = randf_range(90.0, 150.0) if not _tentar_aparecer() else randf_range(INTERVALO.x, INTERVALO.y)
         return
 
     var dt: float = minf(delta, 0.08)

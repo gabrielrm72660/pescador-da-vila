@@ -76,24 +76,55 @@ func _modelo(especie: String) -> Node3D:
             Mesclador.elipsoide(Vector3(0.62, -0.04, 0.95), Vector3(0.28, 0.06, 0.20), pele, Vector3(0, -20, 0)),
         ])
     else:
-        var branco := Color(0.93, 0.92, 0.86)
-        var ponta := Color(0.36, 0.38, 0.42)
-        _malha_no(grupo, "Tronco", [
-            Mesclador.elipsoide(Vector3(0, 0, 0), Vector3(0.17, 0.15, 0.50), branco),
-            Mesclador.elipsoide(Vector3(0, 0.05, -0.50), Vector3(0.11, 0.11, 0.12), branco),          # cabeça
-            Mesclador.elipsoide(Vector3(0, 0.03, -0.66), Vector3(0.035, 0.035, 0.12), Color(0.95, 0.68, 0.18)),   # bico
-            Mesclador.elipsoide(Vector3(0, 0.0, 0.52), Vector3(0.12, 0.03, 0.22), branco),            # cauda
-        ])
+        # v0.8.2: atobá pintado (SpriteCook, visto de cima): corpo e as duas asas são cartões recortados pelo alfa;
+        # cada asa gira na raiz para bater. Envergadura ~1,7 m.
+        _cartao_ave(grupo, "Tronco", Rect2(925, 34, 198, 1083), Vector2(1024, 600))
         for lado in [-1.0, 1.0]:
             var asa := Node3D.new()
             asa.name = "AsaEsquerda" if lado < 0.0 else "AsaDireita"
-            asa.position = Vector3(float(lado) * 0.1, 0.02, 0.0)
+            var raiz_px: float = 925.0 if lado < 0.0 else 1123.0
+            asa.position = Vector3((raiz_px - 1024.0) * ESCALA_AVE, 0.0, 0.0)
             grupo.add_child(asa)
-            _malha_no(asa, "Pena", [
-                Mesclador.elipsoide(Vector3(float(lado) * 0.34, 0, 0), Vector3(0.36, 0.05, 0.17), branco),
-                Mesclador.elipsoide(Vector3(float(lado) * 0.74, 0, 0.02), Vector3(0.30, 0.045, 0.14), ponta),
-            ])
+            var faixa := Rect2(19, 330, 906, 430) if lado < 0.0 else Rect2(1123, 330, 907, 430)
+            _cartao_ave(asa, "Pena", faixa, Vector2(raiz_px, 600))
     return grupo
+
+const ESCALA_AVE := 1.7 / 2010.0          # m por pixel da pintura do atobá (2010 px de ponta a ponta das asas)
+const RECORTE_AVE := Rect2(19, 34, 2011, 1084)   # parte da pintura original que está em assets/fauna/atoba.png
+var _material_ave: StandardMaterial3D
+
+## Cartão horizontal com um pedaço da pintura do atobá (px da pintura original); "origem" = px que fica no ponto 0
+## do nó (para as asas, a raiz). Bico para -Z.
+func _cartao_ave(pai: Node3D, nome: String, px: Rect2, origem: Vector2) -> void:
+    if _material_ave == null:
+        _material_ave = StandardMaterial3D.new()
+        _material_ave.albedo_texture = load("res://assets/fauna/atoba.png")
+        _material_ave.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+        _material_ave.alpha_scissor_threshold = 0.5
+        _material_ave.cull_mode = BaseMaterial3D.CULL_DISABLED
+        _material_ave.roughness = 0.9
+        _material_ave.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+    var v := PackedVector3Array()
+    var uv := PackedVector2Array()
+    var cantos := [px.position, Vector2(px.end.x, px.position.y), px.end, Vector2(px.position.x, px.end.y)]
+    for q in cantos:
+        v.append(Vector3((q.x - origem.x) * ESCALA_AVE, 0.0, (q.y - origem.y) * ESCALA_AVE))
+        uv.append((q - RECORTE_AVE.position) / RECORTE_AVE.size)
+    var arr := []
+    arr.resize(Mesh.ARRAY_MAX)
+    arr[Mesh.ARRAY_VERTEX] = v
+    arr[Mesh.ARRAY_TEX_UV] = uv
+    arr[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP])
+    arr[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
+    var am := ArrayMesh.new()
+    am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+    var mi := MeshInstance3D.new()
+    mi.name = nome
+    mi.mesh = am
+    mi.material_override = _material_ave
+    mi.visibility_range_end = 420.0
+    mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    pai.add_child(mi)
 
 func _posicao_segura(dist_min: float, dist_max: float) -> Vector3:
     if _barco == null:
@@ -159,6 +190,11 @@ func _process(delta: float) -> void:
             no.position.y = nivel + 6.0 + 1.6 * sin(fase * 0.30)
             var asa_esquerda: Node3D = no.get_node("AsaEsquerda")
             var asa_direita: Node3D = no.get_node("AsaDireita")
-            asa_esquerda.rotation.z = sin(fase * 2.0) * 0.32
-            asa_direita.rotation.z = -sin(fase * 2.0) * 0.32
-        no.rotation.y = float(animal.rumo)
+            # atobá: bate as asas umas vezes e plana; planando, asas quase retas, só balançando com o vento
+            var plana: float = smoothstep(0.2, 0.6, sin(fase * 0.22))
+            var batida: float = sin(fase * 2.6) * 0.42 * (1.0 - plana) + (0.06 + 0.03 * sin(fase * 0.9)) * plana
+            asa_esquerda.rotation.z = batida
+            asa_direita.rotation.z = -batida
+            no.rotation.z = 0.10 * sin(float(animal.rumo) * 3.0 + fase * 0.2)      # inclina nas curvas
+        # v0.8.2: o modelo olha para -Z; com rotation.y = rumo ele andava de lado (para frente é -rumo)
+        no.rotation.y = -float(animal.rumo)

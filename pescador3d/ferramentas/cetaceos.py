@@ -319,5 +319,14 @@ def main():
         construir(nome, cfg)
 
 
+def atoba():
+    """v0.8.2: o atobá (ave das ilhas) visto de cima, do SpriteCook -> assets/fauna/atoba.png. Recorte (19,34)-(2029,1117)
+    da pintura original; scripts/fauna_costeira.gd monta corpo e asas como cartões com essas mesmas medidas."""
+    im = Image.open(ORIG / "atoba_cima.png").convert("RGBA").crop((19, 34, 2030, 1118))
+    sangrar(im).resize((1024, 552), Image.LANCZOS).save(DEST / "atoba.png", optimize=True)
+    print("atoba.png")
+
+
 if __name__ == "__main__":
     main()
+    atoba()
