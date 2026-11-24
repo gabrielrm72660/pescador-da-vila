@@ -5,6 +5,7 @@ const Vento = preload("res://scripts/vento.gd")
 const VegetacaoMalhas = preload("res://scripts/vegetacao_malhas.gd")   # pinheiro, árvore, pedra e moita em níveis de detalhe 1 e 2
 const LayoutPrincipal = preload("res://scripts/layout_principal.gd")   # ruas, casas e pinheiros da Vila do Porto (desenho do Gabriel)
 const Arq = preload("res://scripts/arquitetura_malhas.gd")             # casas, capela, armazém, mercado, farol e cais detalhados (v0.5.1)
+const TorreAntena = preload("res://scripts/torre_antena.gd")    # v0.8.3: torre de telecom (Ilha das Rocas)
 ## Ilha procedural: praia, encostas, dorsais, paredoes e costa com rochedos.
 ## Coqueiros, moitas, pedras, vila e cais. O farol e opcional em cada ilha. Responde onde há terra (para o barco não atravessar) e onde é o cais.
 
@@ -21,6 +22,8 @@ var bonus_venda := 1.0                         # quanto o cais paga pelo peixe (
 var preco_diesel := 4                          # R$ por litro
 var tem_loja := true                           # vende melhorias do barco?
 var tem_farol := true                          # cada ilha decide se tem farol; Ilha das Rocas = false
+var tem_torre := false                         # v0.8.3: torre de telecom vermelha e branca no cume (Ilha das Rocas)
+var _torre: Node3D
 var relevo_detalhado := true                    # espigoes e vales: apenas a ilha principal
 ## v0.5.8
 var tem_cais := true                           # falso: ilha deserta, sem cais nem posto (não dá para atracar)
@@ -920,6 +923,8 @@ func _criar_vila() -> void:
         _construir_postes()
         if tem_farol:
             _criar_farol_no_cume(vila)         # v0.5.8: farol no alto do morro de São Pedro
+        if tem_torre:
+            _criar_torre_antena()
         return
 
     if _usa_layout():
@@ -1531,6 +1536,39 @@ func _criar_rampa_do_cais(pai: Node3D) -> void:
 
 ## Busca o ponto de maior altitude no interior da ilha principal, afastado da praia e dos rochedos.
 ## O cume é calculado a partir da mesma função usada na malha 3D e na colisão.
+## v0.8.3: torre de telecomunicações no cume (com abrigo de equipamentos e alambrado). Fica fora do Mesclador
+## (tem script) e a vegetação desvia dela; à noite as luzes de balizamento piscam (acender()).
+func _criar_torre_antena() -> void:
+    var melhor := -INF
+    var lugar := Vector2.ZERO
+    for ix in range(-16, 17):
+        for iz in range(-16, 17):
+            var x := float(ix)
+            var z := float(iz)
+            var h := _altura_local(x, z)
+            var desnivel := 0.0
+            for o in [Vector2(3, 0), Vector2(-3, 0), Vector2(0, 3), Vector2(0, -3)]:
+                desnivel = maxf(desnivel, absf(_altura_local(x + o.x, z + o.y) - h))
+            if h - desnivel * 2.0 > melhor:
+                melhor = h - desnivel * 2.0
+                lugar = Vector2(x, z)
+    _fixar(lugar.x + 1.5, lugar.y + 1.0, 9.5)        # torre + abrigo + alambrado
+    # mundo salvo no Modo Construtor (de antes da torre): tira o que cairia dentro do alambrado
+    for cat in ["coqueiros", "moitas", "pedras", "pinheiros", "arvores"]:
+        if mundo.has(cat):
+            mundo[cat] = mundo[cat].filter(func(d): return Vector2(float(d[0]) - lugar.x - 1.5, float(d[1]) - lugar.y - 1.0).length() > 9.5)
+    var base_y: float = _altura_local(lugar.x, lugar.y) + 0.15
+    var giro := 0.6
+    var bs := Basis(Vector3.UP, giro)
+    _torre = TorreAntena.new()
+    _torre.name = "TorreAntena"
+    _torre.chao = func(x: float, z: float) -> float:
+        var w: Vector3 = bs * Vector3(x, 0, z)
+        return _altura_local(lugar.x + w.x, lugar.y + w.z) - base_y
+    _torre.position = Vector3(lugar.x, base_y, lugar.y)
+    _torre.rotation.y = giro
+    add_child(_torre)
+
 func _encontrar_cume() -> Vector2:
     var melhor: Vector2 = Vector2.ZERO
     var maior_altitude: float = -INF
@@ -2341,6 +2379,8 @@ func acender(noite: float) -> void:
     for luz in _luzes:
         luz.light_energy = float(luz.get_meta("forca")) * intensidade
     _farol_noite = intensidade
+    if _torre != null:
+        _torre.definir_noite(intensidade)
     if _farol_material != null:
         _farol_material.emission_energy_multiplier = 12.0 * intensidade
     if _farol_foco != null:

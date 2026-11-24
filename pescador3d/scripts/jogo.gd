@@ -109,6 +109,7 @@ func _enter_tree() -> void:
     rata.rochedos = [[-78.0, -52.0, 13.0, 6.0]]
     rata.com_vila = false
     rata.tem_farol = false
+    rata.tem_torre = true                          # v0.8.3: torre de telecom no cume
     rata.relevo_detalhado = false
     rata.coqueiros = 30
     rata.bonus_venda = 1.3
@@ -483,7 +484,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.8.2] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.8.3] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 ## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).
