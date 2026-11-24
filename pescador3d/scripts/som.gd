@@ -82,7 +82,8 @@ func _ready() -> void:
     _guardar_avulso("onda_2", "mar")
     _guardar_avulso("onda_3", "mar")
     _guardar_avulso("trovao", "chuva")
-    for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura", "buzina"]:
+    for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura", "buzina",
+            "sussurro", "batida", "canto", "grave", "sino_bordo"]:      # v0.8.7: o horror da noite
         _guardar_avulso(nome, "efeitos")
 
 func _preparar_bruma() -> void:

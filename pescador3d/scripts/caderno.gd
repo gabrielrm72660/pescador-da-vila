@@ -57,6 +57,12 @@ const MANUAL := [
 		"- Encomenda cumprida na venda rende o bônus junto.",
 		"- No radar, o peixe da missão pisca em dourado.",
 		"- O peixe-lua só sobe nas noites de bruma."]},
+	{"titulo": "A noite e a bruma", "extra": "noite", "texto": [
+		"- A lamparina ao lado do relógio mostra o medo. Ele sobe de noite longe da terra, mais na bruma e perto dos vultos; desce com luz, perto da terra, no farol e ao amanhecer.",
+		"- Lanterna acesa (L) segura o medo pela metade, mas gasta óleo. Vela na capela vale por uma noite; o patuá da Dona Rosa, para sempre. O sino (G) espanta os vultos.",
+		"- Se ouvir um canto vindo da água, segure o leme: ele puxa sozinho.",
+		"- Medo demais: batidas no casco, motor que engasga, peixe que some. No fim, você apaga e acorda longe.",
+		"- O que sobe de noite às vezes não é peixe direito. Só um homem compra, de madrugada, no cais da Vila do Porto."]},
 ]
 
 ## ordem das páginas: zona por zona
@@ -368,6 +374,8 @@ func _pagina_manual(r: Rect2, k: int, esc: float) -> void:
 		_tabela_iscas(r, y, esc)
 	elif extra == "lutas":
 		_tabela_lutas(r, y, esc)
+	elif extra == "noite":
+		_vinheta_noite(r, y, esc)
 
 ## O anel do minijogo, desenhado no papel: faixa verde, miolo dourado e o ponteiro.
 func _desenho_anel(c: Vector2, esc: float) -> float:
@@ -408,6 +416,22 @@ func _tabela_iscas(r: Rect2, y: float, esc: float) -> void:
 			_escrever(prof, Vector2(cab.end.x - lp - 4.0 * esc, yy), 15, TINTA_SUAVE, esc, false)
 			yy += 27.0 * esc
 	draw_line(Vector2(meio, y + 40.0 * esc), Vector2(meio, r.end.y - 30.0 * esc), Color(TINTA, 0.15), 1.5)
+
+## v0.8.7: os quatro amparos da noite, pintados, numa fileira no pé da página.
+var _icones_noite: Array = []
+func _vinheta_noite(r: Rect2, y: float, esc: float) -> void:
+	if _icones_noite.is_empty():
+		for n in ["oleo", "vela", "patua", "sino"]:
+			var arq := "res://assets/texturas/bruma/icone_%s.png" % n
+			if ResourceLoader.exists(arq):
+				_icones_noite.append(load(arq))
+	var alt: float = 64.0 * esc
+	var x: float = r.get_center().x - (_icones_noite.size() * 70.0 * esc) * 0.5
+	for t in _icones_noite:
+		var tex: Texture2D = t
+		var larg: float = alt * float(tex.get_width()) / float(tex.get_height())
+		draw_texture_rect(tex, Rect2(Vector2(x + (60.0 * esc - larg) * 0.5, minf(y + 6.0 * esc, r.end.y - alt - 30.0 * esc)), Vector2(larg, alt)), false)
+		x += 70.0 * esc
 
 ## Os sete jeitos de lutar, com a cor do anel de cada um.
 func _tabela_lutas(r: Rect2, y: float, esc: float) -> void:

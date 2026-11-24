@@ -365,6 +365,8 @@ func aplicar() -> void:
             var grupo: MultiMeshInstance3D = no as MultiMeshInstance3D
             if grupo != null and grupo.multimesh != null:
                 var conta: int = grupo.multimesh.instance_count
+                if conta == 0:
+                    continue
                 if grupo.has_meta("sem_reducao") or modo_editor:      # pinheiros da serra: poucos e baratos, ficam sempre inteiros
                     grupo.multimesh.visible_instance_count = -1
                     continue

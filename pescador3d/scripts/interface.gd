@@ -20,6 +20,7 @@ signal consertar_pressed
 signal idioma_mudou
 signal conversar_pressed(id: String)    # v0.6.0: botão "Conversar" do cais
 signal dialogo_terminou                 # v0.6.0: acabou a conversa com o NPC do cais
+signal noite_pressed(o_que: String)     # v0.8.7: aba Noite do cais: "oleo", "vela", "patua", "sino", "aberrantes"
 
 const HudPintado = preload("res://scripts/hud.gd")
 const CartaMapa = preload("res://scripts/mapa_cartografico.gd")
@@ -605,12 +606,19 @@ func _barra_porto(id: String, fracao: float, cor: Color) -> void:
     barra.set_meta("cor", cor)
     barra.queue_redraw()
 
-func _linha_porto(id: String, nome: String, esquema: String, semente: float, acao: Callable) -> Control:
+func _linha_porto(id: String, nome: String, esquema: String, semente: float, acao: Callable, icone: String = "") -> Control:
     var h := HBoxContainer.new()
     h.custom_minimum_size = Vector2(0, 46)
     h.add_theme_constant_override("separation", 14)
+    if icone != "" and ResourceLoader.exists(icone):            # v0.8.7: ícone pintado (aba Noite)
+        var ic := TextureRect.new()
+        ic.texture = load(icone)
+        ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+        ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+        ic.custom_minimum_size = Vector2(30, 40)
+        h.add_child(ic)
     var n := _nova_label(T.t(nome), 26, COR_TITULO, false, true)
-    n.custom_minimum_size = Vector2(118, 0)
+    n.custom_minimum_size = Vector2(118 if icone == "" else 96, 0)
     n.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     _textos.append([n, nome])
     h.add_child(n)
@@ -687,8 +695,51 @@ func _tingir(b: BotaoAq, esquema: String, cor_texto: Color) -> void:
         b.add_theme_color_override(c, cor_texto)
     b.add_theme_color_override("font_disabled_color", Color(cor_texto, 0.55))
 
+func _preencher_noite(n: Dictionary) -> void:
+    if n.is_empty():
+        return
+    var dinheiro: int = int(n.get("dinheiro", 0))
+    var precos: Dictionary = n.get("precos", {})
+    var oleo: float = float(n.get("oleo", 1.0))
+    var p_oleo: int = int(n.get("preco_oleo", 0))
+    if oleo >= 0.99:
+        _porto_situacao("oleo", "✓  " + T.t("Lanterna cheia de óleo"), "", false, true)
+    else:
+        _porto_situacao("oleo", T.t("Lanterna com %d%% de óleo · acende a noite toda cheia") % roundi(oleo * 100.0),
+                T.t("Encher · R$ %d") % p_oleo, dinheiro >= p_oleo)
+    if bool(n.get("vela", false)):
+        _porto_situacao("vela", "✓  " + T.t("Vela acesa: a próxima noite pesa menos"), "", false, true)
+    elif bool(n.get("tem_capela", false)):
+        _porto_situacao("vela", T.t("Uma vela na capela, para São Pedro: o medo sobe mais devagar por uma noite"),
+                T.t("Acender · R$ %d") % int(precos.get("vela", 5)), dinheiro >= int(precos.get("vela", 5)))
+    else:
+        _porto_situacao("vela", T.t("Não há capela aqui (Vila do Porto ou São Pedro)"), "", false)
+    if bool(n.get("patua", false)):
+        _porto_situacao("patua", "✓  " + T.t("Patuá no painel: o medo sobe 25% mais devagar"), "", false, true)
+    elif bool(n.get("vende_patua", false)):
+        _porto_situacao("patua", T.t("A Dona Rosa faz: protege o barco para sempre"),
+                T.t("Comprar · R$ %d") % int(precos.get("patua", 150)), dinheiro >= int(precos.get("patua", 150)))
+    else:
+        _porto_situacao("patua", T.t("Quem faz patuá é a Dona Rosa, em São Pedro"), "", false)
+    if bool(n.get("sino", false)):
+        _porto_situacao("sino", "✓  " + T.t("Sino a bordo: [G] espanta os vultos e acalma"), "", false, true)
+    elif bool(n.get("vende_sino", false)):
+        _porto_situacao("sino", T.t("Sino de bronze: [G] espanta vultos (a cada 90 s)"),
+                T.t("Instalar · R$ %d") % int(precos.get("sino", 260)), dinheiro >= int(precos.get("sino", 260)))
+    else:
+        _porto_situacao("sino", T.t("O sino de bronze se compra na Vila do Porto"), "", false)
+    var n_ab: int = int(n.get("aberrantes", 0))
+    if bool(n.get("comprador", false)):
+        if n_ab > 0:
+            _porto_situacao("aberrantes", T.t("O homem da capa está no cais. %d aberrante(s) a bordo") % n_ab,
+                    T.t("Vender · R$ %d") % int(n.get("valor_aberrantes", 0)), true)
+        else:
+            _porto_situacao("aberrantes", T.t("O homem da capa espera no fim do cais. Você não tem o que ele quer."), "", false)
+    else:
+        _porto_situacao("aberrantes", (T.t("%d aberrante(s) a bordo. ") % n_ab if n_ab > 0 else "") + T.t("Dizem que alguém compra, de noite, na Vila do Porto"), "", false)
+
 func mostrar_aba_porto(nome: String) -> void:
-    if nome == "oficina" and not _porto_linha_abas.visible:
+    if nome == "oficina" and not (_porto_abas["oficina"] as Control).visible:
         nome = "servicos"
     porto_aba = nome
     for k in _porto_abas:
@@ -753,9 +804,9 @@ func _construir_porto() -> void:
     # abas
     _porto_linha_abas = HBoxContainer.new()
     _porto_linha_abas.add_theme_constant_override("separation", 10)
-    for par in [["servicos", "Serviços"], ["oficina", "Oficina do barco"]]:
+    for par in [["servicos", "Serviços"], ["oficina", "Oficina do barco"], ["noite", "Noite"]]:
         var aba: String = par[0]
-        var b := _botao_aq(T.t(par[1]), "mar", 50.0 + aba.length(), Aq.CREME, 20, Vector2(210, 40))
+        var b := _botao_aq(T.t(par[1]), "mar", 50.0 + aba.length(), Aq.CREME, 20, Vector2(210 if aba != "noite" else 150, 40))
         _textos.append([b, par[1]])
         b.pressed.connect(func(): mostrar_aba_porto(aba))
         _porto_abas[aba] = b
@@ -807,6 +858,22 @@ func _construir_porto() -> void:
     oficina.add_child(nota)
     col.add_child(oficina)
     _porto_conteudo["oficina"] = oficina
+    # v0.8.7: aba Noite — o que protege do medo, e o homem da capa
+    var noite := VBoxContainer.new()
+    noite.add_theme_constant_override("separation", 2)
+    noite.custom_minimum_size = Vector2(0, 280)
+    var DIR_IC := "res://assets/texturas/bruma/icone_%s.png"
+    noite.add_child(_linha_porto("oleo", "Óleo", "ouro", 61.0, func(): noite_pressed.emit("oleo"), DIR_IC % "oleo"))
+    noite.add_child(_fio_porto())
+    noite.add_child(_linha_porto("vela", "Vela", "ocre", 63.0, func(): noite_pressed.emit("vela"), DIR_IC % "vela"))
+    noite.add_child(_fio_porto())
+    noite.add_child(_linha_porto("patua", "Patuá", "terracota", 65.0, func(): noite_pressed.emit("patua"), DIR_IC % "patua"))
+    noite.add_child(_fio_porto())
+    noite.add_child(_linha_porto("sino", "Sino", "ouro", 67.0, func(): noite_pressed.emit("sino"), DIR_IC % "sino"))
+    noite.add_child(_fio_porto())
+    noite.add_child(_linha_porto("aberrantes", "Aberrantes", "turquesa", 69.0, func(): noite_pressed.emit("aberrantes")))
+    col.add_child(noite)
+    _porto_conteudo["noite"] = noite
     porto_rotulo_loja = _nova_label("", 1, COR_SECAO)      # compatibilidade (o título da loja virou a aba)
     porto_rotulo_loja.visible = false
     col.add_child(_fio_porto(0.3))
@@ -849,9 +916,13 @@ func mostrar_porto(d: Dictionary) -> void:
     _porto_fita.visible = fita != ""
     _porto_fita_texto.text = fita
     # Serviços
-    if int(d.peixes) > 0:
-        _porto_situacao("peixe", T.t("%d peixe(s) · %s kg") % [int(d.peixes), ("%.1f" % d.peso).replace(".", ",")],
+    var n_ab: int = int(d.get("noite", {}).get("aberrantes", 0))
+    var comuns: int = int(d.peixes) - n_ab
+    if comuns > 0:
+        _porto_situacao("peixe", T.t("%d peixe(s) · %s kg") % [comuns, ("%.1f" % d.peso).replace(".", ",")] + ((T.t("  ·  %d aberrante(s) ficam") % n_ab) if n_ab > 0 else ""),
                 T.t("Vender por R$ %d   [1]") % int(d.valor), true)
+    elif n_ab > 0:
+        _porto_situacao("peixe", T.t("Só aberrantes a bordo: ninguém daqui compra (aba Noite)"), "", false)
     else:
         _porto_situacao("peixe", T.t("Porão vazio"), "", false)
     if d.falta_litros < 1.0:
@@ -885,7 +956,8 @@ func mostrar_porto(d: Dictionary) -> void:
                 T.t("Reforçar · R$ %d   [U]") % preco_linha, int(d.dinheiro) >= preco_linha)
     # Oficina
     var loja: Array = d.get("loja", [])
-    _porto_linha_abas.visible = not loja.is_empty()
+    (_porto_abas["oficina"] as Control).visible = not loja.is_empty()
+    _preencher_noite(d.get("noite", {}))
     for linha in loja:
         var b: Button = porto_loja.get(linha.id)
         var cel: Dictionary = _porto_cel.get(linha.id, {})
@@ -914,7 +986,7 @@ func mostrar_porto(d: Dictionary) -> void:
         b.visible = true
     if abrindo:
         mostrar_aba_porto("servicos")
-    elif loja.is_empty():
+    elif loja.is_empty() and porto_aba == "oficina":
         mostrar_aba_porto("servicos")
 
 func esconder_porto() -> void:

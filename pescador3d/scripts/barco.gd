@@ -46,6 +46,8 @@ var _deriva_lateral: float = 0.0
 var _impacto_proa: float = 0.0
 var _acelerador_suave: float = 0.0
 var impacto_proa: float = 0.0 # 0..1; usado na espuma da proa e nos respingos
+var puxao_leme: float = 0.0   # v0.8.7: o canto da Mãe-d'água puxa o leme (-1..1), somado ao do jogador
+var engasgo: float = 1.0      # v0.8.7: o motor engasga (multiplica a força; 1 = normal)
 
 @onready var balanceio: Node3D = $Balanceio
 @onready var oceano: Node = get_node_or_null("../Oceano")
@@ -205,6 +207,7 @@ func _physics_process(delta: float) -> void:
             meta_velocidade = clampf(meta_velocidade, -velocidade_reserva * 0.6, velocidade_reserva)
         else:
             meta_velocidade *= fator_avaria()
+        meta_velocidade *= engasgo
         # tempestade: as ondas castigam o casco aos poucos (menos com estabilizadores e em águas abrigadas)
         if oceano != null and float(oceano.tempestade_nivel) > 0.05:
             var exposto: float = lerpf(0.45, 1.0, clampf(oceano.intensidade_em(global_position) / 0.6, 0.0, 1.0))
@@ -250,7 +253,7 @@ func _physics_process(delta: float) -> void:
         if Input.is_physical_key_pressed(KEY_D):
             leme -= 1.0
         leme += Input.get_action_strength(esq) - Input.get_action_strength(dir)
-        leme = clampf(leme, -1.0, 1.0)
+        leme = clampf(leme + puxao_leme, -1.0, 1.0)
         var fator_giro: float = clampf(absf(velocidade) / 2.3, 0.0, 1.0)
         var giro_desejado: float = leme * giro_maximo * fator_giro * signf(velocidade)
         _giro_atual = lerpf(_giro_atual, giro_desejado, 1.0 - exp(-2.9 * delta))
@@ -439,6 +442,12 @@ func nos() -> float:
 func rumo() -> int:
     # 0° aponta para o norte (-Z), como em cartas de navegação.
     return posmod(int(round(-rad_to_deg(rotation.y))), 360)
+
+## v0.8.7: um empurrão de baixo (a coisa que mora na bruma, as batidas no casco): o barco sobe e aderna.
+func sacudir(forca: float) -> void:
+    _velocidade_vertical += forca * 0.9
+    _velocidade_adernamento += forca * 0.35 * (1.0 if randf() < 0.5 else -1.0)
+    _velocidade_arfagem += forca * 0.12
 
 ## Tira pontos do casco (0..100).
 func danificar(perda: float, motivo: String) -> void:

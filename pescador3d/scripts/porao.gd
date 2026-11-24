@@ -163,8 +163,21 @@ static func eh_carga(especie: String) -> bool:
     return especie in CARGAS
 
 ## Vende/descarta só o peixe: a carga de missão fica a bordo.
-func esvaziar_peixes() -> void:
-    itens = itens.filter(func(item): return eh_carga(String(item.especie)))
+func esvaziar_peixes(manter_aberrantes: bool = false) -> void:
+    itens = itens.filter(func(item): return eh_carga(String(item.especie)) or (manter_aberrantes and String(item.get("qualidade", "")) == "Aberrante"))
+    mudou.emit()
+
+## v0.8.7: peixes aberrantes a bordo (só o homem da capa compra).
+func n_aberrantes() -> int:
+    var n := 0
+    for item in itens:
+        if String(item.get("qualidade", "")) == "Aberrante":
+            n += 1
+    return n
+
+## Tira os aberrantes do porão (vendidos ao homem da capa).
+func tirar_aberrantes() -> void:
+    itens = itens.filter(func(item): return String(item.get("qualidade", "")) != "Aberrante")
     mudou.emit()
 
 func carga_a_bordo() -> Dictionary:

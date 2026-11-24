@@ -36,6 +36,7 @@ static func salvar(jogo: Node) -> bool:
         "barco": {"x": jogo.barco.global_position.x, "z": jogo.barco.global_position.z, "giro": jogo.barco.rotation.y,
                 "combustivel": jogo.barco.combustivel, "saude": jogo.barco.saude, "distancia": jogo.barco.distancia_percorrida},
         "porao": peixes,
+        "assombro": jogo.assombro.para_salvar() if jogo.assombro != null else {},
     }
     var f := FileAccess.open(ARQUIVO, FileAccess.WRITE)
     if f == null:
@@ -82,6 +83,11 @@ static func carregar(jogo: Node) -> bool:
     jogo.historia.paginas = clampi(int(d.get("historia_paginas", 0)), 0, 5)
     jogo.historia.final = String(d.get("historia_final", ""))
     jogo.historia.aplicar_final()
+    if jogo.assombro != null:
+        var dados_assombro = d.get("assombro", {})
+        jogo.assombro.zerar()
+        if typeof(dados_assombro) == TYPE_DICTIONARY:
+            jogo.assombro.carregar(dados_assombro)
     jogo.melhorias.motor_30_liberado = jogo.missoes.sao_pedro_concluido()
     jogo.interface.caderno.paginas_bento = jogo.historia.paginas
     if d.has("missao"):

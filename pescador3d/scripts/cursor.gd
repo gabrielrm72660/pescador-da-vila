@@ -62,6 +62,8 @@ func precisa_cursor() -> bool:
 		return true
 	if jogo.construtor != null and jogo.construtor.ativo:
 		return true
+	if jogo.painel_dev != null and jogo.painel_dev.aberto():
+		return true
 	return Input.is_physical_key_pressed(KEY_ALT)
 
 func _process(_delta: float) -> void:

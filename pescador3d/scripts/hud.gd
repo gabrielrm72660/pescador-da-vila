@@ -54,6 +54,11 @@ var destino_mundo := Vector2.INF   # v0.8.2: destino marcado na carta (x, z no m
 var radar_boias: Array = []     # boias de sinalização: {mundo: Vector2(x, z), cor: Color}
 var alcance_radar: float = 150.0    # metros até a borda do radar
 var instavel: float = 0.0       # v0.6.0: 0..1, bruma longe das ilhas: a bússola oscila e o radar chia
+var assombro: float = 0.0       # v0.8.7: o medo (scripts/assombro.gd): a lamparina escurece e a chama esverdeia
+var sombra_radar: float = 0.0   # v0.8.7: s em que a coisa de baixo aparece no radar
+var _tex_lamparina: Texture2D
+var _tex_coisa: Texture2D
+var _sprites_aberrantes: Dictionary = {}
 var painel_aberto := ""         # "", "porao" ou "diario"
 var linhas_painel: Array = []
 var titulo_painel := ""
@@ -91,6 +96,14 @@ func _ready() -> void:
         var arquivo: String = dir_sprites + Cardumes.slug(especie) + ".png"
         if ResourceLoader.exists(arquivo):
             _sprites_peixes[especie] = load(arquivo)
+    for especie in Cardumes.ESPECIES:                     # v0.8.7: a versão aberrante de cada peixe
+        var arq_ab: String = "res://assets/texturas/peixes/aberrante/" + Cardumes.slug(especie) + ".png"
+        if ResourceLoader.exists(arq_ab):
+            _sprites_aberrantes[especie] = load(arq_ab)
+    if ResourceLoader.exists("res://assets/texturas/bruma/lamparina.png"):
+        _tex_lamparina = load("res://assets/texturas/bruma/lamparina.png")
+    if ResourceLoader.exists("res://assets/texturas/bruma/coisa.png"):
+        _tex_coisa = load("res://assets/texturas/bruma/coisa.png")
     _textura_madeira = load("res://assets/texturas/inventario/forro_madeira.png")
     _textura_casa = load("res://assets/texturas/inventario/casa_porao.png")
 
@@ -291,6 +304,33 @@ func _placa_barco() -> void:
                 var d := Vector2.from_angle(TAU * i / 8.0)
                 draw_line(c + d * 9.0, c + d * 12.5, DOURADO, 2.0)
         _texto(Vector2(94, 225), hora, 26, CREME)
+        if noite > 0.2 or assombro > 0.02:
+            _lamparina(Vector2(222, 214))
+
+## v0.8.7: a lamparina do medo. Calma: chama amarela e vidro claro. Com o Assombro subindo, a chama encolhe e esverdeia,
+## o vidro escurece e, no fim, ela treme. Sem número: é para sentir, não para calcular.
+func _lamparina(c: Vector2) -> void:
+    var a: float = clampf(assombro, 0.0, 1.0)
+    var t: float = Time.get_ticks_msec() / 1000.0
+    var treme: float = (sin(t * 23.0) * 0.5 + sin(t * 37.0) * 0.5) * smoothstep(0.6, 1.0, a)
+    var chama_cor: Color = Color(1.0, 0.78, 0.35).lerp(Color(0.45, 1.0, 0.78), smoothstep(0.25, 0.85, a))
+    var chama: float = lerpf(1.0, 0.35, a) * (0.9 + 0.1 * sin(t * 9.0) + 0.25 * treme)
+    var halo: float = lerpf(0.55, 0.18, a)
+    draw_circle(c + Vector2(0, 2), 26.0 * chama + 6.0, Color(chama_cor, 0.18 * halo))
+    if _tex_lamparina != null:
+        var alt: float = 54.0
+        var larg: float = alt * float(_tex_lamparina.get_width()) / float(_tex_lamparina.get_height())
+        var escurece: float = lerpf(1.0, 0.55, a)
+        draw_texture_rect(_tex_lamparina, Rect2(c - Vector2(larg * 0.5, alt * 0.56) + Vector2(treme * 1.5, 0), Vector2(larg, alt)), false, Color(escurece, escurece * 1.02, escurece * 1.05))
+    else:
+        draw_rect(Rect2(c + Vector2(-9, -16), Vector2(18, 26)), Color(CREME, 0.25))
+        draw_rect(Rect2(c + Vector2(-9, -16), Vector2(18, 26)), CREME, false, 2.0)
+        draw_line(c + Vector2(-6, -16), c + Vector2(0, -24), CREME, 2.0)
+        draw_line(c + Vector2(6, -16), c + Vector2(0, -24), CREME, 2.0)
+    # a chama, por cima do vidro
+    var base := c + Vector2(treme * 1.5, 2.0)
+    draw_colored_polygon(PackedVector2Array([base + Vector2(-4.0, 0) * chama, base + Vector2(0, -13.0) * chama, base + Vector2(4.0, 0) * chama, base + Vector2(0, 3.0) * chama]), Color(chama_cor, 0.9))
+    draw_circle(base + Vector2(0, -2.0) * chama, 2.2 * chama, Color(1, 1, 0.92, 0.9))
 
 ## Erro da agulha na bruma, em graus (até ~11): três oscilações lentas somadas, nunca o mesmo valor por muito tempo.
 func _tremor_bussola() -> float:
@@ -435,6 +475,21 @@ func _radar() -> void:
                 draw_circle(pb_boia, 2.9, boia.cor)
     if barco_ref != null and destino_mundo != Vector2.INF:      # v0.8.2: rota da carta — traço até o destino
         _rota_radar(c, raio)
+    if sombra_radar > 0.0:                                     # v0.8.7: a coisa de baixo, passando por baixo do barco
+        var a_s: float = clampf(sombra_radar / 1.5, 0.0, 1.0) * clampf((7.0 - sombra_radar) / 1.5, 0.0, 1.0)
+        var giro_s: float = Time.get_ticks_msec() / 1000.0 * 0.25
+        if _tex_coisa != null:
+            draw_set_transform(c, giro_s, Vector2.ONE)
+            var alt_s: float = raio * 1.7                       # cabe no círculo mesmo girando
+            var larg_s: float = alt_s * float(_tex_coisa.get_width()) / float(_tex_coisa.get_height())
+            draw_texture_rect(_tex_coisa, Rect2(-larg_s * 0.5, -alt_s * 0.5, larg_s, alt_s), false, Color(1, 1, 1, 0.85 * a_s))
+            draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+        else:
+            var pts := PackedVector2Array()
+            for k in 24:
+                var ang: float = TAU * k / 24.0
+                pts.append(c + Vector2(cos(ang) * raio * 0.75, sin(ang) * raio * 0.32).rotated(giro_s))
+            draw_colored_polygon(pts, Color(0.01, 0.03, 0.05, 0.8 * a_s))
     draw_arc(c, raio, 0.0, TAU, 72, CREME, 2.5, true)
     for i in 28:                                               # círculo tracejado: metade do alcance
         if i % 2 == 0:
@@ -772,7 +827,7 @@ func _input(event: InputEvent) -> void:
         get_viewport().set_input_as_handled()
 
 ## Um peixe na grade: as casas dele pintadas, com contorno só por fora, e a silhueta por cima.
-func _peixe_na_grade(especie: String, casas: Array, origem: Vector2, cor: Color, alfa: float = 1.0) -> void:
+func _peixe_na_grade(especie: String, casas: Array, origem: Vector2, cor: Color, alfa: float = 1.0, aberrante: bool = false) -> void:
     if casas.is_empty():
         return
     var centro := Vector2.ZERO
@@ -794,7 +849,9 @@ func _peixe_na_grade(especie: String, casas: Array, origem: Vector2, cor: Color,
     var comprimento: float = float(maxi(maior.x - menor.x, maior.y - menor.y) + 1) * CASA - 8.0
     var espessura: float = float(mini(maior.x - menor.x, maior.y - menor.y) + 1) * CASA - 9.0
     var girado: bool = maior.y - menor.y > maior.x - menor.x
-    var textura: Texture2D = _sprites_peixes.get(especie)
+    var textura: Texture2D = _sprites_aberrantes.get(especie) if aberrante else _sprites_peixes.get(especie)
+    if textura == null:
+        textura = _sprites_peixes.get(especie)
     if textura != null:
         var tam_img := textura.get_size()
         var ajuste := minf(comprimento / tam_img.x, espessura / tam_img.y)     # cabe nas casas sem esticar o desenho
@@ -830,14 +887,14 @@ func _painel_porao() -> void:
         if is_same(item, _na_mao):
             continue
         var cor: Color = porao.CORES.get(item.especie, CREME)
-        _peixe_na_grade(item.especie, porao.casas_do_item(item), o, cor.lightened(0.2) if is_same(item, sob) else cor)
+        _peixe_na_grade(item.especie, porao.casas_do_item(item), o, cor.lightened(0.2) if is_same(item, sob) else cor, 1.0, String(item.get("qualidade", "")) == "Aberrante")
     if not _na_mao.is_empty():                                 # o peixe na mão: verde onde cabe, vermelho onde não
         var canto := _canto_da_mao()
         var casas: Array = []
         for c in porao.casas(_na_mao.especie, _rot_mao):
             casas.append(c + canto)
         var cabe: bool = porao.cabe_em(_na_mao.especie, canto.x, canto.y, _rot_mao, _na_mao)
-        _peixe_na_grade(_na_mao.especie, casas, o, VERDE if cabe else Color(0.93, 0.34, 0.26), 0.85)
+        _peixe_na_grade(_na_mao.especie, casas, o, VERDE if cabe else Color(0.93, 0.34, 0.26), 0.85, String(_na_mao.get("qualidade", "")) == "Aberrante")
     # à direita: o peixe apontado, os totais e as instruções
     var x: float = o.x + porao.colunas * CASA + 26.0
     var y := r.position.y + 96.0

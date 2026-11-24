@@ -18,6 +18,9 @@ const DADOS := {
 			"retrato": "res://assets/retratos/bento.png", "cor": Color(0.70, 0.78, 0.86)},
 	"diario": {"nome": "Diário do Bento", "papel": "Uma página molhada", "ilha": "",
 			"retrato": "res://assets/retratos/diario.png", "cor": Color(0.86, 0.80, 0.62)},
+	# v0.8.7: só aparece de noite, no cais da Vila do Porto (scripts/jogo.gd _npcs_aqui)
+	"comprador": {"nome": "Homem da capa", "papel": "Compra o que a noite devolve", "ilha": "",
+			"retrato": "res://assets/retratos/comprador.png", "cor": Color(0.45, 0.85, 0.72)},
 }
 
 ## Conversa fiada: uma fala por vez, em ordem, quando o jogador puxa papo e não há missão para tratar.
@@ -41,6 +44,12 @@ const PAPO := {
 		"Em São Pedro o peixe de recife vale muito mais. Ciobas, então, nem se fala!",
 		"A feira daqui recebe barco de todo canto. Todo mundo quer peixe fresco.",
 		"O Seu Abílio fala pouco, mas o que ele fala vale ouro. Passe no farol.",
+	],
+	"comprador": [
+		"Boa noite. Trouxe alguma coisa que a bruma devolveu? Esses ninguém mais quer. Eu quero.",
+		"Pago bem pelos de olhos a mais. Não pergunte para quê.",
+		"Seu Bento também vendia para mim. Até a noite em que não voltou.",
+		"Acenda uma vela antes de sair. Não por mim. Por você.",
 	],
 	"abilio": [
 		"Há quarenta anos eu acendo essa luz. Nunca deixei apagar.",

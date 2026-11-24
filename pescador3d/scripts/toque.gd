@@ -30,6 +30,7 @@ const BOTOES := [
 	{"id": "tecnica", "tecla": KEY_J, "rotulo": "Técnica", "pos": Vector2(-310, -320), "raio": 32.0, "segura": false},
 	{"id": "luz", "tecla": KEY_L, "rotulo": "Luz", "pos": Vector2(-60, -390), "raio": 28.0, "segura": false},
 	{"id": "buzina", "tecla": KEY_H, "rotulo": "Buzina", "pos": Vector2(-150, -500), "raio": 28.0, "segura": false},
+	{"id": "sino", "tecla": KEY_G, "rotulo": "Sino", "pos": Vector2(-240, -480), "raio": 26.0, "segura": false},
 	{"id": "menu", "tecla": KEY_ESCAPE, "rotulo": "Menu", "pos": Vector2(-60, 0), "raio": 28.0, "segura": false},
 ]
 

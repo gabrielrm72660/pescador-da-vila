@@ -20,9 +20,13 @@ const Cursor = preload("res://scripts/cursor.gd")             # v0.7.4: cursor e
 const Toque = preload("res://scripts/toque.gd")               # v0.7.0: controles de toque (celular)
 const Controle = preload("res://scripts/controle.gd")         # v0.7.0: controle (gamepad)
 const Historia = preload("res://scripts/historia.gd")         # v0.7.0: o compadre Bento e os dois finais
-const Fantasmas = preload("res://scripts/fantasmas.gd")      # v0.6.0: vultos e miragens da bruma
+const Fantasmas = preload("res://scripts/fantasmas.gd")
+const Assombro = preload("res://scripts/assombro.gd")        # v0.8.7: o horror da noite tem preço
+const PainelDev = preload("res://scripts/painel_dev.gd")     # v0.8.7: F8, para testar      # v0.6.0: vultos e miragens da bruma
 var fantasmas: Node3D
 var historia: Node
+var assombro: Node                   # v0.8.7: scripts/assombro.gd
+var painel_dev: CanvasLayer          # v0.8.7: painel do desenvolvedor (F8)
 var _avisos_bruma: Dictionary = {"vulto": 0, "miragem": 0}
 const Ilha = preload("res://scripts/ilha.gd")
 var ilha: Node3D                  # a ilha do cais mais próximo do barco
@@ -277,6 +281,13 @@ func _ready() -> void:
     historia = Historia.new()
     add_child(historia)
     historia.construir(self)
+    assombro = Assombro.new()
+    add_child(assombro)
+    assombro.construir(self)
+    interface.noite_pressed.connect(_comprar_noite)
+    painel_dev = PainelDev.new()
+    add_child(painel_dev)
+    painel_dev.construir(self)
     var controle := Controle.new()
     add_child(controle)
     controle.construir(self)
@@ -367,6 +378,8 @@ func _process(delta: float) -> void:
     fauna_costeira.simulando = pode_navegar
     if fantasmas != null:
         fantasmas.simulando = pode_navegar
+    if assombro != null:
+        assombro.atualizar(delta, pode_navegar)
     vida_portuaria.simulando = iniciado and not em_pausa and not graficos.esta_aberto()
     if pode_navegar:
         relogio_exploracao += delta
@@ -407,6 +420,8 @@ func _unhandled_input(event: InputEvent) -> void:
                 KEY_TAB:
                     interface.caderno.colecao = colecao
                     interface.alternar_livro()
+                KEY_F8:
+                    painel_dev.alternar()
                 KEY_M:
                     interface.aviso(Idioma.t("Carta náutica aberta. [M] fecha.") if interface.alternar_mapa() else Idioma.t("Carta náutica fechada."))
                 KEY_L:
@@ -465,14 +480,16 @@ func _unhandled_input(event: InputEvent) -> void:
                     clima.definir_clima(0)
                 interface.aviso(oceano.testar_tempestade())
             KEY_F8:
-                if not em_pausa and baleias != null:
-                    interface.aviso(baleias.testar_avistamento())
+                painel_dev.alternar()                   # v0.8.7: painel do desenvolvedor (a baleia de teste está nele)
             KEY_F4:
                 _diagnostico_navegacao()
             KEY_L:
                 alternar_luz()
             KEY_H:
                 buzinar()
+            KEY_G:
+                if not em_pausa and assombro != null:
+                    assombro.tocar_sino()
             KEY_K:
                 interface.aviso(Idioma.t("Clima: %s. [K] alternar") % Idioma.t(clima.alternar_clima()))
             KEY_R:
@@ -489,7 +506,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.8.6] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.8.7] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 ## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).
@@ -498,6 +515,9 @@ func buzinar() -> void:
         som.tocar("buzina", -3.0, randf_range(0.98, 1.02))
 
 func alternar_luz() -> void:
+    if not luz_ligada and assombro != null and assombro.oleo <= 0.0:
+        interface.aviso(Idioma.t("A lanterna está sem óleo. Compre no cais (aba Noite)."))
+        return
     luz_ligada = not luz_ligada
     interface.aviso(Idioma.t("Lanterna do barco ligada. [L]") if luz_ligada else Idioma.t("Lanterna do barco desligada. [L]"))
 
@@ -615,6 +635,8 @@ func reiniciar() -> void:
     clima.atualizar()
     fantasmas.limpar()
     _avisos_bruma = {"vulto": 0, "miragem": 0}
+    if assombro != null:
+        assombro.zerar()
     objetivo_cumprido = false
     missoes.zerar()
     economia.zerar()
@@ -813,10 +835,20 @@ func _ao_fim_do_dialogo() -> void:
         _atualizar_porto()
     salvar()
 
+## v0.8.7: quem está no cais agora (de noite, na Vila do Porto, aparece o homem da capa).
+func _comprador_presente() -> bool:
+    return ilha != null and ilha.nome == "Vila do Porto" and clima.noite() > 0.5
+
+func _npcs_aqui() -> Array:
+    var aqui: Array = Npcs.da_ilha(ilha.nome)
+    if _comprador_presente():
+        aqui.append("comprador")
+    return aqui
+
 func _conversar(id: String) -> void:
     if not atracado or interface.dialogo_ativo():
         return
-    var aqui: Array = Npcs.da_ilha(ilha.nome)
+    var aqui: Array = _npcs_aqui()
     if aqui.is_empty():
         return
     if id == "" or not id in aqui:
@@ -868,7 +900,7 @@ func _atualizar_porto() -> void:
     if atracado and missoes.tem_falas_em(ilha.nome) and _falar_no_cais():      # v0.6.0: o NPC do cais tem algo a dizer
         return
     var falta: float = barco.tanque - barco.combustivel
-    interface.mostrar_porto({"nome": ilha.nome, "dinheiro": dinheiro, "peixes": porao.n_peixes(), "npcs": Npcs.da_ilha(ilha.nome),
+    interface.mostrar_porto({"nome": ilha.nome, "dinheiro": dinheiro, "peixes": porao.n_peixes(), "npcs": _npcs_aqui(),
             "peso": porao.peso_total(), "valor": _valor_do_porao(),
             "ocupado": float(porao.casas_ocupadas()) / float(maxi(1, porao.colunas * porao.linhas)), "litros": barco.combustivel, "tanque": barco.tanque,
             "falta_litros": falta, "preco_litro": ilha.preco_diesel,
@@ -880,10 +912,68 @@ func _atualizar_porto() -> void:
             "tem_oficina": ilha.tem_loja,
             "saude": barco.saude, "preco_reparo": PRECO_REPARO,
             "contrato": economia.texto_contrato(porao),
-            "nota": Idioma.t("\nEste posto paga %d%% a mais pelo peixe.") % roundi((ilha.bonus_venda - 1.0) * 100.0) if ilha.bonus_venda > 1.0 else ""})
+            "nota": Idioma.t("\nEste posto paga %d%% a mais pelo peixe.") % roundi((ilha.bonus_venda - 1.0) * 100.0) if ilha.bonus_venda > 1.0 else "",
+            "noite": _dados_noite()})
+
+## v0.8.7: a aba Noite do cais: óleo da lanterna, vela na capela, patuá (São Pedro), sino (Vila do Porto) e o homem da capa.
+const PRECO_VELA := 5
+const PRECO_PATUA := 150
+const PRECO_SINO := 260
+func _dados_noite() -> Dictionary:
+    var comprador: bool = _comprador_presente()
+    return {"oleo": assombro.oleo, "preco_oleo": assombro.preco_oleo(), "vela": assombro.vela, "tem_capela": ilha.nome in ["Vila do Porto", "Ilha de São Pedro"],
+            "patua": assombro.patua, "vende_patua": ilha.nome == "Ilha de São Pedro", "sino": assombro.sino, "vende_sino": ilha.nome == "Vila do Porto",
+            "aberrantes": porao.n_aberrantes(), "comprador": comprador,
+            "valor_aberrantes": economia.valor_porao(porao, cardumes, 1.0, clima.hora, {}, true) if comprador else 0,
+            "dinheiro": dinheiro, "precos": {"vela": PRECO_VELA, "patua": PRECO_PATUA, "sino": PRECO_SINO}}
+
+func _comprar_noite(o_que: String) -> void:
+    if not atracado:
+        return
+    var preco: int = 0
+    match o_que:
+        "oleo":
+            preco = assombro.preco_oleo()
+            if preco <= 0 or dinheiro < preco:
+                return
+            assombro.oleo = 1.0
+            interface.aviso(Idioma.t("Lanterna abastecida de óleo."))
+        "vela":
+            preco = PRECO_VELA
+            if assombro.vela or dinheiro < preco:
+                return
+            assombro.vela = true
+            interface.aviso(Idioma.t("Você acendeu uma vela para São Pedro. A próxima noite vai pesar menos."))
+        "patua":
+            preco = PRECO_PATUA
+            if assombro.patua or dinheiro < preco:
+                return
+            assombro.patua = true
+            interface.aviso(Idioma.t("A Dona Rosa amarrou o patuá no painel do barco. \"Pra noite não te achar.\""))
+        "sino":
+            preco = PRECO_SINO
+            if assombro.sino or dinheiro < preco:
+                return
+            assombro.sino = true
+            interface.aviso(Idioma.t("Sino de bronze instalado na cabine. No mar, [G] toca o sino."))
+        "aberrantes":
+            if not _comprador_presente() or porao.n_aberrantes() == 0:
+                return
+            var ganho: int = economia.valor_porao(porao, cardumes, 1.0, clima.hora, {}, true)
+            porao.tirar_aberrantes()
+            dinheiro += ganho
+            som.tocar("sussurro", -16.0, 1.2)
+            interface.aviso(Idioma.t("O homem da capa pagou R$ %d sem olhar para os peixes. Sorriu para a bruma.") % ganho)
+            _atualizar_porto()
+            salvar()
+            return
+    dinheiro -= preco
+    som.tocar("peixe", -9.0, 1.1)
+    _atualizar_porto()
+    salvar()
 
 func vender() -> void:
-    if not atracado or porao.n_peixes() == 0:
+    if not atracado or porao.n_peixes() - porao.n_aberrantes() <= 0:
         return
     var ganho: int = _valor_do_porao()
     economia.ilha_atual = ilha.nome
@@ -893,7 +983,7 @@ func vender() -> void:
         missoes.evento("contrato", ilha.nome)
     ja_vendeu = true
     missoes.evento("vender")
-    porao.esvaziar_peixes()
+    porao.esvaziar_peixes(true)                       # v0.8.7: os aberrantes ficam (ninguém de dia compra)
     som.tocar("peixe", -6.0, 1.3)
     interface.aviso(Idioma.t("Venda de R$ %d + encomenda R$ %d.") % [ganho, premio] if premio > 0 else Idioma.t("Vendeu a pescaria por R$ %d.") % ganho)
     _atualizar_porto()
@@ -998,14 +1088,21 @@ func sair_do_jogo() -> void:
     get_tree().quit()
 
 func _ao_pescar(especie: String, peso: float) -> void:
-    if not porao.guardar(especie, peso, pesca.ultima_qualidade):
+    var qualidade: String = pesca.ultima_qualidade
+    if assombro != null and randf() < float(assombro.chance_aberrante()):
+        qualidade = "Aberrante"                           # v0.8.7: o que a noite devolve
+    if not porao.guardar(especie, peso, qualidade):
         pesca.num_peixes -= 1
         interface.aviso(Idioma.t("Porão cheio: o peixe voltou ao mar. Venda a pescaria no cais."))
         return
     som.tocar("peixe", -5.0)
     som.tocar("captura", -7.0)
     _anotar_no_caderno(especie, peso)
-    interface.aviso(Idioma.t("%s capturado — qualidade: %s.") % [Idioma.t(especie), Idioma.t(pesca.ultima_qualidade)])
+    if qualidade == "Aberrante":
+        som.tocar("sussurro", -14.0, 0.8)
+        interface.aviso(Idioma.t("%s... mas tem algo errado com ele. Olhos demais, e brilha por dentro.") % Idioma.t(especie))
+    else:
+        interface.aviso(Idioma.t("%s capturado — qualidade: %s.") % [Idioma.t(especie), Idioma.t(pesca.ultima_qualidade)])
     missoes.evento("pescar", especie)
 
 ## v0.6.0: quão aberto (longe de terra e de luz) está o mar em volta do barco. Alimenta a bruma: densa em mar aberto,
@@ -1033,8 +1130,9 @@ func atualizar_interface() -> void:
         return
     clima.correndo = iniciado and not em_pausa and not atracado and not graficos.esta_aberto()
     var escuro: float = clima.escuridao()             # v0.7.9: noite ou tempestade (antes só a noite)
-    luz_barco.light_energy = 2.2 * escuro if luz_ligada else 0.0
-    barco.definir_holofotes(maxf(escuro, 0.35) if luz_ligada else 0.0)
+    var acesa: bool = assombro.lanterna_acesa() if assombro != null else luz_ligada     # v0.8.7: óleo e falhas na noite
+    luz_barco.light_energy = 2.2 * escuro if acesa else 0.0
+    barco.definir_holofotes(maxf(escuro, 0.35) if acesa else 0.0)
     ilha = _ilha_do_cais_mais_perto()
     for i in ilhas:
         i.acender(escuro)

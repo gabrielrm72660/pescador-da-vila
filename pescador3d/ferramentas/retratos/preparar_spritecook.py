@@ -17,7 +17,8 @@ ORIGEM = RAIZ / "arte_original" / "retratos" / "spritecook_v076"
 DEST = RAIZ / "assets" / "retratos"
 #           nome       altura  alfa_min alfa_max
 RETRATOS = [("zefa", 650, 40, 220), ("jacinto", 650, 40, 220), ("toinho", 650, 40, 220), ("rosa", 650, 40, 220),
-            ("abilio", 650, 40, 220), ("bento", 660, 14, 200), ("diario", 560, 40, 220)]
+            ("abilio", 650, 40, 220), ("bento", 660, 14, 200), ("diario", 560, 40, 220),
+            ("comprador", 650, 40, 220)]          # v0.8.7: o homem da capa, comprador da noite
 
 
 def limpar(img: Image.Image, a0: float, a1: float) -> Image.Image:

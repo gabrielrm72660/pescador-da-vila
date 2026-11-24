@@ -41,14 +41,19 @@ func fator_preco(especie: String, hora: float) -> float:
     var fase: float = float(indice_especie) * 0.61 + hora * 0.16
     return clampf(1.0 + 0.17 * sin(fase), 0.82, 1.18)
 
-func valor_porao(porao: Node, cardumes: Node, bonus_ilha: float, hora: float, bonus_especie: Dictionary = {}) -> int:
+## aberrantes: false = só o peixe comum (a venda de sempre); true = só os aberrantes, pelo preço do homem da capa.
+const FATOR_ABERRANTE := 2.6
+
+func valor_porao(porao: Node, cardumes: Node, bonus_ilha: float, hora: float, bonus_especie: Dictionary = {}, aberrantes: bool = false) -> int:
     var total: int = 0
     for item in porao.itens:
         if porao.eh_carga(String(item.especie)):
             continue
-        var v: int = cardumes.valor(String(item.especie), float(item.peso))
         var grau: String = String(item.get("qualidade", "Regular"))
-        var fator_grau: float = 1.28 if grau == "Excepcional" else (1.12 if grau == "Boa" else 1.0)
+        if (grau == "Aberrante") != aberrantes:
+            continue
+        var v: int = cardumes.valor(String(item.especie), float(item.peso))
+        var fator_grau: float = FATOR_ABERRANTE if grau == "Aberrante" else (1.28 if grau == "Excepcional" else (1.12 if grau == "Boa" else 1.0))
         total += maxi(1, roundi(float(v) * bonus_ilha * float(bonus_especie.get(String(item.especie), 1.0)) * fator_preco(String(item.especie), hora) * fator_grau))
     return total
 
