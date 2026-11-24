@@ -158,7 +158,8 @@ func _enter_tree() -> void:
     sao_pedro.tem_farol = true            # v0.5.8: farol no topo do morro
     sao_pedro.relevo_detalhado = false
     sao_pedro.coqueiros = 46
-    sao_pedro.pinheiros_soltos = 70
+    sao_pedro.pinheiros_soltos = 230      # v0.8.6: a ilha estava pelada (eram 70)
+    sao_pedro.mata_densa = 0.6
     sao_pedro.bonus_venda = 1.25
     sao_pedro.bonus_especie = {"Cioba": 1.6, "Olho-de-boi": 1.5, "Peixe-lua": 1.4, "Garoupa": 1.3, "Peixe-anjo": 1.3, "Namorado": 1.25}
     sao_pedro.preco_diesel = 5
@@ -488,7 +489,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.8.5] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.8.6] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 ## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).

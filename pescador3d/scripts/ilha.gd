@@ -24,13 +24,15 @@ var bonus_venda := 1.0                         # quanto o cais paga pelo peixe (
 var preco_diesel := 4                          # R$ por litro
 var tem_loja := true                           # vende melhorias do barco?
 var tem_farol := true                          # cada ilha decide se tem farol; Ilha das Rocas = false
-var tem_torre := false                         # v0.8.3: torre de telecom vermelha e branca no cume (Ilha das Rocas)
+var tem_torre := false
+var _plato := Vector4(0, 0, 0, -1)             # v0.8.6: (x, z, altura, raio) do platô do farol nas ilhas sem a vila grande                         # v0.8.3: torre de telecom vermelha e branca no cume (Ilha das Rocas)
 var _torre: Node3D
 var relevo_detalhado := true                    # espigoes e vales: apenas a ilha principal
 ## v0.5.8
 var tem_cais := true                           # falso: ilha deserta, sem cais nem posto (não dá para atracar)
 var vila_pequena := false                      # vila de pescadores pequena ao pé do cais (ruas, casas, capela)
 var pinheiros_soltos := 0                      # pinheiros espalhados nas ilhas que não têm a vila desenhada
+var mata_densa := 0.0                          # v0.8.6: 0 = mata em manchas (padrão); 1 = cobre quase todo o morro
 var pode_editar := false                       # o Modo Construtor pode editar esta ilha (além da ilha principal)
 var chave_mundo := "ilha_principal"            # nome do arquivo do mundo editado: user://mundo_<chave>.json
 var arquipelago := ""                          # nome do arquipélago (só para a carta náutica)
@@ -68,6 +70,8 @@ func _ready() -> void:
     editavel = _usa_layout() or pode_editar
     if editavel:
         mundo = MundoDados.carregar(chave_mundo)   # {} se o jogador nunca salvou: tudo nasce do padrão
+    if tem_farol and not com_vila:
+        _preparar_plato_do_farol()
     _criar_terreno()
     _criar_cais()
     _criar_vila()
@@ -240,6 +244,14 @@ func _altura_local(x: float, z: float) -> float:
         dr *= 1.0 + 0.35 * _ruido.get_noise_2d(x * 5.0 + 11.0, z * 5.0)
         var corpo := exp(-pow(dr / float(rc[3]), 2.2))
         h = maxf(h, -9.0 + (float(rc[2]) + 9.0) * corpo * (1.0 + 0.22 * _ruido.get_noise_2d(x * 14.0, z * 14.0 + 30.0)))
+    if _plato.w > 0.0:
+        # v0.8.6: o cume pontudo vira um platô gramado (o farol, a casa do faroleiro e a mureta assentam nele);
+        # em volta o morro desce macio até o relevo de sempre.
+        var dp: float = Vector2(x - _plato.x, z - _plato.y).length()
+        # só a ponta do pico é aparada: fora do raio do platô o morro continua com o relevo dele (sem arredondar)
+        var topo: float = _plato.z + 0.25 * _ruido.get_noise_2d(x * 3.0 + 7.0, z * 3.0)
+        h = lerpf(h, minf(h, topo), 1.0 - smoothstep(_plato.w, _plato.w * 1.45, dp))      # apara o que passa do patamar
+        h = lerpf(h, maxf(h, topo), 1.0 - smoothstep(_plato.w * 0.45, _plato.w, dp))      # e completa só o miolo (o pé do farol)
     return h
 
 
@@ -388,6 +400,8 @@ func _criar_terreno() -> void:
     if ResourceLoader.exists("res://assets/texturas/ilha/barranco.png"):
         mat.set_shader_parameter("tex_barro", load("res://assets/texturas/ilha/barranco.png"))
         mat.set_shader_parameter("tem_barro", true)
+    if _plato.w > 0.0:
+        mat.set_shader_parameter("altura_pedra", _plato.z + 2.5)     # v0.8.6: o topo aparado fica com mato; a encosta continua de pedra
     _material_terreno = mat
     _carregar_pintura()
     if ResourceLoader.exists("res://assets/texturas/ilha/trilha.png"):
@@ -932,6 +946,7 @@ func _criar_vila() -> void:
         _construir_postes()
         if tem_farol:
             _criar_farol_no_cume(vila)         # v0.5.8: farol no alto do morro de São Pedro
+            _arredores_do_farol(vila)          # v0.8.6: casa do faroleiro, mureta, banco e trilha até a vila
         if tem_torre:
             _criar_torre_antena()
         return
@@ -1114,7 +1129,7 @@ func _gerar_pinheiros_soltos() -> Array:
         if h < 2.4 or not _livre(p, 2.0):
             continue
         var mata: float = _ruido.get_noise_2d(p.x * 0.7 - 61.0, p.y * 0.7 + 18.0)
-        if rng.randf() > smoothstep(-0.30, 0.25, mata) * 0.85:
+        if rng.randf() > lerpf(smoothstep(-0.30, 0.25, mata) * 0.85, 0.92, mata_densa):
             continue
         lista.append([p.x, p.y, rng.randi()])
         _ocupado.append(Vector3(p.x, p.y, 2.4))
@@ -1658,8 +1673,84 @@ func _criar_halo_farol() -> Texture2D:
 
 
 ## Constrói a torre em uma elevação do interior, com lâmpada de longo alcance e feixe giratório.
+## v0.8.6: o farol deixa de ficar sozinho no pico: ponta aparada num patamar pequeno, mureta de pedra com a abertura
+## virada para a trilha, banco olhando o mar e a trilha de terra que sobe da vila em zigue-zague (sem casa no topo).
+func _arredores_do_farol(vila: Node3D) -> void:
+    if _plato.w <= 0.0:
+        return
+    var c := Vector2(_plato.x, _plato.y)
+    # de onde a trilha vem: o centro das casas (ou o pé do cais)
+    var origem := Vector2(cais_inicio.x - centro.x, cais_inicio.z - centro.z)
+    if mundo.has("casas") and not mundo["casas"].is_empty():
+        var soma := Vector2.ZERO
+        for k in mundo["casas"]:
+            soma += Vector2(float(k["x"]), float(k["z"]))
+        origem = soma / float(mundo["casas"].size())
+    var para_vila: Vector2 = (origem - c).normalized()
+    var lado := Vector2(-para_vila.y, para_vila.x)
+    var raio: float = _plato.w
+    # trilha: da vila ao platô em zigue-zague (sobe com menos inclinação)
+    var entrada: Vector2 = c + para_vila * (raio - 0.5)
+    var dist: float = origem.distance_to(entrada)
+    var pts: Array = [origem + para_vila * -4.0]
+    var n := 4
+    for i in range(1, n):
+        var t: float = float(i) / float(n)
+        pts.append(origem.lerp(entrada, t) + lado * (7.0 if i % 2 == 1 else -7.0) * minf(1.0, dist / 60.0))
+    pts.append(entrada)
+    pts.append(c + para_vila * 2.5)
+    var terra := _material_trilha("res://assets/texturas/ilha/trilha.png", Color(1.0, 0.94, 0.82), 0.30)
+    _caminho(vila, pts, 2.2, terra)
+    for i in range(pts.size() - 1):                           # a mata não nasce em cima da trilha
+        var a: Vector2 = pts[i]
+        var b: Vector2 = pts[i + 1]
+        var passos: int = maxi(1, ceili(a.distance_to(b) / 3.0))
+        for k in passos + 1:
+            var q: Vector2 = a.lerp(b, float(k) / float(passos))
+            _fixar(q.x, q.y, 2.6)
+    _fixar(c.x, c.y, raio + 1.5)
+    var giro_casa: float = -atan2(para_vila.y, para_vila.x)
+    # mureta de pedra seca em volta do platô, aberta para a trilha
+    var pedra := _material(Color(0.78, 0.75, 0.70), "res://assets/texturas/ilha/rocha.png", 0.35, "res://assets/texturas/ilha/rocha_normal.png")
+    var ang_trilha: float = atan2(para_vila.y, para_vila.x)
+    var segmentos := 22
+    for k in segmentos:
+        var ang: float = TAU * (float(k) + 0.5) / float(segmentos)
+        if absf(angle_difference(ang, ang_trilha)) < 0.32:
+            continue
+        var q := c + Vector2(cos(ang), sin(ang)) * (raio - 0.6)
+        var hq: float = _altura_local(q.x, q.y)
+        var comp: float = TAU * (raio - 0.6) / float(segmentos) + 0.12
+        var alt: float = 0.55 + 0.12 * sin(float(k) * 2.3)
+        _caixa(vila, Vector3(0.5, alt + 0.3, comp), Vector3(q.x, hq + alt * 0.5 - 0.15, q.y), pedra, -ang)
+    # banco olhando o mar, do lado oposto à trilha
+    var p_banco: Vector2 = c - para_vila * (raio - 2.4)
+    var banco: MeshInstance3D = _instancia(vila, _malha_arq("banco"), _materiais_arq(Color.WHITE)["acab"], "BancoDoFarol")
+    banco.position = Vector3(p_banco.x, _altura_local(p_banco.x, p_banco.y) - 0.02, p_banco.y)
+    banco.rotation.y = giro_casa + PI * 0.5
+    # mundo salvo (Modo Construtor, de antes): tira a vegetação que cairia no platô ou na trilha
+    for cat in ["coqueiros", "moitas", "pedras", "pinheiros", "arvores"]:
+        if mundo.has(cat):
+            mundo[cat] = mundo[cat].filter(func(d): return not _no_farol(Vector2(float(d[0]), float(d[1])), pts))
+
+func _no_farol(p: Vector2, trilha: Array) -> bool:
+    if p.distance_to(Vector2(_plato.x, _plato.y)) < _plato.w + 1.5:
+        return true
+    for i in range(trilha.size() - 1):
+        var a: Vector2 = trilha[i]
+        var b: Vector2 = trilha[i + 1]
+        var t: float = clampf((p - a).dot(b - a) / maxf((b - a).length_squared(), 0.001), 0.0, 1.0)
+        if p.distance_to(a.lerp(b, t)) < 2.4:
+            return true
+    return false
+
+func _preparar_plato_do_farol() -> void:
+    var cume: Vector2 = _encontrar_cume()                 # ainda sem platô: acha o ponto mais alto de verdade
+    var h: float = _altura_local(cume.x, cume.y)
+    _plato = Vector4(cume.x, cume.y, h - 1.2, 7.0)
+
 func _criar_farol_no_cume(vila: Node3D) -> void:
-    var cume: Vector2 = _encontrar_cume()
+    var cume: Vector2 = _encontrar_cume() if _plato.w <= 0.0 else Vector2(_plato.x, _plato.y)
     var altura_cume: float = _altura_local(cume.x, cume.y)
     pos_farol = Vector2(centro.x + cume.x, centro.z + cume.y)
     _fixar(cume.x, cume.y, 11.0)  # mantém árvores fora da torre
