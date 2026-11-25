@@ -11,6 +11,7 @@ uniform vec4 cor_reflexo_ceu : source_color = vec4(0.66, 0.74, 0.78, 1.0);
 uniform vec4 cor_horizonte : source_color = vec4(0.64, 0.70, 0.71, 1.0);
 
 uniform float altura_ondas : hint_range(0.0, 4.5, 0.01) = 1.50;
+uniform float picos : hint_range(0.0, 2.5, 0.01) = 1.0;     // v0.9.0: Gerstner (Q): 0 = senoide; maior = cristas mais pontudas
 uniform float velocidade_ondas : hint_range(0.0, 3.0, 0.05) = 0.75;
 uniform float quantidade_espuma : hint_range(0.0, 1.0, 0.01) = 0.45;
 uniform float agitacao_mar : hint_range(0.0, 1.0, 0.01) = 0.36;
@@ -79,6 +80,7 @@ const float VIDA_RASTRO = 14.0;
 
 varying vec2 coordenada_mundo;
 varying float altura_crista;
+varying float compressao;      // v0.9.0: 1 = água parada; perto de 0 = crista apertada (quase quebrando)
 
 // Distancia (m) do ponto ate a costa aproximada da ilha mais proxima.
 float dist_costa(vec2 p) {
@@ -106,6 +108,31 @@ float onda(vec2 p, float t) {
     float cruzada = 0.13 * sin(dot(p, cruz * 0.11 + w * 0.05) - t * 1.11 + 0.8);
     float swell_transversal = 0.12 * agitacao_mar * sin(dot(p, cruz * 0.062 + w * 0.014) - t * 0.54 + 2.3);
     return grupo * longo + marola + cruzada + swell_transversal;
+}
+
+// v0.9.0: ondas de Gerstner. A mesma soma de onda(), mas a água também anda para os lados (vai e vem): os vértices
+// se juntam nas cristas (pontudas) e se afastam nas cavas (largas). Deve coincidir com amostra() de scripts/oceano.gd.
+// Devolve (deslocamento x, deslocamento z, compressão). A = altura_ondas * fator_costeiro.
+vec3 gerstner(vec2 p, float t, float A) {
+    vec2 w = normalize(direcao_vento);
+    vec2 cruz = vec2(-w.y, w.x);
+    vec2 swell = normalize(w * 0.75 + cruz * 0.25);
+    float grupo = 0.78 + 0.22 * sin(dot(p, w * 0.012) - t * 0.17);
+    vec2 k2 = vec2(-0.047, 0.076);
+    vec2 k4 = cruz * 0.11 + w * 0.05;
+    vec2 k5 = cruz * 0.062 + w * 0.014;
+    // amplitude relativa, fase e vetor de onda de cada trem
+    float a1 = 0.60 * grupo, a2 = 0.32 * grupo, a3 = 0.08 + 0.18 * agitacao_mar, a4 = 0.13, a5 = 0.12 * agitacao_mar;
+    vec2 v1 = swell * 0.100, v2 = k2, v3 = w * 0.145, v4 = k4, v5 = k5;
+    float f1 = dot(p, v1) - t * 0.79, f2 = dot(p, v2) - t * 0.59 + 1.7, f3 = dot(p, v3) - t * 1.38;
+    float f4 = dot(p, v4) - t * 1.11 + 0.8, f5 = dot(p, v5) - t * 0.54 + 2.3;
+    float ingreme = A * (a1 * length(v1) + a2 * length(v2) + a3 * length(v3) + a4 * length(v4) + a5 * length(v5));
+    float q = picos * min(1.0, 0.85 / max(picos * ingreme, 0.0001));        // nunca deixa a crista dobrar sobre si
+    vec2 d = q * A * (a1 * normalize(v1) * cos(f1) + a2 * normalize(v2) * cos(f2) + a3 * normalize(v3) * cos(f3)
+                    + a4 * normalize(v4) * cos(f4) + a5 * normalize(v5) * cos(f5));
+    float c = 1.0 - q * A * (a1 * length(v1) * sin(f1) + a2 * length(v2) * sin(f2) + a3 * length(v3) * sin(f3)
+                    + a4 * length(v4) * sin(f4) + a5 * length(v5) * sin(f5));
+    return vec3(d, c);
 }
 
 // Derivada analitica: mais leve que recalcular a onda 4 vezes por pixel.
@@ -183,9 +210,13 @@ vec2 gotas_chuva(vec2 p, float tt, float celula) {
 void vertex() {
     vec2 p = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
     float h = onda(p, fase_ondas);
+    float A = altura_ondas * fator_costeiro(p);
+    vec3 g = gerstner(p, fase_ondas, A);
     coordenada_mundo = p;
     altura_crista = h;
-    VERTEX.y += h * altura_ondas * fator_costeiro(p);
+    compressao = g.z;
+    VERTEX.y += h * A;
+    VERTEX.xz += g.xy;
     NORMAL = vec3(0.0, 1.0, 0.0);
 }
 
@@ -196,7 +227,7 @@ void fragment() {
     float perto = 1.0 - smoothstep(40.0, 220.0, distancia);  // detalhe fino so perto: longe ele vira chuvisco
 
     // ---- relevo: ondas grandes (calculadas) + tres camadas de textura deslizando em direcoes diferentes
-    vec2 pendente = inclinacao_onda(p, t);
+    vec2 pendente = inclinacao_onda(p, t) / max(compressao, 0.3);     // na crista apertada a encosta fica mais íngreme
     vec2 vento = normalize(direcao_vento);
     vec2 cruz = vec2(-vento.y, vento.x);
     vec2 n_larga = texture(tex_ondas, p * 0.011 - desl_larga).xy * 2.0 - 1.0;
@@ -348,6 +379,8 @@ void fragment() {
                         * (0.025 + 0.18 * agitacao_mar)
                         * (0.55 + 0.45 * detalhe);
     espuma = max(espuma, quebra_crista);
+    // v0.9.0: onde a crista de Gerstner se aperta (compressão baixa) a onda está quase quebrando: espuma na ponta
+    espuma = max(espuma, smoothstep(0.42, 0.12, compressao) * (0.25 + 0.75 * agitacao_mar) * (0.6 + 0.4 * detalhe));
     // em volta do casco e no rastro a espuma e batida, cheia: manchas macias em vez de fios de renda
     float batida = max(max(casco * (0.45 + 0.55 * barco_vel), bigode * avante * 0.85), esteira * 0.9);
     batida = max(batida, proa_espuma * avante * (0.30 + 0.62 * impacto_proa));

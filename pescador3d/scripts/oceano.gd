@@ -187,17 +187,82 @@ func fator_onda_em(pos: Vector3) -> float:
     var distancia: float = distancia_costeira(pos)
     return lerpf(CALMA_COSTEIRA, FORCA_ALTO_MAR, smoothstep(INICIO_ALTO_MAR, FIM_ALTO_MAR, distancia))
 
+## v0.9.0: ondas de Gerstner — a mesma soma de onda(), mas a água anda para os lados: cristas pontudas, cavas largas.
+## Igual a gerstner() de shaders/oceano_pintado.gdshader. p0 é o ponto "de repouso" da água; devolve
+## (deslocamento x, deslocamento z, compressão) — compressão perto de 0 = crista apertada, quase quebrando.
+var picos: float = 1.0
+static func gerstner(p: Vector2, t: float, vento: Vector2, forca: float, A: float, q_base: float) -> Vector3:
+    # (desenrolado, sem listas: é chamada muitas vezes por quadro)
+    var w: Vector2 = vento.normalized()
+    var cruz: Vector2 = Vector2(-w.y, w.x)
+    var swell: Vector2 = (w * 0.75 + cruz * 0.25).normalized()
+    var grupo: float = 0.78 + 0.22 * sin(p.dot(w * 0.012) - t * 0.17)
+    var v1: Vector2 = swell * 0.100
+    var v2: Vector2 = Vector2(-0.047, 0.076)
+    var v3: Vector2 = w * 0.145
+    var v4: Vector2 = cruz * 0.11 + w * 0.05
+    var v5: Vector2 = cruz * 0.062 + w * 0.014
+    var a1: float = 0.60 * grupo
+    var a2: float = 0.32 * grupo
+    var a3: float = 0.08 + 0.18 * forca
+    var a4: float = 0.13
+    var a5: float = 0.12 * forca
+    var l1: float = 0.100
+    var l2: float = v2.length()
+    var l3: float = 0.145
+    var l4: float = v4.length()
+    var l5: float = v5.length()
+    var f1: float = p.dot(v1) - t * 0.79
+    var f2: float = p.dot(v2) - t * 0.59 + 1.7
+    var f3: float = p.dot(v3) - t * 1.38
+    var f4: float = p.dot(v4) - t * 1.11 + 0.8
+    var f5: float = p.dot(v5) - t * 0.54 + 2.3
+    var ingreme: float = A * (a1 * l1 + a2 * l2 + a3 * l3 + a4 * l4 + a5 * l5)
+    var q: float = q_base * minf(1.0, 0.85 / maxf(q_base * ingreme, 0.0001))
+    var d: Vector2 = a1 * swell * cos(f1) + a2 * (v2 / l2) * cos(f2) + a3 * w * cos(f3) + a4 * (v4 / l4) * cos(f4) + a5 * (v5 / l5) * cos(f5)
+    var c: float = a1 * l1 * sin(f1) + a2 * l2 * sin(f2) + a3 * l3 * sin(f3) + a4 * l4 * sin(f4) + a5 * l5 * sin(f5)
+    return Vector3(d.x * q * A, d.y * q * A, 1.0 - q * A * c)
+
+## O ponto de repouso p0 da água que, deslocado, cai em xz (o inverso do deslocamento, por 3 aproximações).
+func _repouso(xz: Vector2, t: float) -> Vector2:
+    var p0: Vector2 = xz
+    for i in 3:
+        var A: float = _altura * fator_onda_em(Vector3(p0.x, 0.0, p0.y))
+        var g: Vector3 = gerstner(p0, t, direcao_vento, agitacao, A, picos)
+        p0 = xz - Vector2(g.x, g.y)
+    return p0
+
 func altura_em(pos: Vector3) -> float:
-    return onda(Vector2(pos.x, pos.z), fase_ondas, direcao_vento, agitacao) * _altura * fator_onda_em(pos)
+    var p0: Vector2 = _repouso(Vector2(pos.x, pos.z), fase_ondas)
+    return onda(p0, fase_ondas, direcao_vento, agitacao) * _altura * fator_onda_em(Vector3(p0.x, 0.0, p0.y))
+
+## Compressão da crista no ponto (1 = calmo; < 0,3 = crista apertada, quase quebrando). Usada pelo barco e pela tempestade.
+func compressao_em(pos: Vector3) -> float:
+    var p0: Vector2 = _repouso(Vector2(pos.x, pos.z), fase_ondas)
+    var A: float = _altura * fator_onda_em(Vector3(p0.x, 0.0, p0.y))
+    return gerstner(p0, fase_ondas, direcao_vento, agitacao, A, picos).z
+
+## Velocidade horizontal da água na superfície (m/s): o vai e vem da onda. Na crista ela anda com a onda, na cava contra.
+func velocidade_agua_em(pos: Vector3) -> Vector3:
+    var p0: Vector2 = _repouso(Vector2(pos.x, pos.z), fase_ondas)
+    var A: float = _altura * fator_onda_em(Vector3(p0.x, 0.0, p0.y))
+    var intervalo: float = 0.09
+    var g1: Vector3 = gerstner(p0, fase_ondas + intervalo * _velocidade, direcao_vento, agitacao, A, picos)
+    var g0: Vector3 = gerstner(p0, fase_ondas - intervalo * _velocidade, direcao_vento, agitacao, A, picos)
+    return Vector3(g1.x - g0.x, 0.0, g1.y - g0.y) / (intervalo * 2.0)
 
 ## Taxa vertical da superfície em metros/s. Mesmo campo temporal do shader.
 ## Evita estimar o impacto do casco apenas pela inclinação da onda.
 func velocidade_vertical_em(pos: Vector3) -> float:
     var xz := Vector2(pos.x, pos.z)
     var intervalo: float = 0.09
-    var futura: float = onda(xz, fase_ondas + intervalo * _velocidade, direcao_vento, agitacao)
-    var passada: float = onda(xz, fase_ondas - intervalo * _velocidade, direcao_vento, agitacao)
-    return (futura - passada) * _altura * fator_onda_em(pos) / (intervalo * 2.0)
+    var futura: float = altura_no_tempo(xz, fase_ondas + intervalo * _velocidade)
+    var passada: float = altura_no_tempo(xz, fase_ondas - intervalo * _velocidade)
+    return (futura - passada) / (intervalo * 2.0)
+
+func altura_no_tempo(xz: Vector2, t: float) -> float:
+    var p0: Vector2 = _repouso(xz, t)
+    return onda(p0, t, direcao_vento, agitacao) * _altura * fator_onda_em(Vector3(p0.x, 0.0, p0.y))
 
 func intensidade_em(pos: Vector3) -> float:
     return clampf(agitacao * fator_onda_em(pos) / FORCA_ALTO_MAR, 0.0, 1.0)
@@ -290,7 +355,9 @@ func _atualizar_uniformes() -> void:
     _velocidade = lerpf(0.63, 1.05, agitacao)
     if _material == null:
         return
+    picos = lerpf(0.85, 1.45, agitacao)          # v0.9.0: mar agitado = cristas mais pontudas
     _material.set_shader_parameter("altura_ondas", _altura)
+    _material.set_shader_parameter("picos", picos)
     _material.set_shader_parameter("velocidade_ondas", _velocidade)
     _material.set_shader_parameter("agitacao_mar", agitacao)
     _material.set_shader_parameter("direcao_vento", direcao_vento)

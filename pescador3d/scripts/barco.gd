@@ -244,6 +244,11 @@ func _physics_process(delta: float) -> void:
             meta_velocidade *= 1.0 - 0.11 * contra_mar * resistencia_mar
         velocidade = move_toward(velocidade, meta_velocidade, taxa * delta * (1.0 - resistencia_mar * 0.18))
         velocidade *= exp(-0.018 * resistencia_mar * delta)
+        # v0.9.0: a ladeira da onda: subindo de frente o barco perde marcha, descendo ele surfa e ganha.
+        # É um embalo à parte (o motor não "corrige" na hora): soma na marcha e some devagar.
+        surfe += -GRAVIDADE * 0.6 * inclinacao_onda.x * delta
+        surfe *= exp(-0.55 * delta)
+        surfe = clampf(surfe, -2.6, 3.2)
 
         leme = 0.0
         var esq: String = "barco_esquerda" if InputMap.has_action("barco_esquerda") else "ui_left"
@@ -268,11 +273,17 @@ func _physics_process(delta: float) -> void:
             vento_lateral = oceano.direcao_vento.dot(Vector2(direita.x, direita.z)) * resistencia_mar
         var alvo_deriva: float = clampf(-_giro_atual * velocidade * 0.37 + vento_lateral * 0.17, -0.95, 0.95)
         _deriva_lateral = lerpf(_deriva_lateral, alvo_deriva, 1.0 - exp(-1.55 * delta))
-        var movimento: Vector3 = (frente * velocidade + direita * _deriva_lateral) * delta
+        var movimento: Vector3 = (frente * (velocidade + surfe) + direita * _deriva_lateral) * delta
         # Uma corrente fraca desloca o casco mesmo sem motor; a colisao com a costa
         # tambem e checada quando a corrente e a unica fonte de movimento.
         if oceano != null and oceano.has_method("corrente_em"):
             movimento += oceano.corrente_em(global_position) * delta
+        # v0.9.0: a água da onda vai e vem e leva o casco junto; a onda de través empurra o barco ladeira abaixo
+        if oceano != null and oceano.has_method("velocidade_agua_em"):
+            movimento += oceano.velocidade_agua_em(global_position) * 0.55 * delta
+            _escorrega += -GRAVIDADE * 0.28 * inclinacao_onda.y * delta
+            _escorrega *= exp(-0.85 * delta)
+            movimento += direita * _escorrega * delta
         # Colisão com quatro extremidades do casco, não só com a proa.
         # A posição já encalhada pode ser abandonada de ré: só impedimos novos contatos.
         var bloqueou: bool = false
@@ -318,93 +329,107 @@ func _physics_process(delta: float) -> void:
         if _respingo_bombordo != null:
             _respingo_bombordo.emitting = borrifo and (impacto_proa > 0.17 or fracao_motor > 0.51)
 
-## O casco sobe, desce e inclina com a água embaixo dele: mede a onda no centro, na proa, na popa
-## e nos dois bordos (a mesma função do shader do mar). Não é hidrodinâmica, mas o barco deixa de
-## balançar "no ar" enquanto a onda passa por baixo.
-func _seguir_ondas(delta: float) -> void:
-    var altura_alvo: float = 0.0
-    var arfagem_alvo: float = 0.0
-    var adernar_alvo: float = 0.0
-    var intensidade_mar: float = 0.0
-    if oceano != null and oceano.has_method("altura_em"):
-        var frente: Vector3 = -global_transform.basis.z
-        var lado: Vector3 = global_transform.basis.x
-        # 9 pontos de amostragem produzem sustentação mais estável em ondas cruzadas.
-        var centro: float = oceano.altura_em(global_position)
-        var proa: float = oceano.altura_em(global_position + frente * MEIO_COMPRIMENTO)
-        var popa: float = oceano.altura_em(global_position - frente * MEIO_COMPRIMENTO)
-        var boreste: float = oceano.altura_em(global_position + lado * MEIA_BOCA)
-        var bombordo: float = oceano.altura_em(global_position - lado * MEIA_BOCA)
-        var lateral_proa: float = oceano.altura_em(global_position + frente * MEIO_COMPRIMENTO * 0.65 + lado * MEIA_BOCA)
-        var lateral_popa: float = oceano.altura_em(global_position - frente * MEIO_COMPRIMENTO * 0.65 + lado * MEIA_BOCA)
-        var outra_proa: float = oceano.altura_em(global_position + frente * MEIO_COMPRIMENTO * 0.65 - lado * MEIA_BOCA)
-        var outra_popa: float = oceano.altura_em(global_position - frente * MEIO_COMPRIMENTO * 0.65 - lado * MEIA_BOCA)
-        # Sustentação do casco. Durante uma crista alta, o barco deve acompanhar
-        # a onda dos bordos/proa e não ficar submerso por atraso da mola.
-        var media_apoios: float = (centro * 3.0 + proa + popa + boreste + bombordo + lateral_proa + lateral_popa + outra_proa + outra_popa) / 11.0
-        var maior_apoio: float = maxf(centro, maxf(proa, maxf(popa, maxf(boreste, maxf(bombordo, maxf(lateral_proa, maxf(lateral_popa, maxf(outra_proa, outra_popa))))))))
-        altura_alvo = media_apoios + 0.43 * maxf(0.0, maior_apoio - media_apoios)
-        arfagem_alvo = atan2(proa - popa, MEIO_COMPRIMENTO * 2.0)
-        adernar_alvo = atan2(boreste - bombordo, MEIA_BOCA * 2.0)
-        # Comparação entre velocidade de subida da onda e a do casco: impacto na proa.
-        # A espuma pode crescer sem fazer o barco saltar de forma artificial.
-        if oceano.has_method("velocidade_vertical_em"):
-            var onda_subindo: float = oceano.velocidade_vertical_em(global_position + frente * MEIO_COMPRIMENTO)
-            var encontro: float = absf(onda_subindo - _velocidade_vertical)
-            _impacto_proa = clampf((encontro - 0.15) * 0.44 + maxf(velocidade, 0.0) * 0.034, 0.0, 1.0)
-        if oceano.has_method("intensidade_em"):
-            intensidade_mar = oceano.intensidade_em(global_position)
-        else:
-            intensidade_mar = oceano.intensidade()
-        # Vento lateral forma banda de deriva; efeito visual suavizado pela estabilidade.
-        var vento_mundo: Vector2 = oceano.direcao_vento
-        adernar_alvo += deg_to_rad(2.5) * intensidade_mar * vento_mundo.dot(Vector2(lado.x, lado.z))
-    else:
-        altura_alvo = sin(tempo_animacao * 1.22) * 0.09
-        _impacto_proa = 0.0
-    impacto_proa = lerpf(impacto_proa, _impacto_proa, 1.0 - exp(-3.7 * delta))
-    var fracao: float = clampf(absf(velocidade) / maxf(velocidade_maxima, 0.1), 0.0, 1.0)
-    arfagem_alvo += deg_to_rad(1.6) * fracao * signf(velocidade)
-    adernar_alvo += deg_to_rad(leme * minf(absf(velocidade), 5.0) * 0.65)
-    adernar_alvo += deg_to_rad(clampf(_deriva_lateral * 1.8, -1.5, 1.5))
-    arfagem_alvo = clampf(arfagem_alvo * estabilidade, deg_to_rad(-13.0), deg_to_rad(13.0))
-    adernar_alvo = clampf(adernar_alvo * estabilidade, deg_to_rad(-17.0), deg_to_rad(17.0))
-    # Flutuabilidade criticamente amortecida. A mola anterior era lenta demais:
-    # num temporal, a onda subia vários metros antes de o casco reagir.
-    # Frequência um pouco maior quando o mar sobe em direção à proa.
-    var frequencia: float = lerpf(4.6, 5.9, intensidade_mar)
-    var sobe: bool = altura_alvo > balanceio.position.y
-    if sobe:
-        frequencia *= 1.14
-    var erro_vertical: float = altura_alvo - balanceio.position.y
-    var aceleracao_vertical: float = frequencia * frequencia * erro_vertical - 2.0 * frequencia * _velocidade_vertical
-    _velocidade_vertical += aceleracao_vertical * delta
-    _velocidade_vertical = clampf(_velocidade_vertical, -5.5, 7.5)
-    balanceio.position.y += _velocidade_vertical * delta
-    # Reserva de flutuabilidade nas cristas; mantém um mínimo de borda livre.
-    # Não afeta a física horizontal nem a posição do ponto de navegação.
-    if oceano != null and oceano.has_method("altura_em"):
-        var nivel_agua: float = oceano.altura_em(global_position)
-        var limite: float = nivel_agua - lerpf(0.42, 0.30, intensidade_mar)
-        if balanceio.position.y < limite:
-            balanceio.position.y = lerpf(balanceio.position.y, limite, 1.0 - exp(-10.0 * delta))
-            _velocidade_vertical = maxf(_velocidade_vertical, 0.0)
-    var mola_angular: float = lerpf(13.0, 9.0, intensidade_mar)
-    var amortecimento_angular: float = lerpf(5.8, 4.5, intensidade_mar)
-    _velocidade_arfagem += wrapf(arfagem_alvo - balanceio.rotation.x, -PI, PI) * mola_angular * delta
-    _velocidade_arfagem *= exp(-amortecimento_angular * delta)
-    _velocidade_adernamento += wrapf(adernar_alvo - balanceio.rotation.z, -PI, PI) * mola_angular * delta
-    _velocidade_adernamento *= exp(-amortecimento_angular * delta)
-    balanceio.rotation.x += _velocidade_arfagem * delta
-    balanceio.rotation.z += _velocidade_adernamento * delta
-    balanceio.rotation.x = clampf(balanceio.rotation.x, deg_to_rad(-15.0), deg_to_rad(15.0))
-    balanceio.rotation.z = clampf(balanceio.rotation.z, deg_to_rad(-19.0), deg_to_rad(19.0))
-    _ultimo_nivel_onda = altura_alvo
+## v0.9.0: o casco com peso. Nove pontos do casco (proa, bordos, popa, centro) sentem a água: cada um afundado
+## empurra para cima (empuxo) e freia a diferença de velocidade com a água (amortecimento). A soma vira a força
+## vertical, o caturro e o balanço, com massa e inércia: o barco não copia a onda, ele reage a ela. Ondas curtas se
+## anulam no casco; ondas longas levantam o barco inteiro; a proa que entra rápido numa onda leva uma pancada e sobe.
+## O balanço é mais lento e menos amortecido que o caturro (como num barco de verdade).
+const PONTOS_CASCO := [                       # (x: boreste +, z: popa +) em metros, no casco
+    Vector2(0.0, -3.6), Vector2(-0.85, -2.3), Vector2(0.85, -2.3), Vector2(-1.2, 0.0), Vector2(1.2, 0.0),
+    Vector2(-1.1, 2.5), Vector2(1.1, 2.5), Vector2(0.0, 3.3), Vector2(0.0, 0.0)]
+const CALADO := 0.55                          # quanto cada ponto fica afundado em repouso (m)
+const GRAVIDADE := 9.8
+const INERCIA_CATURRO := 5.5                  # (m² por unidade de massa) proa e popa pesadas: caturra sem pressa
+const INERCIA_BALANCO := 5.0                  # balanço lento (~3,5 s)
+const AMORTECE_PONTO := 0.55                  # freio vertical de cada ponto contra a água
+const AMORTECE_BALANCO := 0.9                 # o balanço some devagar
+var _h_pontos: Array = []                     # altura da água em cada ponto no quadro anterior (para a velocidade)
+var _escorrega: float = 0.0
+var surfe: float = 0.0                        # m/s a mais (descendo a onda) ou a menos (subindo), por cima do motor                   # m/s de lado: a onda de través empurra o casco ladeira abaixo
+var inclinacao_onda: Vector2 = Vector2.ZERO   # (ao longo da proa, de lado): a ladeira da onda sob o barco
 
+func _seguir_ondas(delta: float) -> void:
+    var intensidade_mar: float = 0.0
+    var frente: Vector3 = -global_transform.basis.z
+    var lado: Vector3 = global_transform.basis.x
+    if oceano == null or not oceano.has_method("altura_em"):
+        balanceio.position.y = sin(tempo_animacao * 1.22) * 0.09
+        return
+    if oceano.has_method("intensidade_em"):
+        intensidade_mar = oceano.intensidade_em(global_position)
+    # ---- a água sob cada ponto (e quanto ela subiu desde o quadro anterior)
+    var y: float = balanceio.position.y
+    var caturro: float = balanceio.rotation.x              # + = proa para cima
+    var balanco: float = balanceio.rotation.z              # + = boreste para cima
+    var forca_total: float = 0.0
+    var torque_caturro: float = 0.0
+    var torque_balanco: float = 0.0
+    var n: int = PONTOS_CASCO.size()
+    if _h_pontos.size() != n:
+        _h_pontos.resize(n)
+        _h_pontos.fill(INF)
+    var k: float = GRAVIDADE / (n * CALADO)                # empuxo por metro afundado: em repouso equilibra o peso
+    var forca_proa: float = 0.0
+    var h_proa: float = 0.0
+    var h_popa: float = 0.0
+    var h_bor: float = 0.0
+    var h_bom: float = 0.0
+    for i in n:
+        var c: Vector2 = PONTOS_CASCO[i]
+        var mundo: Vector3 = global_position + lado * c.x - frente * c.y
+        var h: float = oceano.altura_em(mundo)
+        var vh: float = 0.0 if is_inf(float(_h_pontos[i])) else clampf((h - float(_h_pontos[i])) / maxf(delta, 0.0001), -6.0, 6.0)
+        _h_pontos[i] = h
+        # altura do casco nesse ponto (ângulos pequenos) e a velocidade dele
+        var y_ponto: float = y - c.y * sin(caturro) + c.x * sin(balanco)
+        var v_ponto: float = _velocidade_vertical - c.y * _velocidade_arfagem + c.x * _velocidade_adernamento
+        var afundado: float = h - y_ponto + CALADO
+        var f: float = 0.0
+        if afundado > 0.0:
+            f = k * minf(afundado, CALADO * 3.2) + AMORTECE_PONTO * (vh - v_ponto) * clampf(afundado / CALADO, 0.0, 1.0)
+        forca_total += f
+        torque_caturro += f * -c.y
+        torque_balanco += f * c.x
+        if i == 0:
+            forca_proa = f
+            h_proa = h
+        elif i == 7:
+            h_popa = h
+        elif i == 4:
+            h_bor = h
+        elif i == 3:
+            h_bom = h
+    inclinacao_onda = Vector2((h_proa - h_popa) / 6.9, (h_bor - h_bom) / 2.4)
+    # ---- o que o próprio barco faz: a proa sobe com velocidade; aderna na curva e com o vento
+    var fracao: float = clampf(absf(velocidade) / maxf(velocidade_maxima, 0.1), 0.0, 1.0)
+    torque_caturro += 6.0 * deg_to_rad(2.2) * fracao * signf(velocidade)
+    var vento_lado: float = oceano.direcao_vento.dot(Vector2(lado.x, lado.z)) * intensidade_mar
+    torque_balanco += 4.0 * (deg_to_rad(leme * minf(absf(velocidade), 5.0) * 0.8) + deg_to_rad(2.5) * vento_lado + deg_to_rad(clampf(_deriva_lateral * 1.8, -1.5, 1.5)))
+    # estabilizadores (melhoria): mais firme no balanço e no caturro
+    var firme: float = clampf(2.0 - estabilidade, 1.0, 1.8)
+    # ---- integra: força vertical (menos o peso), caturro e balanço
+    _velocidade_vertical += (forca_total - GRAVIDADE) * delta
+    _velocidade_vertical = clampf(_velocidade_vertical, -8.0, 8.0)
+    balanceio.position.y += _velocidade_vertical * delta
+    _velocidade_arfagem += (torque_caturro / INERCIA_CATURRO) * delta
+    _velocidade_arfagem *= exp(-0.6 * firme * delta)
+    _velocidade_adernamento += (torque_balanco / INERCIA_BALANCO) * delta
+    _velocidade_adernamento *= exp(-AMORTECE_BALANCO * firme * delta)
+    balanceio.rotation.x = clampf(balanceio.rotation.x + _velocidade_arfagem * delta, deg_to_rad(-22.0), deg_to_rad(22.0))
+    balanceio.rotation.z = clampf(balanceio.rotation.z + _velocidade_adernamento * delta, deg_to_rad(-28.0), deg_to_rad(28.0))
+    # nunca deixa o casco afundar de vez sob uma crista alta (reserva de flutuação)
+    var nivel_agua: float = oceano.altura_em(global_position)
+    if balanceio.position.y < nivel_agua - 0.9:
+        balanceio.position.y = nivel_agua - 0.9
+        _velocidade_vertical = maxf(_velocidade_vertical, 0.0)
+    # ---- pancada na proa: força brusca no ponto da proa = espuma, respingo (e o barco sente)
+    _impacto_proa = clampf((forca_proa - k * CALADO * 1.3) / (k * CALADO * 2.4) + maxf(velocidade, 0.0) * 0.02, 0.0, 1.0)
+    impacto_proa = lerpf(impacto_proa, _impacto_proa, 1.0 - exp(-6.0 * delta))
+    _ultimo_nivel_onda = nivel_agua
 
 ## Velocidade no mundo (m/s): proa + deriva lateral. É o que os barcos NPC usam para prever a aproximação.
 func velocidade_mundo() -> Vector3:
-    return -global_transform.basis.z * velocidade + global_transform.basis.x * _deriva_lateral
+    return -global_transform.basis.z * (velocidade + surfe) + global_transform.basis.x * _deriva_lateral
 
 ## Outro barco bateu: a variação de velocidade dv (m/s, no plano) aplicada no ponto de contato (mundo) muda sua
 ## marcha, sua deriva e o giro (pelo braço do impulso), e o casco adernará com o tranco.
@@ -437,7 +462,7 @@ func afastar(corrigir: Vector3) -> void:
     global_position += corrigir
 
 func nos() -> float:
-    return abs(velocidade) * 1.943844
+    return abs(velocidade + surfe) * 1.943844
 
 func rumo() -> int:
     # 0° aponta para o norte (-Z), como em cartas de navegação.
@@ -480,6 +505,9 @@ func zerar() -> void:
     _acelerador_suave = 0.0
     _velocidade_vertical = 0.0
     _deriva_lateral = 0.0
+    _escorrega = 0.0
+    surfe = 0.0
+    _h_pontos.clear()
     _impacto_proa = 0.0
     impacto_proa = 0.0
     _velocidade_arfagem = 0.0
