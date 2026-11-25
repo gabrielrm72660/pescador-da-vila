@@ -79,53 +79,12 @@ func _ready() -> void:
                 st.loop = false
             _musica_streams[periodo] = st
     _preparar_bruma()
-    _preparar_silencio()
     _guardar_avulso("onda_2", "mar")
     _guardar_avulso("onda_3", "mar")
     _guardar_avulso("trovao", "chuva")
     for nome in ["pesca_lancar", "aviso", "peixe", "acerto", "perfeito", "estalo", "tensao", "captura", "buzina",
             "sussurro", "batida", "canto", "grave", "sino_bordo"]:      # v0.8.7: o horror da noite
         _guardar_avulso(nome, "efeitos")
-
-# ---- v0.8.8: o silêncio do pavor. Quando o medo sobe, a música some e o mar e o vento quase calam
-# (um Amplify em cada canal, por cima do volume que o jogador escolheu). Os sons do horror vêm de um lugar (3D).
-var silencio: float = 0.0                  # 0..1 (scripts/pavor.gd)
-var _amplis: Dictionary = {}               # canal -> [AudioEffectAmplify, dB no silêncio total]
-const SILENCIO_DB := {"Musica": -48.0, "Mar": -24.0, "Vento": -20.0, "Chuva": -14.0, "Barco": -7.0}
-
-func _preparar_silencio() -> void:
-    for nome in SILENCIO_DB:
-        var i: int = AudioServer.get_bus_index(nome)
-        if i < 0:
-            continue
-        var a := AudioEffectAmplify.new()
-        a.volume_db = 0.0
-        AudioServer.add_bus_effect(i, a)
-        _amplis[nome] = [a, float(SILENCIO_DB[nome])]
-
-func _aplicar_silencio() -> void:
-    var k: float = silencio * silencio * (3.0 - 2.0 * silencio)
-    for nome in _amplis:
-        (_amplis[nome][0] as AudioEffectAmplify).volume_db = float(_amplis[nome][1]) * k
-
-## Toca um som do horror num ponto do mundo (some sozinho quando acaba). unidade = distância (m) em que soa no volume cheio.
-func tocar_em(nome: String, posicao: Vector3, db: float = 0.0, tom: float = 1.0, unidade: float = 6.0) -> AudioStreamPlayer3D:
-    var caminho := PASTA + nome + ".ogg"
-    if not ResourceLoader.exists(caminho):
-        return null
-    var p := AudioStreamPlayer3D.new()
-    p.stream = load(caminho)
-    p.volume_db = db
-    p.pitch_scale = tom
-    p.unit_size = unidade
-    p.max_db = 6.0
-    p.attenuation_filter_cutoff_hz = 9000.0
-    p.bus = CANAL["efeitos"]
-    add_child(p)
-    p.global_position = posicao
-    p.finished.connect(p.queue_free)
-    p.play()
-    return p
 
 func _preparar_bruma() -> void:
     for nome in ["Mar", "Vento"]:
@@ -325,8 +284,6 @@ func _salvar_config() -> void:
 # ------------------------------------------------------------------ mistura conforme o barco
 
 func _process(delta: float) -> void:
-    if not _amplis.is_empty():
-        _aplicar_silencio()
     var fracao: float = 0.0
     if barco != null:
         fracao = clampf(absf(barco.velocidade) / barco.velocidade_maxima, 0.0, 1.0)

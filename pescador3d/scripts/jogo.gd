@@ -22,12 +22,10 @@ const Controle = preload("res://scripts/controle.gd")         # v0.7.0: controle
 const Historia = preload("res://scripts/historia.gd")         # v0.7.0: o compadre Bento e os dois finais
 const Fantasmas = preload("res://scripts/fantasmas.gd")
 const Assombro = preload("res://scripts/assombro.gd")        # v0.8.7: o horror da noite tem preço
-const Pavor = preload("res://scripts/pavor.gd")             # v0.8.8: o horror que se vê e se ouve
 const PainelDev = preload("res://scripts/painel_dev.gd")     # v0.8.7: F8, para testar      # v0.6.0: vultos e miragens da bruma
 var fantasmas: Node3D
 var historia: Node
 var assombro: Node                   # v0.8.7: scripts/assombro.gd
-var pavor: Node                      # v0.8.8: scripts/pavor.gd
 var painel_dev: CanvasLayer          # v0.8.7: painel do desenvolvedor (F8)
 var _avisos_bruma: Dictionary = {"vulto": 0, "miragem": 0}
 const Ilha = preload("res://scripts/ilha.gd")
@@ -286,11 +284,6 @@ func _ready() -> void:
     assombro = Assombro.new()
     add_child(assombro)
     assombro.construir(self)
-    pavor = Pavor.new()
-    pavor.name = "Pavor"
-    add_child(pavor)
-    pavor.construir(self, assombro)
-    assombro.pavor = pavor
     interface.noite_pressed.connect(_comprar_noite)
     painel_dev = PainelDev.new()
     add_child(painel_dev)
@@ -387,8 +380,6 @@ func _process(delta: float) -> void:
         fantasmas.simulando = pode_navegar
     if assombro != null:
         assombro.atualizar(delta, pode_navegar)
-        if pavor != null and assombro._desmaio_t < 0.0:
-            pavor.atualizar(delta, pode_navegar)
     vida_portuaria.simulando = iniciado and not em_pausa and not graficos.esta_aberto()
     if pode_navegar:
         relogio_exploracao += delta
@@ -407,7 +398,7 @@ func _unhandled_input(event: InputEvent) -> void:
     if not iniciado or (construtor != null and construtor.ativo) or interface.dialogo_ativo():
         return
     if event is InputEventKey and event.pressed and not event.echo:
-        if event.unicode == 59 or event.keycode == KEY_SEMICOLON:      # v0.8.9: ';' abre o painel do desenvolvedor (ABNT2 ou US)
+        if event.unicode == 59 or event.keycode == KEY_SEMICOLON:      # v0.8.10: ';' abre o painel do desenvolvedor (ABNT2 ou US)
             painel_dev.alternar()
             return
         if atracado:                                   # no cais só valem as teclas do cais
@@ -514,7 +505,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.8.9] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.8.10] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 ## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).
@@ -1139,13 +1130,7 @@ func atualizar_interface() -> void:
     clima.correndo = iniciado and not em_pausa and not atracado and not graficos.esta_aberto()
     var escuro: float = clima.escuridao()             # v0.7.9: noite ou tempestade (antes só a noite)
     var acesa: bool = assombro.lanterna_acesa() if assombro != null else luz_ligada     # v0.8.7: óleo e falhas na noite
-    var pav: float = clima.pavor_escuro                # v0.8.8: no breu, a lanterna é tudo que se tem
-    var extra: float = float(pavor.luz_extra) if pavor != null else 1.0
-    luz_barco.light_energy = 2.2 * escuro * (1.0 + 0.35 * pav) * extra if acesa else 0.0
-    luz_barco.omni_range = (16.0 + 2.0 * pav) * (1.0 + 0.25 * (extra - 1.0))
-    var mar_mat = oceano._material if oceano != null and "_material" in oceano else null
-    if mar_mat != null:
-        mar_mat.set_shader_parameter("luz_lanterna", escuro * (0.35 + 0.65 * pav) if acesa else 0.0)
+    luz_barco.light_energy = 2.2 * escuro if acesa else 0.0
     barco.definir_holofotes(maxf(escuro, 0.35) if acesa else 0.0)
     ilha = _ilha_do_cais_mais_perto()
     for i in ilhas:

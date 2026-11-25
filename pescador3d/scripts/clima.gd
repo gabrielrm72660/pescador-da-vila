@@ -70,7 +70,6 @@ var _chuva_mar: float = 0.0          # 0..1: quanto a chuva está batendo na ág
 var estilo_sol: float = 1.0          # painel Cinema: multiplicadores aplicados POR CIMA do clima (neutro = 1; calor = 0)
 var estilo_calor: float = 0.0        # 0..1: puxa a cor do sol para o dourado
 var estilo_ambiente: float = 1.0
-var pavor_escuro: float = 0.0        # v0.8.8: 0..1 (scripts/pavor.gd): a noite fecha em preto em volta da lanterna
 var hora_congelada: bool = false     # o painel Cinema pode parar o relógio para ajustar a luz com calma
 var vento_forca: float = 0.25        # 0..1: calmaria ... temporal (vem da agitação do mar; alimenta o vento das folhagens)
 
@@ -279,7 +278,7 @@ func atualizar() -> void:
         escurecer = maxf(escurecer, 0.85)
     var env := _ceu.environment
     env.ambient_light_color = a.ambiente_cor
-    env.ambient_light_energy = float(a.ambiente_energia) * (1.0 - 0.35 * escurecer) * estilo_ambiente * (1.0 - 0.85 * pavor_escuro)
+    env.ambient_light_energy = float(a.ambiente_energia) * (1.0 - 0.35 * escurecer) * estilo_ambiente
     # a neblina da noite respira: fecha e abre bem devagar
     var densidade: float = float(a.nevoa_densidade) * (1.0 + 0.22 * noite() * sin(_tempo * 0.17)) + 0.0028 * escurecer
     var cor_nevoa: Color = a.nevoa_cor
@@ -293,16 +292,12 @@ func atualizar() -> void:
         cor_nevoa = cor_nevoa.lerp(Color(0.27, 0.35, 0.37), bruma * 0.65 * noite())
         cor_nevoa = cor_nevoa.lerp(Color(0.66, 0.71, 0.72), bruma * (1.0 - noite()) * 0.8)
         nevoa_ceu = lerpf(nevoa_ceu, 1.0, bruma * 0.7)
-    # v0.8.8: com o pavor, a névoa fica preta e fecha: fora da lanterna não se vê nada
-    if pavor_escuro > 0.001:
-        cor_nevoa = cor_nevoa.lerp(Color(0.012, 0.018, 0.024), 0.85 * pavor_escuro)
-        densidade = densidade * (1.0 + 0.6 * pavor_escuro)
     env.fog_light_color = cor_nevoa
     env.fog_density = densidade
     env.fog_sky_affect = nevoa_ceu
     # na bruma a névoa tem cor própria (leitosa) em vez de herdar o céu escuro: menos perspectiva aérea, mais luz na névoa
     env.fog_aerial_perspective = lerpf(0.6, 0.12, bruma)
-    env.fog_light_energy = lerpf(0.9, 1.45, bruma * noite()) * (1.0 - 0.8 * pavor_escuro)
+    env.fog_light_energy = lerpf(0.9, 1.45, bruma * noite())
     # o sol cruza o céu do nascer ao pôr; fora disso quem ilumina é a lua, parada no alto
     var forca := 1.0
     if hora > NASCER and hora < POR:
@@ -318,7 +313,7 @@ func atualizar() -> void:
     if estilo_calor > 0.0:
         cor_sol = cor_sol.lerp(cor_sol * Color(1.0, 0.80, 0.58), estilo_calor)
     _sol.light_color = cor_sol
-    _sol.light_energy = float(a.sol_energia) * forca * (1.0 - 0.72 * escurecer) * estilo_sol * (1.0 - 0.8 * pavor_escuro)
+    _sol.light_energy = float(a.sol_energia) * forca * (1.0 - 0.72 * escurecer) * estilo_sol
     for chave in a.ceu:
         _mat_ceu.set_shader_parameter(chave, a.ceu[chave])
     var nuvens: float = lerpf(0.53, 0.94, escurecer)
@@ -336,22 +331,6 @@ func atualizar() -> void:
     _mat_ceu.set_shader_parameter("cor_horizonte", (a.ceu.cor_horizonte as Color).lerp(Color(0.32, 0.36, 0.38), escurecer))
     _mat_ceu.set_shader_parameter("cor_nuvem_luz", (a.ceu.cor_nuvem_luz as Color).lerp(Color(0.36, 0.40, 0.43), escurecer))
     _mat_ceu.set_shader_parameter("cor_nuvem_sombra", (a.ceu.cor_nuvem_sombra as Color).lerp(Color(0.09, 0.12, 0.16), escurecer))
-    # v0.8.8b: no pavor o céu também apaga (no Forward+ o mar reflete o céu; se ele fica cinza, a noite não escurece)
-    if pavor_escuro > 0.001:
-        var k_ceu: float = 1.0 - 0.82 * pavor_escuro
-        for chave_ceu in ["cor_topo", "cor_meio", "cor_horizonte", "cor_nuvem_luz", "cor_nuvem_sombra"]:
-            var cc: Color = _mat_ceu.get_shader_parameter(chave_ceu)
-            _mat_ceu.set_shader_parameter(chave_ceu, Color(cc.r * k_ceu, cc.g * k_ceu, cc.b * k_ceu, cc.a))
-    var env_p := _ceu.environment
-    if not env_p.has_meta("base_vol") or pavor_escuro <= 0.001:
-        env_p.set_meta("base_vol", [env_p.volumetric_fog_albedo, env_p.volumetric_fog_density, env_p.sdfgi_energy, env_p.ssil_intensity, env_p.background_energy_multiplier])
-    else:
-        var bv: Array = env_p.get_meta("base_vol")
-        env_p.volumetric_fog_albedo = (bv[0] as Color).lerp(Color(0.02, 0.025, 0.03), 0.9 * pavor_escuro)
-        env_p.volumetric_fog_density = float(bv[1]) * (1.0 - 0.5 * pavor_escuro)
-        env_p.sdfgi_energy = float(bv[2]) * (1.0 - 0.85 * pavor_escuro)
-        env_p.ssil_intensity = float(bv[3]) * (1.0 - 0.85 * pavor_escuro)
-        env_p.background_energy_multiplier = float(bv[4]) * (1.0 - 0.8 * pavor_escuro)
     # ---- vento: a força segue a agitação do mar (calmaria no sol, temporal na tempestade) e sopra para onde o mar anda
     var agitacao: float = float(_oceano.agitacao) if _oceano != null else 0.45
     vento_forca = clampf(inverse_lerp(0.18, 0.95, agitacao), 0.0, 1.0)
@@ -370,11 +349,6 @@ func atualizar() -> void:
         mar["cor_reflexo_ceu"] = (mar.cor_reflexo_ceu as Color).lerp(Color(0.40, 0.45, 0.48), escurecer * 0.65)
         mar["cor_horizonte"] = (mar.cor_horizonte as Color).lerp(Color(0.33, 0.37, 0.39), escurecer * 0.75)
         mar["cor_turquesa"] = (mar.cor_turquesa as Color).lerp(Color(0.16, 0.36, 0.38), escurecer * 0.60)
-        if pavor_escuro > 0.001:                                    # v0.8.8b: no breu o mar não reflete o céu
-            mar["reflexo_geral"] = float(mar.reflexo_geral) * (1.0 - 0.85 * pavor_escuro)
-            mar["brilho"] = float(mar.brilho) * (1.0 - 0.8 * pavor_escuro)
-            mar["cor_reflexo_ceu"] = (mar.cor_reflexo_ceu as Color) * (1.0 - 0.8 * pavor_escuro)
-            mar["cor_horizonte"] = (mar.cor_horizonte as Color) * (1.0 - 0.8 * pavor_escuro)
         mar["cor_raso"] = (mar.cor_raso as Color).lerp(Color(0.24, 0.50, 0.48), escurecer * 0.55)
         for chave in mar:
             _mar.set_shader_parameter(chave, mar[chave])
