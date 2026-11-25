@@ -1,0 +1,5 @@
+SpriteCook, gpt-image-2.5-flare, pixel=false, 9:16, fundo transparente
+style_asset_ids: 46622c44-ba18-4687-9772-22a12ff1517e
+referencia: exemplo do Gabriel (25/11/2026)
+
+Recreate the character from the reference image as a game dialogue portrait, keeping his face, beard, clothes, lantern and pose. Seu Abilio, an old Brazilian lighthouse keeper in his late sixties, weathered brown skin, short white hair and neat white beard, calm serious eyes, white captain's cap with navy band and a small brass star badge, cream short-sleeved shirt with small brass anchor buttons and anchor collar pins, a brown leather strap across the chest, raising a lit brass hurricane lantern with warm glow in his right hand. Half-body portrait, facing slightly to the side, same proportions and brush style as the style reference portraits. Hand-painted gouache illustration, opaque matte paint, visible brush strokes, slightly dry edges, soft painted light from the upper left (late afternoon), warm slightly desaturated colors, no black outlines, no photorealism, no 3D render look. Brazilian tropical fishing village, inspired by Fernando de Noronha. Transparent background.

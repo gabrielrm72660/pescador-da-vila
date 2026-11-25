@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dtnm24wogtlxg"
-path="res://.godot/imported/zefa.png-de660c123e39c25ef774a2dc5940666d.ctex"
+uid="uid://qppcwbx7lxv5"
+path="res://.godot/imported/maira.png-3bc85e56c008c4d6b4fe71f9b34b3637.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/retratos/zefa.png"
-dest_files=["res://.godot/imported/zefa.png-de660c123e39c25ef774a2dc5940666d.ctex"]
+source_file="res://assets/retratos/maira.png"
+dest_files=["res://.godot/imported/maira.png-3bc85e56c008c4d6b4fe71f9b34b3637.ctex"]
 
 [params]
 

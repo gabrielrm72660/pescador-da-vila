@@ -16,7 +16,7 @@ const CONTRATOS := [
     {"especie": "Peixe-anjo", "quantidade": 2, "premio": 90},
     {"especie": "Namorado", "quantidade": 1, "premio": 140},
 ]
-## v0.6.0: o pedido fixo de certos cais (Dona Rosa, em São Pedro): sempre peixe de lá, e o pedido se renova ao cumprir.
+## v0.6.0: o pedido fixo de certos cais (Maíra, em São Pedro): sempre peixe de lá, e o pedido se renova ao cumprir.
 const CONTRATOS_LOCAIS := {
     "Ilha de São Pedro": [
         {"especie": "Cioba", "quantidade": 5, "premio": 380},

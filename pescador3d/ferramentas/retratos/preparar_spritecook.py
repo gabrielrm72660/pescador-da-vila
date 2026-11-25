@@ -14,11 +14,13 @@ from scipy import ndimage
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent.parent
 ORIGEM = RAIZ / "arte_original" / "retratos" / "spritecook_v076"
+NOVOS = RAIZ / "arte_original" / "retratos" / "spritecook_v091"   # v0.9.1: elenco refeito a partir dos exemplos do Gabriel
 DEST = RAIZ / "assets" / "retratos"
 #           nome       altura  alfa_min alfa_max
-RETRATOS = [("zefa", 650, 40, 220), ("jacinto", 650, 40, 220), ("toinho", 650, 40, 220), ("rosa", 650, 40, 220),
+RETRATOS = [("luana", 650, 40, 220), ("jacinto", 650, 40, 220), ("toinho", 650, 40, 220), ("maira", 650, 40, 220),
             ("abilio", 650, 40, 220), ("bento", 660, 14, 200), ("diario", 560, 40, 220),
             ("comprador", 650, 40, 220)]          # v0.8.7: o homem da capa, comprador da noite
+# v0.9.1: Luana (ex-Zefa) e Maíra (ex-Rosa) são moças novas; os seis do elenco vêm de NOVOS, diário e comprador de ORIGEM
 
 
 def limpar(img: Image.Image, a0: float, a1: float) -> Image.Image:
@@ -47,7 +49,8 @@ def limpar(img: Image.Image, a0: float, a1: float) -> Image.Image:
 
 def main():
     for nome, altura, a0, a1 in RETRATOS:
-        img = Image.open(ORIGEM / (nome + ".png"))
+        pasta = NOVOS if (NOVOS / (nome + ".png")).exists() else ORIGEM
+        img = Image.open(pasta / (nome + ".png"))
         limpo = limpar(img, a0, a1)
         caixa = limpo.split()[3].point(lambda v: 255 if v > 6 else 0).getbbox()
         limpo = limpo.crop(caixa)

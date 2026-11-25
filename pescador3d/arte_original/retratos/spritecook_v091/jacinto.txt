@@ -1,0 +1,5 @@
+SpriteCook, gpt-image-2.5-flare, pixel=false, 9:16, fundo transparente
+style_asset_ids: 46622c44-ba18-4687-9772-22a12ff1517e
+sem referencia de personagem (so a descricao)
+
+Game dialogue portrait of Seu Jacinto, an old retired Black Brazilian fisherman in his seventies, deep wrinkles, warm wise eyes, short white hair and short white beard, worn wide-brimmed woven straw hat with frayed edge, smoking a small wooden pipe with a thin curl of smoke, faded light blue linen shirt open at the collar with sleeves rolled to the forearms, a thin dark cord necklace, calm gentle half smile. Half-body portrait, facing slightly to the side, same proportions and brush style as the style reference portraits. Hand-painted gouache illustration, opaque matte paint, visible brush strokes, slightly dry edges, soft painted light from the upper left (late afternoon), warm slightly desaturated colors, no black outlines, no photorealism, no 3D render look. Brazilian tropical fishing village, inspired by Fernando de Noronha. Transparent background.

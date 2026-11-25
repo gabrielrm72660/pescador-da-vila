@@ -1,0 +1,5 @@
+SpriteCook, gpt-image-2.5-flare, pixel=false, 9:16, fundo transparente
+style_asset_ids: 46622c44-ba18-4687-9772-22a12ff1517e
+referencia: exemplo do Gabriel (25/11/2026)
+
+Recreate the character from the reference image as a game dialogue portrait, keeping his face, hair, clothes, lantern and pose. Bento, a Brazilian island fisherman around 40 years old, tired gentle face, messy dark damp hair, stubble, worn open grey-blue shirt under a faded sand-colored shirt with rolled sleeves, holding a lit brass hurricane lantern with warm glow; wisps of pale blue-grey mist curling around his waist, he looks lost in the fog. Half-body portrait, facing slightly to the side, same proportions and brush style as the style reference portraits. Hand-painted gouache illustration, opaque matte paint, visible brush strokes, slightly dry edges, soft painted light from the upper left (late afternoon), warm slightly desaturated colors, no black outlines, no photorealism, no 3D render look. Brazilian tropical fishing village, inspired by Fernando de Noronha. Transparent background.

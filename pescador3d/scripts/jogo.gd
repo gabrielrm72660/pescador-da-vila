@@ -505,7 +505,7 @@ func _diagnostico_navegacao() -> void:
     var superficie: float = oceano.altura_em(pos)
     var distancia_porto: float = _ilha_do_cais_mais_perto().distancia_do_cais(pos)
     var mensagem: String = "DIAG: %.1f nós · água %.1fm · fundo %.1fm · cais %.0fm" % [barco.nos(), superficie, fundo, distancia_porto]
-    print("[BRUMA v0.9.0] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
+    print("[BRUMA v0.9.1] ", mensagem, " | FPS=", Engine.get_frames_per_second(), " | Cardumes=", cardumes.lista.size())
     interface.aviso(mensagem)
 
 ## v0.7.9: buzina náutica [H]. Um toque por vez (não empilha enquanto ainda soa).
@@ -948,7 +948,7 @@ func _comprar_noite(o_que: String) -> void:
             if assombro.patua or dinheiro < preco:
                 return
             assombro.patua = true
-            interface.aviso(Idioma.t("A Dona Rosa amarrou o patuá no painel do barco. \"Pra noite não te achar.\""))
+            interface.aviso(Idioma.t("A Maíra amarrou o patuá no painel do barco. \"Pra noite não te achar.\""))
         "sino":
             preco = PRECO_SINO
             if assombro.sino or dinheiro < preco:

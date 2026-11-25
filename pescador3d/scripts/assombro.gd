@@ -9,7 +9,7 @@ extends Node
 ##   0,50  o canto da Mãe-d'água (só o som): o leme puxa sozinho por alguns segundos
 ##   0,65  a coisa de baixo: sombra enorme no radar, o barco levanta numa onda sem vento; o motor engasga; some peixe
 ##   1,00  desmaio: acorda ao amanhecer, à deriva, longe; perde parte do porão e do diesel
-## Proteção: óleo da lanterna, vela na capela (uma noite), patuá (Dona Rosa, São Pedro), sino de bordo [G].
+## Proteção: óleo da lanterna, vela na capela (uma noite), patuá (Maíra, São Pedro), sino de bordo [G].
 ## Peixe aberrante: de noite, com o medo alto, às vezes o que sobe não é peixe direito. Só o homem da capa compra.
 
 signal mudou
@@ -20,7 +20,7 @@ var jogo: Node
 var valor: float = 0.0
 var oleo: float = 1.0                     # tanque da lanterna (0..1); só gasta de noite com a luz ligada
 var vela: bool = false                    # acendeu vela na capela: vale até o próximo amanhecer
-var patua: bool = false                   # patuá da Dona Rosa: o medo sobe 25% mais devagar
+var patua: bool = false                   # patuá da Maíra: o medo sobe 25% mais devagar
 var sino: bool = false                    # sino de bronze de bordo: [G] espanta vultos e acalma
 var luz_falhando: float = 0.0             # s em que a lanterna fica apagada sozinha
 var sombra_radar: float = 0.0             # s em que a coisa de baixo aparece no radar

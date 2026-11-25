@@ -14,18 +14,19 @@ const Final = preload("res://scripts/final.gd")
 const T = preload("res://scripts/idioma.gd")
 
 const PAGINAS := [
-    "Terceira noite de bruma. A bússola girou sozinha e o radar mostrou um cardume enorme. Joguei a rede: não tinha nada. A bruma mente.",
-    "Os vultos não são barcos. Chamei um deles, e ele respondeu com a voz do Zeca, que se perdeu faz dez anos. Não chamei mais.",
-    "Pesquei um peixe-lua. Ele só sobe quando a bruma chama. Tem uma luz fraca por dentro, como lamparina.",
-    "Ouvi o sino de novo. Vem do oeste de São Pedro, onde a carta não mostra nada. Quem toca sino no meio do mar?",
-    "Vou atrás do sino. Se eu não voltar, Jacinto, cuide do Estrela d'Alva. E diga ao Abílio para nunca apagar o farol.",
+    "A bússola girou sozinha a oeste de São Pedro, e a rede voltou vazia, sem um rasgo. O Jacinto diz que foi corrente. Não foi corrente.",
+    "Na bruma tinha vultos em volta do barco. Um deles me chamou com a voz do Zeca. Meu irmão se perdeu faz dez anos. Não respondi.",
+    "Um peixe-lua subiu do lado do barco e ficou me olhando. Peixe-lua não olha ninguém. Esse olhou.",
+    "Ouvi o sino de novo, a oeste de São Pedro. Toca devagar, como enterro. Toinho, se você estiver no rádio: é aqui.",
+    "Vou atrás do sino. Se eu não voltar: Jacinto, cuida do Estrela d'Alva. Abílio, não apaga o farol. Luana, não me espera acordada.",
 ]
+## v0.9.1: o Bento não é assombração: fala calmo e cansado, e não sabe quanto tempo passou.
 const FALAS_BENTO := [
-    "Então foi você que ficou com o meu Estrela d'Alva. Está bem cuidada.",
-    "Eu segui o sino até aqui, três anos atrás. Agora quem toca sou eu: alguém precisa avisar os barcos.",
-    "Os vultos que você viu são os que se perderam. Só querem achar o caminho de volta.",
-    "Esta lanterna me prende aqui. Se alguém a levar a um farol, a bruma solta todos nós.",
-    "Ou você pode ficar. O mar daqui é calmo, e ninguém tem pressa.",
+    "Estrela d'Alva... Eu reconheço o motor dele até debaixo d'água.",
+    "Quem te deu o meu barco? O Jacinto? Então ele chegou em casa. Que bom. Eu tinha medo que não.",
+    "O sino não é de igreja. É o mar chamando quem não sabe voltar. Eu segui, e aqui não tem dia.",
+    "A Luana ainda espera acordada? Diz pra ela dormir.",
+    "Se você levar minha lanterna pro farol, eu descanso. Ou fica aqui comigo, que a bruma é grande e o peixe nunca acaba.",
 ]
 const OPCOES := ["Levar a lanterna ao farol", "Ficar na bruma com o Bento"]
 
@@ -172,7 +173,7 @@ func _ao_escolher(k: int) -> void:
         aplicar_final()
         jogo.salvar()
         _cartao("A LUZ DO FAROL",
-                "Você levou a lanterna do Bento até São Pedro. Naquela noite o farol brilhou como nunca, e de manhã a bruma tinha ido embora.\n\nAinda sobe neblina do mar de vez em quando, mas a bússola não gira mais e os vultos não voltaram. Seu Abílio jura que, nas noites mais escuras, o sino ainda toca baixinho, longe, como quem se despede.\n\nO Estrela d'Alva é seu. O mar também.",
+                "\"Obrigado. Diz pro Abílio que ele pode descansar também.\"\n\nVocê levou a lanterna do Bento até São Pedro. Naquela noite o farol brilhou como nunca, e de manhã a bruma tinha ido embora.\n\nAinda sobe neblina do mar de vez em quando, mas a bússola não gira mais e os vultos não voltaram. Seu Abílio jura que, nas noites mais escuras, o sino ainda toca baixinho, longe, como quem se despede.\n\nO Estrela d'Alva é seu. O mar também.",
                 "Continuar a viagem", func(): pass)
     else:
         final = "bruma"
@@ -183,7 +184,7 @@ func _ao_escolher(k: int) -> void:
         cfg.set_value("legado", "estrela_na_bruma", true)
         cfg.save(ARQ_LEGADO)
         _cartao("O SINO",
-                "Você desligou o motor e ficou. O mar ali era calmo, e ninguém tinha pressa.\n\nNa manhã seguinte, no cais da Vila do Porto, Seu Jacinto entregou as chaves de um barco a um rapaz recém-chegado.\n\nNas noites de bruma, os pescadores juram ver passar um vulto com o nome ESTRELA D'ALVA no casco. E, ao longe, um sino.",
+                "\"Então somos dois. Liga o motor devagar, que eu vou na frente.\"\n\nVocê ligou o motor devagar e seguiu o Bento bruma adentro. O mar ali era calmo, e ninguém tinha pressa.\n\nNa manhã seguinte, no cais da Vila do Porto, Seu Jacinto entregou as chaves de um barco a um rapaz recém-chegado.\n\nNas noites de bruma, os pescadores juram ver passar um vulto com o nome ESTRELA D'ALVA no casco. E, ao longe, um sino.",
                 "Recomeçar", func(): jogo.reiniciar())
 
 func _cartao(titulo: String, texto: String, botao: String, depois: Callable) -> void:

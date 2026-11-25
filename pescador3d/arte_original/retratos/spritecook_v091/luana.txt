@@ -1,0 +1,5 @@
+SpriteCook, gpt-image-2.5-flare, pixel=false, 9:16, fundo transparente
+style_asset_ids: 46622c44-ba18-4687-9772-22a12ff1517e
+referencia: exemplo do Gabriel (25/11/2026)
+
+Recreate the character from the reference image as a game dialogue portrait, keeping her face, hair, clothes and pose. A young Black Brazilian woman in her late twenties who runs the fish stall at the harbor, warm confident smile, curly hair tied up in an orange patterned headscarf with a bow, gold hoop earrings, layered bead necklace with turquoise beads, white sleeveless top, worn blue denim apron with a fish knife in the front pocket and a cloth towel at the hip. Half-body portrait, facing slightly to the side, same proportions and brush style as the style reference portraits. Hand-painted gouache illustration, opaque matte paint, visible brush strokes, slightly dry edges, soft painted light from the upper left (late afternoon), warm slightly desaturated colors, no black outlines, no photorealism, no 3D render look. Brazilian tropical fishing village, inspired by Fernando de Noronha. Transparent background.

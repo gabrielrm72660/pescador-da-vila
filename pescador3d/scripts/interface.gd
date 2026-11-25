@@ -717,10 +717,10 @@ func _preencher_noite(n: Dictionary) -> void:
     if bool(n.get("patua", false)):
         _porto_situacao("patua", "✓  " + T.t("Patuá no painel: o medo sobe 25% mais devagar"), "", false, true)
     elif bool(n.get("vende_patua", false)):
-        _porto_situacao("patua", T.t("A Dona Rosa faz: protege o barco para sempre"),
+        _porto_situacao("patua", T.t("A Maíra faz: protege o barco para sempre"),
                 T.t("Comprar · R$ %d") % int(precos.get("patua", 150)), dinheiro >= int(precos.get("patua", 150)))
     else:
-        _porto_situacao("patua", T.t("Quem faz patuá é a Dona Rosa, em São Pedro"), "", false)
+        _porto_situacao("patua", T.t("Quem faz patuá é a Maíra, em São Pedro"), "", false)
     if bool(n.get("sino", false)):
         _porto_situacao("sino", "✓  " + T.t("Sino a bordo: [G] espanta os vultos e acalma"), "", false, true)
     elif bool(n.get("vende_sino", false)):
