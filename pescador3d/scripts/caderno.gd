@@ -61,7 +61,9 @@ const MANUAL := [
 		"- A lamparina ao lado do relógio mostra o medo. Ele sobe de noite longe da terra, mais na bruma e perto dos vultos; desce com luz, perto da terra, no farol e ao amanhecer.",
 		"- Lanterna acesa (L) segura o medo pela metade, mas gasta óleo. Vela na capela vale por uma noite; o patuá da Dona Rosa, para sempre. O sino (G) espanta os vultos.",
 		"- Se ouvir um canto vindo da água, segure o leme: ele puxa sozinho.",
-		"- Medo demais: batidas no casco, motor que engasga, peixe que some. No fim, você apaga e acorda longe.",
+		"- No escuro, não olhe muito tempo para o que brilha na beira da luz. E se a lanterna piscar, não conte quem está a bordo.",
+		"- Medo demais e alguma coisa grande começa a rondar. Corra para a luz: o farol, a costa, o cais. Se ela partir o casco, você apaga e acorda longe.",
+		"- O que acontecer no mar fica escrito no Diário deste livro.",
 		"- O que sobe de noite às vezes não é peixe direito. Só um homem compra, de madrugada, no cais da Vila do Porto."]},
 ]
 

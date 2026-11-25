@@ -7,6 +7,7 @@ var aproximada: bool = false
 var distancia: float = 15.5
 var altura: float = 7.1
 var giro: float = 0.0                 # radianos em volta do barco (0 = atrás da popa)
+var tremor: float = 0.0               # v0.8.8: a coisa de baixo bate no barco: a câmera treme (decai sozinha)
 var elevacao: float = 1.0             # multiplica a altura: menos = rente à água, mais = de cima
 
 const SENSIBILIDADE := 0.006          # radianos por pixel arrastado
@@ -46,6 +47,15 @@ func _process(delta: float) -> void:
     var fator := 1.0 - exp(-(9.0 if (_arrastando or _mexeu > 0.0) else 3.3) * delta)      # mexendo o mouse, a câmera responde na hora
     global_position = global_position.lerp(_posicao_desejada(), fator)
     look_at(alvo.global_position + Vector3(0.0, 1.35, 0.0), Vector3.UP)
+    if tremor > 0.001:
+        tremor = maxf(0.0, tremor - delta * 1.6)
+        var k: float = tremor * tremor
+        h_offset = randf_range(-0.35, 0.35) * k
+        v_offset = randf_range(-0.30, 0.30) * k
+        rotate_object_local(Vector3.FORWARD, randf_range(-0.035, 0.035) * k)
+    elif h_offset != 0.0 or v_offset != 0.0:
+        h_offset = 0.0
+        v_offset = 0.0
 
 func _input(event: InputEvent) -> void:
     if event is InputEventMouseButton:

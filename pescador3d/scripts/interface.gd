@@ -1124,6 +1124,12 @@ func aviso(texto: String) -> void:
     if hud.painel_aberto == "diario":
         _preencher_painel()
 
+## v0.8.8: anota no diário sem mostrar nada na tela (o susto não se explica na hora).
+func anotar(texto: String) -> void:
+    diario.append(texto)
+    if diario.size() > 40:
+        diario.pop_front()
+
 func limpar_partida() -> void:
     diario.clear()
     hud.painel_aberto = ""

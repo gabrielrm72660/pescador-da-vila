@@ -55,6 +55,12 @@ uniform vec2 costa_faixa = vec2(-12.0, 4.0);         // altura (m) que vale 0 e 
 uniform vec4 cor_raso : source_color = vec4(0.20, 0.78, 0.72, 1.0);
 uniform float nevoa = 0.0;                           // 0 a 1: fiapos de neblina deitados sobre a agua (a noite)
 uniform vec4 cor_nevoa : source_color = vec4(0.36, 0.45, 0.49, 1.0);
+// v0.8.8: a coisa de baixo. Uma sombra enorme e comprida passando sob a superficie (scripts/pavor.gd).
+uniform vec2 sombra_pos = vec2(1000000.0);
+uniform vec2 sombra_dir = vec2(0.0, 1.0);
+uniform vec2 sombra_tam = vec2(28.0, 9.0);          // comprimento, largura (m)
+uniform float sombra_forca = 0.0;
+uniform float luz_lanterna = 0.0;                  // v0.8.8: a poça de luz quente da lanterna na água (0..1)
 uniform float luz_propria = 1.0;                     // a agua se acende um pouco sozinha de dia; a noite, nao
 
 // Enviados por scripts/oceano.gd. O tempo vem do script (e nao de TIME) para o barco
@@ -364,6 +370,40 @@ void fragment() {
     float longe = smoothstep(500.0 - 260.0 * chuva_mar, 1800.0 - 900.0 * chuva_mar, distancia);     // com chuva o horizonte fecha mais perto
     base = mix(base, cor_horizonte.rgb, longe * 0.85);
 
+    // ---- v0.8.8: a sombra de baixo. Borda irregular que se mexe, mais escura no meio; a espuma some em cima dela.
+    float bio = 0.0;                                       // brilho do plâncton mexido pela coisa (vai na emissão)
+    if (sombra_forca > 0.001) {
+        vec2 rs = p - sombra_pos;
+        vec2 ds = normalize(sombra_dir);
+        float sx = dot(rs, ds) / (sombra_tam.x * 0.5);
+        float sz = dot(rs, vec2(-ds.y, ds.x)) / (sombra_tam.y * 0.5 * (1.0 - 0.35 * smoothstep(-0.2, 1.0, -sx)));   // afina na cauda
+        float borda = texture(tex_pigmento, p * 0.035 + vec2(t * 0.02, -t * 0.015)).r;
+        float corpo = 1.0 - smoothstep(0.55 + 0.25 * borda, 1.05 + 0.2 * borda, length(vec2(sx, sz)));
+        float braco = (1.0 - smoothstep(0.0, 0.18, abs(sz - 0.9 * sin(sx * 3.0 + t * 1.7) * 0.6))) * smoothstep(1.6, 0.6, abs(sx)) * 0.5;
+        float sombra = clamp(corpo + braco * step(0.0, -sx), 0.0, 1.0) * sombra_forca;
+        base = mix(base, base * vec3(0.05, 0.07, 0.08), sombra * 0.92);
+        espuma *= 1.0 - sombra * 0.8;
+        // o plâncton acende onde o corpo empurra a água: uma borda de pontinhos e um rastro atrás
+        float L = length(vec2(sx, sz));
+        float anel = smoothstep(0.55 + 0.2 * borda, 0.92, L) * (1.0 - smoothstep(0.98, 1.35 + 0.2 * borda, L));
+        float esteira_bio = (1.0 - smoothstep(0.0, 0.35 + 0.25 * smoothstep(-1.0, -4.0, sx), abs(sz))) * smoothstep(-0.8, -1.2, sx) * (1.0 - smoothstep(-1.2, -4.5, sx));
+        // pontinhos soltos que piscam (um por célula de ~40 cm, sorteado), em duas escalas
+        float pontos = 0.0;
+        for (int k = 0; k < 2; k++) {
+            float esc = k == 0 ? 2.6 : 1.3;
+            vec2 pc = p * esc + float(k) * 17.3;
+            vec2 cel = floor(pc);
+            float h = fract(sin(dot(cel, vec2(12.9898, 78.233))) * 43758.5453);
+            vec2 centro = vec2(h, fract(h * 7.31)) * 0.6 + 0.2;
+            float dpt = length(fract(pc) - centro);
+            float pisca = 0.5 + 0.5 * sin(t * (2.0 + 3.0 * h) + h * 40.0);
+            pontos += smoothstep(0.16, 0.02, dpt) * step(0.45, h) * pisca * (k == 0 ? 1.0 : 0.7);
+        }
+        float nuvem_bio = 0.18 * (1.0 - smoothstep(0.0, 1.0, abs(L - 0.95) * 3.0));
+        // v0.8.9: só pontinhos soltos e apagados (o contorno inteiro aceso virava pista de corrida neon)
+        bio = (anel * 0.9 * pontos + esteira_bio * 0.6 * pontos) * sombra_forca + 0.0 * nuvem_bio;
+    }
+
     // ---- neblina da noite: um veu baixo sobre a agua, com fiapos mais densos que andam devagar.
     // Fica aqui (e nao so na nevoa do ceu) para aparecer tambem com a camera olhando de cima.
     float veu = 0.0;
@@ -373,6 +413,14 @@ void fragment() {
         veu = nevoa * (0.22 + 0.78 * smoothstep(0.36, 0.70, fiapo));
         veu *= 1.0 - 0.75 * (1.0 - smoothstep(3.0, 9.0, length(q)));          // a lanterna do barco abre um claro em volta
         base = mix(base, cor_nevoa.rgb, veu * 0.82);
+    }
+
+    // ---- v0.8.8: a lanterna acende uma poça quente na água em volta do barco; depois dela, breu.
+    if (luz_lanterna > 0.001) {
+        float dq = length(vec2(dot(q, barco_frente) * 0.8, dot(q, vec2(-barco_frente.y, barco_frente.x))));
+        float poca = (1.0 - smoothstep(2.5, 11.0, dq)) * luz_lanterna;
+        float ondula_luz = 0.5 + 3.0 * (normal_mundo.x * 0.6 + normal_mundo.z * 0.4);
+        base += vec3(0.11, 0.07, 0.03) * poca * (0.35 + 0.65 * clamp(ondula_luz, 0.0, 1.0));
     }
 
     // Céu carregado escurece a cor sem desligar a espuma do temporal.
@@ -386,5 +434,6 @@ void fragment() {
     ROUGHNESS = mix(mix(0.44 - brilho * 0.20, 0.85, max(espuma, longe)), 1.0, veu);
     SPECULAR = mix(0.28 + brilho * 0.22, 0.10, max(espuma, veu));
     METALLIC = 0.0;
-    EMISSION = base * (0.04 + 0.10 * espuma) * luz_propria * (1.0 - 0.5 * nuvem) + cor_nevoa.rgb * veu * 0.30;
+    EMISSION = base * (0.04 + 0.10 * espuma) * luz_propria * (1.0 - 0.5 * nuvem) + cor_nevoa.rgb * veu * 0.30 * (1.0 - min(bio, 1.0))
+             + vec3(0.14, 0.62, 0.58) * bio * 0.45;
 }

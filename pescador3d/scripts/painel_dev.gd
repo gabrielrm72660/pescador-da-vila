@@ -1,6 +1,6 @@
 extends CanvasLayer
-## v0.8.7: painel do desenvolvedor (F8). Para testar sem esperar: teletransporte, hora e clima, barco, o horror da
-## noite (medo, canto da Mãe-d'água, coisa de baixo, vultos), peixes, fauna, missões, a história do Bento e os
+## v0.8.7: painel do desenvolvedor (tecla ';' desde a v0.8.9; antes F8). Para testar sem esperar: teletransporte, hora e clima, barco, o horror da
+## noite (medo, canto, olhos, a sombra de baixo, o passageiro, a caçada, vultos), peixes, fauna, missões, a história do Bento e os
 ## cartões finais. Nada aqui é salvo à parte: o que muda no jogo é salvo como sempre.
 ## (A baleia de teste, que antes ficava no F8, agora é o botão "Baleia".)
 
@@ -33,7 +33,7 @@ func construir(jogo_: Node) -> void:
 	_caixa.add_child(col)
 	var topo := HBoxContainer.new()
 	var tit := Label.new()
-	tit.text = "PAINEL DO DESENVOLVEDOR  (F8)"
+	tit.text = "PAINEL DO DESENVOLVEDOR  ( ; )"
 	tit.add_theme_color_override("font_color", Color(0.55, 1.0, 0.85))
 	tit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	topo.add_child(tit)
@@ -130,11 +130,18 @@ func _montar(lista: VBoxContainer) -> void:
 	for v in [0.0, 0.3, 0.5, 0.7, 0.95]:
 		var valor: float = v
 		_botao(g, "Medo %d%%" % roundi(valor * 100.0), func(): jogo.assombro.valor = valor)
-	_botao(g, "Desmaio (100%)", func(): jogo.assombro.valor = 1.0)
-	_botao(g, "Canto da Mãe-d'água", func(): jogo.assombro._prox["canto"] = 0.0; jogo.assombro.valor = maxf(jogo.assombro.valor, 0.5))
-	_botao(g, "Coisa de baixo", func(): jogo.assombro._prox["coisa"] = 0.0; jogo.assombro.valor = maxf(jogo.assombro.valor, 0.65))
-	_botao(g, "Batida no casco", func(): jogo.assombro._prox["batida"] = 0.0; jogo.assombro.valor = maxf(jogo.assombro.valor, 0.45))
-	_botao(g, "Lanterna falha", func(): jogo.assombro.luz_falhando = 3.0)
+	_botao(g, "Desmaio direto", func(): jogo.assombro._comecar_desmaio())
+	_botao(g, "Canto (som + leme)", func(): _noite_se_dia(); jogo.assombro._prox["canto"] = 0.0; jogo.assombro._canto_t = 0.0; jogo.assombro.valor = maxf(jogo.assombro.valor, 0.5))
+	_botao(g, "Sussurro", func(): _noite_se_dia(); jogo.assombro._prox["sussurro"] = 0.0; jogo.assombro.valor = maxf(jogo.assombro.valor, 0.3))
+	_botao(g, "Batida no casco", func(): _noite_se_dia(); jogo.assombro._prox["batida"] = 0.0; jogo.assombro.valor = maxf(jogo.assombro.valor, 0.45))
+	_botao(g, "Olhos", func(): _noite_se_dia(); jogo.pavor.nascer_olhos())
+	_botao(g, "Sombra passa", func(): _noite_se_dia(); jogo.pavor.passar_sombra())
+	_botao(g, "Costas passam", func(): _noite_se_dia(); jogo.pavor.mostrar_costas())
+	_botao(g, "Boca sai da água", func(): _noite_se_dia(); jogo.pavor.irromper())
+	_botao(g, "Passageiro", func(): _noite_se_dia(); jogo.luz_ligada = true; jogo.pavor.piscar_lanterna(true))
+	_botao(g, "Caçada", func(): _noite_se_dia(); jogo.assombro.valor = 1.0; jogo.pavor.comecar_cacada())
+	_botao(g, "Fim da caçada", func(): if jogo.pavor.cacando: jogo.pavor._fim_da_cacada())
+	_botao(g, "Lanterna pisca", func(): _noite_se_dia(); jogo.luz_ligada = true; jogo.pavor.piscar_lanterna(false))
 	_botao(g, "Vulto", func(): jogo.fantasmas._nascer_vulto())
 	_botao(g, "Miragem no radar", func(): jogo.fantasmas._nascer_miragem())
 	_botao(g, "Dar sino e patuá", func(): jogo.assombro.sino = true; jogo.assombro.patua = true)
@@ -189,6 +196,11 @@ func _ir_marcador() -> void:
 		_aviso("nenhum destino marcado na carta (M)")
 		return
 	_ir(Vector3(mapa.marcador.x, 0.0, mapa.marcador.y), "marcador da carta")
+
+## Os sustos da noite só acontecem de noite: se for dia, pula para as 22h.
+func _noite_se_dia() -> void:
+	if jogo.clima.noite() < 0.5:
+		_hora(22.0)
 
 func _hora(h: float) -> void:
 	var c: Node = jogo.clima

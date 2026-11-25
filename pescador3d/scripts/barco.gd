@@ -39,6 +39,8 @@ var tempo_animacao: float = 0.0
 var leme: float = 0.0
 var _giro_atual: float = 0.0
 var _velocidade_vertical: float = 0.0
+var erguer: float = 0.0                       # v0.8.8: metros a mais de altura (a coisa de baixo)
+var erguer_inclina: Vector2 = Vector2.ZERO    # v0.8.8: arfagem, adernamento extras (rad)
 var _velocidade_arfagem: float = 0.0
 var _velocidade_adernamento: float = 0.0
 var _ultimo_nivel_onda: float = 0.0
@@ -372,6 +374,10 @@ func _seguir_ondas(delta: float) -> void:
     # Flutuabilidade criticamente amortecida. A mola anterior era lenta demais:
     # num temporal, a onda subia vários metros antes de o casco reagir.
     # Frequência um pouco maior quando o mar sobe em direção à proa.
+    # v0.8.8: a coisa de baixo ergue o barco (scripts/pavor.gd): sobe metros e inclina, depois cai de volta
+    altura_alvo += erguer
+    arfagem_alvo += erguer_inclina.x
+    adernar_alvo += erguer_inclina.y
     var frequencia: float = lerpf(4.6, 5.9, intensidade_mar)
     var sobe: bool = altura_alvo > balanceio.position.y
     if sobe:

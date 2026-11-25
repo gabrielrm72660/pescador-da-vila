@@ -17,6 +17,7 @@ signal mudou
 const T = preload("res://scripts/idioma.gd")
 
 var jogo: Node
+var pavor: Node = null                    # v0.8.8: o que se vê e se ouve (scripts/pavor.gd)
 var valor: float = 0.0
 var oleo: float = 1.0                     # tanque da lanterna (0..1); só gasta de noite com a luz ligada
 var vela: bool = false                    # acendeu vela na capela: vale até o próximo amanhecer
@@ -68,7 +69,7 @@ void fragment() {
 	_veu.color = Color(0, 0, 0, 0)
 	cima.add_child(_veu)
 	if jogo.clima.has_signal("amanheceu"):
-		jogo.clima.amanheceu.connect(func(): vela = false)
+		jogo.clima.amanheceu.connect(func(): vela = false; _avisou.clear())
 
 func zerar() -> void:
 	valor = 0.0
@@ -79,6 +80,8 @@ func zerar() -> void:
 	luz_falhando = 0.0
 	sombra_radar = 0.0
 	_avisou.clear()
+	if pavor != null:
+		pavor.zerar()
 
 func para_salvar() -> Dictionary:
 	return {"valor": valor, "oleo": oleo, "vela": vela, "patua": patua, "sino": sino}
@@ -92,7 +95,7 @@ func carregar(d: Dictionary) -> void:
 
 ## A lanterna pode acender agora? (tem óleo e não está falhando)
 func lanterna_acesa() -> bool:
-	return jogo.luz_ligada and oleo > 0.0 and luz_falhando <= 0.0
+	return jogo.luz_ligada and oleo > 0.0 and luz_falhando <= 0.0 and not (pavor != null and pavor.luz_apagada())
 
 func preco_oleo() -> int:
 	return ceili((1.0 - oleo) * 20.0)
@@ -170,8 +173,6 @@ func atualizar(delta: float, navegando: bool) -> void:
 		jogo.fantasmas.assombro = valor
 	_sino_recarga = maxf(0.0, _sino_recarga - delta)
 	_efeitos(delta, n, acesa)
-	if valor >= 0.995:
-		_comecar_desmaio()
 	_pintar(delta)
 
 func _vultos_perto(raio: float) -> int:
@@ -194,47 +195,43 @@ func _vez(chave: String, delta: float, faixa: Vector2) -> bool:
 	return false
 
 func _efeitos(delta: float, n: float, acesa: bool) -> void:
+	# v0.8.8: nada disso aparece em texto na hora. Os sons vêm de um lugar (3D); o que se vê está em scripts/pavor.gd.
 	var barco: Node3D = jogo.barco
 	var som: Node = jogo.som
-	# sussurros
+	var cam: Camera3D = jogo.get_viewport().get_camera_3d()
+	# sussurros: atrás de você, rente ao ouvido, de um lado
 	if valor >= 0.25 and _vez("sussurro", delta, Vector2(18.0, 36.0) * (1.4 - valor)):
-		som.tocar("sussurro", lerpf(-26.0, -12.0, valor), randf_range(0.85, 1.1))
-		_aviso("sussurro", T.t("Você ouviu alguém falar baixinho... mas não há ninguém a bordo."), 1)
+		var atras: Vector3 = cam.global_transform.basis.z * 1.2 + cam.global_transform.basis.x * (0.9 if randf() < 0.5 else -0.9)
+		som.tocar_em("sussurro", cam.global_position + atras, lerpf(4.0, 12.0, valor), randf_range(0.85, 1.05), 2.0)
+		_anotar_uma("sussurro", T.t("Ouvi alguém falando baixinho atrás de mim. Não havia ninguém a bordo."))
 	# batidas no casco, por baixo
 	if valor >= 0.45 and _vez("batida", delta, Vector2(24.0, 48.0) * (1.5 - valor)):
-		som.tocar("batida", -6.0, randf_range(0.9, 1.05))
+		var sob: Vector3 = barco.global_position + barco.global_transform.basis.z * randf_range(-3.0, 3.0) + Vector3(0, -1.2, 0)
+		som.tocar_em("batida", sob, 4.0, randf_range(0.9, 1.05), 6.0)
 		barco.danificar(randf_range(2.0, 5.0) * valor, "bruma")
 		if barco.has_method("sacudir"):
 			barco.sacudir(1.0 + valor)
-		_aviso("batida", T.t("Algo bateu no casco. Por baixo."))
-	# a lanterna falha
-	if valor >= 0.45 and jogo.luz_ligada and _vez("lanterna", delta, Vector2(30.0, 60.0)):
-		luz_falhando = randf_range(1.5, 3.5) * (0.6 + valor)
-		_aviso("lanterna", T.t("A lanterna piscou e apagou sozinha."), 1)
-	# o canto da Mãe-d'água
+		_anotar_uma("batida", T.t("Bateram no casco. Por baixo. Três vezes."))
+	# a lanterna falha (pisca e apaga)
+	if valor >= 0.40 and jogo.luz_ligada and pavor != null and _vez("lanterna", delta, Vector2(30.0, 60.0)):
+		pavor.piscar_lanterna(false)
+	# o canto: vem da água, de um lado; o leme puxa para lá
 	if _canto_t <= 0.0 and valor >= 0.50 and n > 0.5 and _vez("canto", delta, Vector2(70.0, 130.0)):
 		_canto_t = 9.0
 		_canto_lado = 1.0 if randf() < 0.5 else -1.0
-		som.tocar("canto", -10.0)
-		_aviso("canto", T.t("Um canto vem da água... o leme puxa sozinho. Segure firme!"))
+		var de: Vector3 = barco.global_position - barco.global_transform.basis.x * _canto_lado * 45.0 - barco.global_transform.basis.z * 20.0
+		som.tocar_em("canto", Vector3(de.x, 0.5, de.z), 10.0, 1.0, 30.0)
+		_anotar_uma("canto", T.t("Uma mulher cantava na água, longe. O leme virou sozinho para o lado dela."))
 	if _canto_t > 0.0:
 		_canto_t -= delta
 		var env: float = sin(clampf(1.0 - _canto_t / 9.0, 0.0, 1.0) * PI)
 		barco.puxao_leme = _canto_lado * 0.75 * env * (0.5 if acesa else 1.0)
 	else:
 		barco.puxao_leme = 0.0
-	# a coisa de baixo
 	sombra_radar = maxf(0.0, sombra_radar - delta)
-	if valor >= 0.65 and _vez("coisa", delta, Vector2(50.0, 95.0)):
-		sombra_radar = 7.0
-		som.tocar("grave", -4.0)
-		if barco.has_method("sacudir"):
-			barco.sacudir(3.2)
-		_aviso("coisa", T.t("O barco subiu numa onda sem vento. O radar mostra algo enorme bem embaixo de você."))
 	# o motor engasga
 	if valor >= 0.65 and _vez("motor", delta, Vector2(35.0, 65.0)):
 		_engasgo_t = randf_range(1.8, 3.2)
-		_aviso("motor", T.t("O motor engasgou."), 1)
 	if _engasgo_t > 0.0:
 		_engasgo_t -= delta
 		barco.engasgo = 0.25 + 0.2 * sin(_tempo * 23.0)
@@ -245,8 +242,18 @@ func _efeitos(delta: float, n: float, acesa: bool) -> void:
 		var peixes: Array = jogo.porao.itens.filter(func(i): return not jogo.porao.eh_carga(String(i.especie)))
 		if not peixes.is_empty():
 			jogo.porao.retirar(peixes[randi() % peixes.size()])
-			som.tocar("batida", -14.0, 1.4)
-			jogo.interface.aviso(T.t("Um baque no porão. Quando você olhou, faltava um peixe."))
+			som.tocar_em("batida", barco.global_position + barco.global_transform.basis.z * 2.0, 0.0, 1.4, 4.0)
+			_anotar_uma("peixe", T.t("Um baque no porão. Quando olhei, faltava um peixe. A tampa estava fechada."))
+
+## Vai para o diário (Livro, TAB), não para a tela. Cada coisa só uma vez por noite.
+func _anotar_uma(chave: String, texto: String) -> void:
+	if _avisou.has(chave):
+		return
+	_avisou[chave] = 1
+	if pavor != null:
+		pavor._anotar(texto)
+	else:
+		jogo.interface.anotar(texto)
 
 ## [G] o sino de bordo: espanta os vultos por perto e acalma um pouco.
 func tocar_sino() -> void:
