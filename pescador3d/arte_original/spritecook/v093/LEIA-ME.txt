@@ -1,0 +1,12 @@
+Folhas das árvores de Noronha (v0.9.3), SpriteCook 26/11/2026: gpt-image-2.5-flare, pixel=false, 1:1, fundo transparente,
+style_asset_ids 126592e6-bf6c-49fe-8035-372dae6a4cc5 (texturas da ilha). Base de todos os pedidos:
+"Sprite sheet of four separate clusters ... arranged in a 2x2 grid with wide empty transparent space between the clusters so each
+one can be cut out on its own. ... Painted ONLY in neutral grey values (monochrome grayscale, no green, no color at all) so the game
+can tint them ... soft painted light from the upper left. Hand-painted gouache illustration, opaque matte paint, visible brush strokes,
+slightly dry edges, no black outlines, no photorealism, no 3D render look. Transparent background."
+  folhas_castanhola.png  rosetas de 6-9 folhas largas (Terminalia catappa), vistas de cima
+  folhas_gameleira.png   cachos densos de folhinhas ovais (Ficus)
+  folhas_mulungu.png     ramos soltos de folhas trifolioladas (Erythrina velutina)
+  folhas_leucena.png     ramos de folhas bipinadas, rendadas (Leucaena)
+  folhas_destaque.png    colorida: 2 cachos de folha de castanhola vermelha + 2 de flor de mulungu
+Atlas do jogo: python3 ferramentas/folhas_spritecook.py  ->  assets/texturas/ilha/folhas.png

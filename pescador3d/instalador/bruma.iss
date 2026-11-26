@@ -22,8 +22,8 @@ DisableProgramGroupPage=yes
 ; Quem não é administrador pode instalar só para si (na pasta do usuário).
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=dialog
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=saida
 OutputBaseFilename=Bruma_Setup_v{#Versao}
 SetupIconFile=bruma.ico

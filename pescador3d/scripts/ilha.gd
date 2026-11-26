@@ -41,6 +41,9 @@ const TEX_COPA := "res://assets/texturas/ilha/copa.png"             # detalhe de
 const TEX_PALMEIRA := "res://assets/texturas/ilha/palmeira.png"       # folha em pena + casca
 const SHADER_COPA := "res://shaders/folhagem_vento.gdshader"          # folhagem que balança com o vento (Alta e Ultra)
 const SHADER_PALMA := "res://shaders/palmeira_vento.gdshader"
+const TEX_FOLHAS := "res://assets/texturas/ilha/folhas.png"           # v0.9.3: atlas de cachos de folha (ferramentas/folhas_spritecook.py)
+const SHADER_FOLHAS := "res://shaders/folhas_cartas.gdshader"
+const ALTURA_ESPECIE := {"castanhola": 7.0, "gameleira": 11.0, "mulungu": 6.4, "leucena": 3.6, "arvore": 7.6, "moita": 1.1}
 const LADO := 300.0                            # lado da malha do terreno (m)
 const DIVISOES := 270                          # v0.5.1: 180 -> 270 (células de 1,1 m): costa, rochedos e encostas mais nítidos
 const CALADO := 0.9                            # o barco encalha onde a água tem menos que isso (m)
@@ -1420,7 +1423,19 @@ func malha_para(chave: String, nivel: int) -> Mesh:
     var k: String = chave if n == 0 else "%s_n%d" % [chave, n]
     if not _malhas.has(k):
         if chave in ESPECIES_MATA:
-            _malhas[k] = VegetacaoTropical.criar(chave, n)
+            var malha_t: ArrayMesh = VegetacaoTropical.criar(chave, n)
+            # v0.9.3: superfície 0 = tronco e miolo da copa, 1 = cartas de folha (cada uma com o seu material)
+            malha_t.surface_set_material(0, _material_vegetacao("arvore", n))
+            if malha_t.get_surface_count() > 1:
+                malha_t.surface_set_material(1, _material_folhas(chave, n))
+            _malhas[k] = malha_t
+        elif chave in ["arvore", "moita"] and n >= 1:
+            # v0.9.3: árvore nativa e moita com cartas de folha (Alta e Ultra); na Baixa/Média seguem as malhas leves
+            var malha_f: ArrayMesh = VegetacaoTropical.criar(chave, n)
+            malha_f.surface_set_material(0, _material_vegetacao(chave, n))
+            if malha_f.get_surface_count() > 1:
+                malha_f.surface_set_material(1, _material_folhas(chave, n))
+            _malhas[k] = malha_f
         elif n == 0:
             match chave:
                 "pinheiro": _malhas[k] = _malha_pinheiro()
@@ -1495,6 +1510,21 @@ func _material_copa(escala: float, rugosidade: float, altura_ref: float, vento: 
     _aplicar_detalhe_de_folhagem(mat, escala)
     return mat
 
+## v0.9.3: cartas de folha das árvores de Noronha (atlas em guache, recorte pela transparência, vento em Alta e Ultra).
+func _material_folhas(especie: String, nivel: int) -> Material:
+    var k: String = "folhas|%s|%d" % [especie, nivel]
+    if _mats_veg.has(k):
+        return _mats_veg[k]
+    Vento.garantir()
+    var sm := ShaderMaterial.new()
+    sm.shader = load(SHADER_FOLHAS)
+    if ResourceLoader.exists(TEX_FOLHAS):
+        sm.set_shader_parameter("tex_folhas", load(TEX_FOLHAS))
+    sm.set_shader_parameter("altura_ref", float(ALTURA_ESPECIE.get(especie, 7.0)))
+    sm.set_shader_parameter("com_vento", nivel >= 1)
+    _mats_veg[k] = sm
+    return sm
+
 func _material_palmeira(vento: bool) -> Material:
     if vento and ResourceLoader.exists(SHADER_PALMA) and ResourceLoader.exists(TEX_PALMEIRA):
         Vento.garantir()
@@ -1525,7 +1555,10 @@ func _familia_veg(chave: String) -> String:
 func _equipar_vegetacao(inst: MultiMeshInstance3D, chave: String) -> void:
     inst.set_meta("malha_chave", chave)
     inst.multimesh.mesh = malha_para(chave, nivel_detalhe)
-    inst.material_override = _material_vegetacao(_familia_veg(chave), nivel_detalhe)
+    # v0.9.3: as árvores de Noronha levam o material em cada superfície da malha (tronco/miolo e cartas de folha)
+    var malha_v: Mesh = inst.multimesh.mesh
+    var por_superficie: bool = malha_v is ArrayMesh and malha_v.get_surface_count() > 1
+    inst.material_override = null if por_superficie else _material_vegetacao(_familia_veg(chave), nivel_detalhe)
 
 ## Troca o nível de detalhe de toda a vegetação da ilha (0 leve, 1 detalhada, 2 ultra). Barato: as malhas ficam em cache.
 func definir_detalhe(nivel: int) -> void:
