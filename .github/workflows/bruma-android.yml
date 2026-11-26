@@ -1,4 +1,5 @@
-# Gera o APK de Android do Bruma (pasta pescador3d/) e, junto, o Bruma.exe de Windows.
+# Gera o APK de Android do Bruma (pasta pescador3d/), o Bruma.exe de Windows e, desde a v0.9.2, o instalador do Windows
+# (Bruma_Setup_vX.exe, feito com o Inno Setup a partir de pescador3d/instalador/bruma.iss).
 # Roda sozinho a cada push na branch pescador-3d que mexa no jogo, ou pela aba Actions > "Bruma: Android e Windows" > Run workflow.
 # O APK sai assinado com uma chave de depuração gerada na hora: serve para instalar no celular (permitir "fontes desconhecidas"),
 # não para publicar na Play Store.
@@ -93,3 +94,44 @@ jobs:
           name: Bruma-Windows
           path: pescador3d/build/Bruma.exe
           if-no-files-found: warn
+
+  # v0.9.2: instalador do Windows (Inno Setup). Usa o Bruma.exe exportado acima.
+  instalador:
+    needs: exportar
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            pescador3d/instalador
+            pescador3d/project.godot
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Bruma-Windows
+          path: pescador3d/build
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe não encontrado" }
+          "ISCC=$iscc" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Gerar o instalador
+        shell: pwsh
+        working-directory: pescador3d/instalador
+        run: |
+          $linha = Select-String -Path ..\project.godot -Pattern '^config/version="(.+)"' | Select-Object -First 1
+          $versao = $linha.Matches[0].Groups[1].Value
+          Write-Host "Versão $versao"
+          & $env:ISCC "/DVersao=$versao" "/DOrigem=..\build" bruma.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC falhou" }
+          Get-ChildItem saida
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bruma-Instalador
+          path: pescador3d/instalador/saida/*.exe
+          if-no-files-found: error
