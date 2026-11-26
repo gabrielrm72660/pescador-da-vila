@@ -11,12 +11,19 @@ static var modo_editor: bool = false     # Modo Construtor aberto: nada de veget
 const NOMES := ["Baixa", "Média", "Alta", "Ultra"]
 const QUALIDADE_MAX := 3
 const LIMITES := [30, 60, 120, 0]
+## v0.9.2: FSR 2 (AMD FidelityFX, vem no Godot; funciona em placa NVIDIA, AMD e Intel, só no renderizador Forward+).
+## Desenha o 3D numa resolução menor e reconstrói a imagem: mais FPS com pouca perda. A interface fica sempre nítida.
+const FSR_NOMES := ["Desligado", "Qualidade", "Equilibrado", "Desempenho"]
+const FSR_ESCALAS := [1.0, 0.67, 0.59, 0.5]
 var qualidade: int = 2           # v0.5.12: padrões do Gabriel (Alta, sem ajuste automático, 60 FPS, sem vsync, tela cheia)
 var automatica: bool = false      # abaixa a qualidade sozinha se o jogo ficar lento (nunca sobe sozinha)
 var fps_indice: int = 1          # v0.5.13: 60 FPS sempre como padrão
 var mostrar_fps: bool = false
 var tela_cheia: bool = true     # v0.5.8: Opções > Gráficos > Tela (janela ou tela cheia)
 var vsync: bool = false           # trava o FPS na taxa do monitor; desligue (com "Sem limite") para medir a capacidade real
+var fsr: int = 0                  # v0.9.2: índice em FSR_NOMES
+var placa_detectada: String = ""  # v0.9.2: o que a detecção da placa decidiu (aparece em Opções > Gráficos)
+var _fsr_opcao: OptionButton
 var _vsync_opcao: CheckButton
 ## Ajustes avulsos aplicados POR CIMA do nível de qualidade; só a bancada de GPU usa (mede o custo de cada recurso).
 ## Chaves: msaa (0 = desligado, 1 = 2x, 2 = 4x, 3 = 8x), sem_ssao, sem_glow, sem_sombra, faixas (1, 2 ou 4), atlas (tamanho),
@@ -48,15 +55,8 @@ func _ready() -> void:
     layer = 25
     _carregar()
     if not FileAccess.file_exists(ARQUIVO):
-        # Primeira vez: sem GPU de verdade (renderizador por software), comeca na Baixa.
-        var placa: String = RenderingServer.get_video_adapter_name().to_lower()
-        if OS.has_feature("mobile"):                 # v0.7.0: celular começa na Baixa, com ajuste automático
-            qualidade = 0
-            automatica = true
-        for nome in ["llvmpipe", "swiftshader", "software", "basic render", "softpipe"]:
-            if placa.contains(nome):
-                qualidade = 0
-                break
+        # Primeira vez: a qualidade sai da placa de vídeo (v0.9.2), com o ajuste automático ligado por segurança.
+        escolher_pela_placa(false)
     # Variaveis de teste (sondas automaticas): PESCADOR_SEM_AUTO=1 desliga o ajuste; PESCADOR_QUALIDADE=0..2 fixa o nivel.
     if OS.get_environment("PESCADOR_SEM_AUTO") == "1":
         automatica = false
@@ -213,6 +213,15 @@ func _construir() -> void:
         aplicar()
         _salvar())
     coluna.add_child(_fps_opcao)
+    var srotulo := Label.new()
+    srotulo.text = "FSR 2 (mais FPS desenhando o 3D menor; só Forward+)"
+    coluna.add_child(srotulo)
+    _fsr_opcao = OptionButton.new()
+    for nome in FSR_NOMES:
+        _fsr_opcao.add_item(nome)
+    _fsr_opcao.select(fsr)
+    _fsr_opcao.item_selected.connect(definir_fsr)
+    coluna.add_child(_fsr_opcao)
     _vsync_opcao = CheckButton.new()
     _vsync_opcao.text = "V-Sync (trava o FPS na taxa do monitor)"
     _vsync_opcao.button_pressed = vsync
@@ -236,6 +245,94 @@ func _construir() -> void:
     fechar.text = "VOLTAR AO JOGO [F10]"
     fechar.pressed.connect(alternar)
     coluna.add_child(fechar)
+
+## v0.9.2: escolhe qualidade e FSR pela placa de vídeo. `salvar` = false na primeira vez (o arquivo é gravado depois).
+func escolher_pela_placa(salvar: bool = true) -> void:
+    var nome: String = RenderingServer.get_video_adapter_name()
+    var tipo: int = int(RenderingServer.get_video_adapter_type())
+    var r: Dictionary = nivel_pela_placa(nome, RenderingServer.get_video_adapter_vendor(), tipo, OS.has_feature("mobile"))
+    qualidade = int(r["qualidade"])
+    fsr = int(r["fsr"]) if e_forward_plus() else 0
+    automatica = true
+    placa_detectada = "%s: %s%s" % [nome, NOMES[qualidade], ("" if fsr == 0 else ", FSR 2 " + FSR_NOMES[fsr])]
+    print("[graficos] placa \"%s\" (tipo %d) -> %s" % [nome, tipo, placa_detectada])
+    if salvar:
+        _sincronizar_painel()
+        aplicar()
+        _salvar()
+
+## A regra em si, separada para dar para testar sem a placa: devolve {"qualidade": 0..3, "fsr": 0..3}.
+## tipo = RenderingDevice.DeviceType (1 integrada, 2 dedicada, 4 processador). Placa desconhecida dedicada fica na Alta:
+## o ajuste automático desce se travar.
+static func nivel_pela_placa(nome: String, fabricante: String, tipo: int, celular: bool = false) -> Dictionary:
+    var n: String = (nome + " " + fabricante).to_lower()
+    if celular:
+        return {"qualidade": 0, "fsr": 0}
+    for soft in ["llvmpipe", "lavapipe", "swiftshader", "software", "basic render", "softpipe", "microsoft basic"]:
+        if n.contains(soft):
+            return {"qualidade": 0, "fsr": 0}
+    if tipo == 4:
+        return {"qualidade": 0, "fsr": 0}
+    var re := RegEx.new()
+    # NVIDIA RTX 2060 / 3070 Ti / 4090, GTX 1660 / 1050
+    re.compile("(rtx|gtx)\\s*(\\d{3,4})")
+    var m := re.search(n)
+    if m != null:
+        var num: int = int(m.get_string(2))
+        var serie: int = num / 100                                     # 4060 -> 40, 1660 -> 16, 980 -> 9 (GTX 980)
+        var faixa: int = num % 100                                     # 4060 -> 60, 1660 -> 60, 980 -> 80
+        if m.get_string(1) == "rtx":
+            if faixa >= 70 and serie >= 30:
+                return {"qualidade": 3, "fsr": 0}
+            if faixa >= 60:
+                return {"qualidade": 2, "fsr": 0}
+            return {"qualidade": 1, "fsr": 1}                          # RTX 2050/3050
+        if serie >= 16 or (serie == 10 and faixa >= 70):
+            return {"qualidade": 1, "fsr": 0}                          # GTX 1650-1660, 1070-1080
+        if serie == 10 and faixa >= 60:
+            return {"qualidade": 1, "fsr": 1}
+        return {"qualidade": 0, "fsr": 2}                              # GTX 1050 e mais velhas
+    # NVIDIA MX (dedicada fraca de notebook)
+    re.compile("geforce\\s*mx\\s*\\d{3}")
+    if re.search(n) != null:
+        return {"qualidade": 0, "fsr": 2}
+    # AMD Radeon RX 6600 / 7800 XT / 9070, RX 580 / 470
+    re.compile("rx\\s*(\\d{3,4})")
+    m = re.search(n)
+    if m != null:
+        var num_a: int = int(m.get_string(1))
+        if num_a >= 1000:
+            var geracao: int = num_a / 1000                            # 5, 6, 7, 9
+            var resto: int = num_a % 1000
+            var faixa_a: int = resto / 100 if resto >= 100 else resto / 10   # 6600 -> 6, 7800 -> 8, 9070 -> 7, 9060 -> 6
+            if faixa_a >= 7 and geracao >= 6:
+                return {"qualidade": 3, "fsr": 0}
+            if faixa_a >= 6:
+                return {"qualidade": 2, "fsr": 0}
+            if faixa_a >= 5:
+                return {"qualidade": 1, "fsr": 1}                      # RX 5500, 6500
+            return {"qualidade": 1, "fsr": 2}                          # RX 6400
+        if num_a >= 570:
+            return {"qualidade": 1, "fsr": 1}                          # RX 570-590
+        return {"qualidade": 0, "fsr": 2}
+    if n.contains("vega 56") or n.contains("vega 64") or n.contains("radeon vii"):
+        return {"qualidade": 1, "fsr": 0}
+    # Intel Arc dedicada: A750/A770/B570/B580 na Alta, A310/A380 na Média
+    re.compile("arc[^\\d]*([ab])\\s*(\\d{3})")
+    m = re.search(n)
+    if m != null:
+        return {"qualidade": 2, "fsr": 0} if int(m.get_string(2)) >= 500 else {"qualidade": 1, "fsr": 1}
+    # Vídeo integrado: Intel HD/UHD/Iris e Radeon junto do Ryzen (Vega, 680M/780M/890M)
+    var integrada: bool = tipo == 1
+    for chave in ["intel(r) hd", "intel(r) uhd", "uhd graphics", "hd graphics", "iris", "radeon(tm) graphics", "radeon graphics", "vega 3", "vega 6", "vega 7", "vega 8", "vega 10", "vega 11"]:
+        if n.contains(chave):
+            integrada = true
+    if integrada:
+        for forte in ["680m", "760m", "780m", "880m", "890m", "8060s", "arc(tm) graphics", "arc graphics"]:
+            if n.contains(forte):
+                return {"qualidade": 1, "fsr": 1}
+        return {"qualidade": 0, "fsr": 2}
+    return {"qualidade": 2, "fsr": 0}
 
 ## Nome do renderizador em uso ("forward_plus", "mobile" ou "gl_compatibility").
 static func metodo_render() -> String:
@@ -267,6 +364,22 @@ func definir_limite_fps(n: int) -> void:
     _fps_opcao.select(fps_indice)
     aplicar()
     _salvar()
+
+func definir_fsr(n: int) -> void:
+    fsr = clampi(n, 0, FSR_NOMES.size() - 1)
+    if _fsr_opcao != null:
+        _fsr_opcao.select(fsr)
+    aplicar()
+    _salvar()
+
+func _sincronizar_painel() -> void:
+    if _qualidade_opcao != null:
+        _qualidade_opcao.select(qualidade)
+        _atualizar_dica()
+    if _auto_opcao != null:
+        _auto_opcao.set_pressed_no_signal(automatica)
+    if _fsr_opcao != null:
+        _fsr_opcao.select(fsr)
 
 func definir_vsync(ligado: bool) -> void:
     vsync = ligado
@@ -332,6 +445,15 @@ func aplicar() -> void:
     var suavizacao: Viewport.MSAA = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][qb]
     if ultra and fplus:
         suavizacao = Viewport.MSAA_8X              # 8x só onde o renderizador aguenta (Forward+)
+    # v0.9.2: FSR 2 faz a própria suavização, então o MSAA sai quando ele está ligado (economiza e evita borrar duas vezes).
+    var usa_fsr: bool = fsr > 0 and fplus
+    if usa_fsr:
+        suavizacao = Viewport.MSAA_DISABLED
+        vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2
+        vp.scaling_3d_scale = FSR_ESCALAS[clampi(fsr, 0, FSR_ESCALAS.size() - 1)]
+    else:
+        vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+        vp.scaling_3d_scale = 1.0
     vp.msaa_3d = suavizacao
     # Filtro de textura em ângulo raso (areia, mar, chão): a Alta sobe para 8x e o Ultra para 16x; as demais seguem o padrão do projeto.
     var aniso_projeto: int = int(ProjectSettings.get_setting("rendering/textures/default_filters/anisotropic_filtering_level", 2))
@@ -435,7 +557,7 @@ func _process(delta: float) -> void:
         _soma_quadro = 0.0
         _n_quadros = 0
         var gpu_txt: String = ("%.1f ms" % gpu) if gpu > 0.0 else "n/d"
-        _fps_label.text = "FPS %d  |  quadro %.1f ms  |  GPU %s  |  CPU %.1f ms  |  %s  |  V-Sync %s" % [Engine.get_frames_per_second(), quadro, gpu_txt, cpu, NOMES[clampi(qualidade, 0, QUALIDADE_MAX)], "ligado" if vsync else "desligado"]
+        _fps_label.text = "FPS %d  |  quadro %.1f ms  |  GPU %s  |  CPU %.1f ms  |  %s  |  V-Sync %s  |  FSR %s" % [Engine.get_frames_per_second(), quadro, gpu_txt, cpu, NOMES[clampi(qualidade, 0, QUALIDADE_MAX)], "ligado" if vsync else "desligado", FSR_NOMES[fsr] if e_forward_plus() else "n/d"]
 
 ## Mede o FPS medio em janelas de 1 s. Se ficar abaixo da meta por 4 janelas seguidas, desce um nivel.
 ## Nunca sobe sozinho (evita vai-e-vem) e para de agir se o jogador mexer na qualidade.
@@ -477,6 +599,7 @@ func _carregar() -> void:
     qualidade = clampi(int(dados.get("qualidade", qualidade)), 0, QUALIDADE_MAX)
     automatica = bool(dados.get("automatica", automatica))
     fps_indice = clampi(int(dados.get("fps", fps_indice)), 0, 3)
+    fsr = clampi(int(dados.get("fsr", fsr)), 0, FSR_NOMES.size() - 1)
     mostrar_fps = bool(dados.get("mostrar_fps", false))
     vsync = bool(dados.get("vsync", vsync))
     tela_cheia = bool(dados.get("tela_cheia", tela_cheia))
@@ -484,4 +607,4 @@ func _carregar() -> void:
 func _salvar() -> void:
     var arquivo := FileAccess.open(ARQUIVO, FileAccess.WRITE)
     if arquivo != null:
-        arquivo.store_string(JSON.stringify({"qualidade": qualidade, "automatica": automatica, "fps": fps_indice, "mostrar_fps": mostrar_fps, "vsync": vsync, "tela_cheia": tela_cheia}))
+        arquivo.store_string(JSON.stringify({"qualidade": qualidade, "automatica": automatica, "fps": fps_indice, "mostrar_fps": mostrar_fps, "vsync": vsync, "tela_cheia": tela_cheia, "fsr": fsr}))

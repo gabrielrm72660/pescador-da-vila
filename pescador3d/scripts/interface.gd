@@ -74,6 +74,8 @@ var _mudo := false
 var _botoes_idioma: Dictionary = {}
 var _botoes_qualidade: Array = []
 var _botoes_fps: Array = []
+var _botoes_fsr: Array = []          # v0.9.2: FSR 2 (Desligado, Qualidade, Equilibrado, Desempenho)
+var _placa_graficos: Label
 var _botoes_tela: Array = []
 var _botao_auto: Button
 var _botao_vsync: Button
@@ -473,6 +475,22 @@ func _construir_graficos(pag: VBoxContainer) -> void:
     _dica_graficos = _nova_label("", 16, COR_SUAVE, true)
     _dica_graficos.custom_minimum_size = Vector2(500, 0)
     pag.add_child(_dica_graficos)
+    # v0.9.2: o que a detecção da placa escolheu, e o botão para refazer a escolha
+    _placa_graficos = _nova_label("", 15, COR_SUAVE, true)
+    _placa_graficos.custom_minimum_size = Vector2(500, 0)
+    pag.add_child(_placa_graficos)
+    pag.add_child(_t(_botao_aq("", "mar", 39.0, Aq.CREME, 19, Vector2(440, 40)), "Escolher pela minha placa de vídeo", _graf.bind("placa", 0)))
+    # v0.9.2: FSR 2
+    pag.add_child(_t(_nova_label("", 22, COR_SECAO, false, true), "FSR 2  (mais FPS, imagem reconstruída)"))
+    var fila_s := HBoxContainer.new()
+    fila_s.add_theme_constant_override("separation", 8)
+    pag.add_child(fila_s)
+    for i in 4:
+        var bs := _botao_aq("", "mar", 60.0 + float(i), Aq.CREME, 19, Vector2(100, 42))
+        bs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _t(bs, ["Desligado", "Qualidade", "Equilibrado", "Desempenho"][i], _graf.bind("fsr", i))
+        fila_s.add_child(bs)
+        _botoes_fsr.append(bs)
     # v0.5.8: modo de tela
     pag.add_child(_t(_nova_label("", 22, COR_SECAO, false, true), "TELA"))
     var fila_j := HBoxContainer.new()
@@ -519,6 +537,8 @@ func _graf(o_que: String, n: int) -> void:
         "auto": graficos.definir_automatica(not graficos.automatica)
         "fps": graficos.definir_limite_fps(n)
         "vsync": graficos.definir_vsync(not graficos.vsync)
+        "fsr": graficos.definir_fsr(n)
+        "placa": graficos.escolher_pela_placa()
         "tela": graficos.definir_tela_cheia(n == 1)
         "mostrar_fps": graficos.alternar_fps()
         "avancado":                                  # o menu sai da frente para ver a cena; volta quando o painel fechar
@@ -540,6 +560,18 @@ func _atualizar_graficos() -> void:
     for i in _botoes_tela.size():
         _botoes_tela[i].marcar(i == (1 if graficos.tela_cheia else 0))
     _dica_graficos.text = T.t(graficos.texto_dica())
+    var fplus: bool = graficos.e_forward_plus()
+    for i in _botoes_fsr.size():
+        _botoes_fsr[i].marcar(i == int(graficos.fsr) and fplus)
+        _botoes_fsr[i].disabled = not fplus
+    var linhas: Array = []
+    if String(graficos.placa_detectada) != "":
+        linhas.append(T.t("Escolhido pela placa") + " — " + String(graficos.placa_detectada))
+    else:
+        linhas.append(T.t("Placa de vídeo") + ": " + RenderingServer.get_video_adapter_name())
+    if not fplus:
+        linhas.append(T.t("FSR 2 só funciona no renderizador Forward+ (Vulkan)."))
+    _placa_graficos.text = "\n".join(linhas)
     var lig := T.t("ligado")
     var des := T.t("desligado")
     _botao_auto.text = T.t("Ajuste automático (abaixa a qualidade se travar)") + ": " + (lig if graficos.automatica else des)
